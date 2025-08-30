@@ -1,0 +1,107 @@
+# ========================
+# Global
+# ========================
+*.log
+*.pid
+*.seed
+*.tar
+*.gz
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# ========================
+# Python (microservices-backend)
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+venv/
+ENV/
+env/
+.venv/
+pytest_cache/
+
+# ========================
+# Node.js (cms-backend y frontend)
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+.cache/
+.next/
+out/
+dist/
+coverage/
+
+# ========================
+# Docker
+# ========================
+.docker/
+.dockerignore
+docker-compose.override.yml
+
+# ========================
+# DB volumes (no versionar datos locales)
+# ========================
+postgres_data/
+influxdb_data/
+redis_data/
+
+# ========================
+# Environment / Keys
+# ========================
+.env
+config/*.env
+.env.*
+!.env.example
+*.pem
+*.crt
+*.key
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ========================
+# Frontend (Next.js)
+# ========================
+/frontend/.next/
+/frontend/out/
+/frontend/node_modules/
+
+# ========================
+# CMS backend (Node)
+# ========================
+/cms-backend/node_modules/
+/cms-backend/dist/
+
+# ========================
+# Microservices backend (FastAPI)
+# ========================
+/microservices-backend/__pycache__/
+/microservices-backend/app/__pycache__/
+/microservices-backend/app/models/__pycache__/
+/microservices-backend/app/routers/__pycache__/
+/microservices-backend/.pytest_cache/
+/microservices-backend/venv/
+/microservices-backend/env/
