@@ -102,12 +102,15 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <button
-              type="submit"
-              className="w-full cta text-white rounded-lg py-2 font-medium hover:opacity-90 transition"
-            >
+
+            <Link href="/home">
+              <button
+                /*type="submit"*/
+                className="w-full cta text-white rounded-lg py-2 font-medium hover:opacity-90 transition"
+              >
               Log-in
-            </button>
+              </button>
+            </Link>
           </form>
         </div>
       </div>
