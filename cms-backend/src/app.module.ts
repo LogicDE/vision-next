@@ -1,7 +1,8 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
+import { User } from './entities/user.entity';
+import { AuthService } from './auth/auth.service';
+import { AuthController } from './auth/auth.controller';
 
 @Module({
   imports: [
@@ -9,11 +10,11 @@ import { AppController } from './app.controller';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      synchronize: true,     // ⚠️ solo para desarrollo
-      retryAttempts: 10,     // reintentos de conexión
-      retryDelay: 3000,      // 3s entre cada intento
+      synchronize: false,
     }),
+    TypeOrmModule.forFeature([User]),
   ],
-  controllers: [AppController],
+  controllers: [AuthController],
+  providers: [AuthService],
 })
 export class AppModule {}

@@ -1,20 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("groups");
 
-  return (
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (!user) {
+      router.push("/"); // Redirigir a login si no hay usuario
+    } else {
+      setLoading(false);
+    }
+  }, [router]);
 
+  if (loading) return <p>Cargando...</p>;
+
+  return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="flex justify-between items-center px-6 py-4 shadow-md bg-gray-50 relative">
         <div className="text-2xl font-bold text-gray-800">NEXOVITAL</div>
         <div className="hidden md:flex space-x-4">
           <Link href="/">
-            <button className="block w-full text-center text-gray-700 hover:text-gray-900 font-medium">Sign off</button>
+            <button className="block w-full text-center text-gray-700 hover:text-gray-900 font-medium">
+              Sign off
+            </button>
           </Link>
         </div>
       </header>
@@ -23,28 +38,31 @@ export default function HomePage() {
       <div className="tabs flex space-x-4 items-center px-6 py-4 shadow-md bg-gray-50">
         <button
           onClick={() => setActiveTab("groups")}
-          className={`pb-2 font-medium ${activeTab === "groups"
+          className={`pb-2 font-medium ${
+            activeTab === "groups"
               ? "border-b-2 border-cta text-cta"
               : "text-gray-600 hover:text-gray-900"
-            }`}
+          }`}
         >
           My Groups
         </button>
         <button
           onClick={() => setActiveTab("data")}
-          className={`pb-2 font-medium ${activeTab === "data"
+          className={`pb-2 font-medium ${
+            activeTab === "data"
               ? "border-b-2 border-cta text-cta"
               : "text-gray-600 hover:text-gray-900"
-            }`}
+          }`}
         >
           My Data
         </button>
         <button
           onClick={() => setActiveTab("update")}
-          className={`pb-2 font-medium ${activeTab === "update"
+          className={`pb-2 font-medium ${
+            activeTab === "update"
               ? "border-b-2 border-cta text-cta"
               : "text-gray-600 hover:text-gray-900"
-            }`}
+          }`}
         >
           Update Data
         </button>
@@ -67,7 +85,9 @@ export default function HomePage() {
                     </button>
                   </div>
                   <hr className="p-4"></hr>
-                  <p className="text-gray-600">You don’t have any groups yet.</p>
+                  <p className="text-gray-600">
+                    You don’t have any groups yet.
+                  </p>
                 </div>
               )}
 
@@ -93,7 +113,9 @@ export default function HomePage() {
               {/* Update Data */}
               {activeTab === "update" && (
                 <div>
-                  <h2 className="text-2xl font-bold text-center mb-6">Update Data</h2>
+                  <h2 className="text-2xl font-bold text-center mb-6">
+                    Update Data
+                  </h2>
                   <hr className="p-4"></hr>
                   <form className="space-y-4 max-w-md">
                     {/* Workload amount */}
@@ -161,6 +183,5 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-
   );
 }
