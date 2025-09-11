@@ -1,20 +1,22 @@
+// app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
 import { User } from './entities/user.entity';
-import { AuthService } from './auth/auth.service';
-import { AuthController } from './auth/auth.controller';
+import { Empresa } from './entities/empresa.entity';
+import { Departamento } from './entities/departamento.entity';
+import { Rol } from './entities/rol.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      autoLoadEntities: true,
+      autoLoadEntities: true, // ✅ detecta todas las entidades importadas en los módulos
       synchronize: false,
     }),
-    TypeOrmModule.forFeature([User]),
+    AuthModule, // ✅ aquí importa tu módulo de auth
+    TypeOrmModule.forFeature([User, Empresa, Departamento, Rol]), // opcional si quieres repositorios globales
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
 })
 export class AppModule {}
