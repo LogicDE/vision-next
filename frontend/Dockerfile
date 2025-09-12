@@ -14,26 +14,26 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build de la aplicación
-RUN npm run build
+#RUN npm run build
 
 
 # Etapa 2: Runtime
-FROM node:24-alpine AS runner
+# FROM node:24-alpine AS runner
 
-WORKDIR /app
+# WORKDIR /app
 
-# Definir entorno como producción
-ENV NODE_ENV=production
+# # Definir entorno como producción
+# ENV NODE_ENV=production
 
-# Copiar solo lo necesario desde el builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.* ./
+# # Copiar solo lo necesario desde el builder
+# COPY --from=builder /app/package*.json ./
+# COPY --from=builder /app/node_modules ./node_modules
+# COPY --from=builder /app/.next ./.next
+# COPY --from=builder /app/public ./public
+# COPY --from=builder /app/next.config.* ./
 
 # Puerto expuesto
 EXPOSE 3000
 
 # Comando de arranque (Next.js en prod usa "start")
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]

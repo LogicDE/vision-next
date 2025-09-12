@@ -1,6 +1,19 @@
-version: "3.9"
 
 services:
+  vitanexo-db:
+    image: postgres:16-alpine
+    container_name: vitanexo-db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: vitanexo_postgres_db
+    ports:
+      - "5433:5432"   # evita conflicto con otras DB
+    volumes:
+      - vitanexo_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d  # scripts SQL iniciales
+      
   db:
     image: postgres:16-alpine
     restart: always
@@ -72,6 +85,8 @@ services:
       - cms-backend
     ports:
       - "3000:3000"
+    #env_file:
+    # - ./config/frontend.env
     volumes:
       - ./frontend:/usr/src/app
     command: sh -c "npm install && npm run dev"
@@ -79,3 +94,4 @@ services:
 volumes:
   postgres_data:
   influxdb_data:
+  vitanexo_data:
