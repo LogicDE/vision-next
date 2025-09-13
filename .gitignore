@@ -62,13 +62,13 @@ redis_data/
 # ========================
 # Environment / Keys
 # ========================
-.env
-config/*.env
-.env.*
-!.env.example
-*.pem
-*.crt
-*.key
+# .env
+# config/*.env
+# .env.*
+# !.env.example
+# *.pem
+# *.crt
+# *.key
 
 # ========================
 # IDE / Editor
