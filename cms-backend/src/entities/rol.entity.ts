@@ -1,19 +1,21 @@
-// src/entities/rol.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { User } from './user.entity';
+import { Employee } from './employee.entity';
 
 @Entity('roles')
 export class Rol {
-  @PrimaryGeneratedColumn()
-  rol_id!: number;
+@PrimaryGeneratedColumn({ name: 'id_role' })
+id!: number;
 
-  @Column({ length: 50, unique: true })
-  nombre!: string;
 
-  @Column({ type: 'text', nullable: true })
-  descripcion?: string;
+@Column({ length: 48, unique: true, name: 'name' })
+name!: string;
 
-  // 🔗 Relación con usuarios
-  @OneToMany(() => User, (user) => user.rol)
-  usuarios!: User[];
+
+@Column({ type: 'text', nullable: true, name: 'description' })
+descripcion?: string;
+
+
+@OneToMany(() => Employee, (employee) => employee.rol)
+empleados!: Employee[];
 }
+

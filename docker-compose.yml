@@ -1,3 +1,4 @@
+version: '3.9'
 
 services:
   vitanexo-db:
@@ -9,22 +10,12 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: vitanexo_postgres_db
     ports:
-      - "5433:5432"   # evita conflicto con otras DB
+      - "5433:5432"
     volumes:
       - vitanexo_data:/var/lib/postgresql/data
-      - ./initdb:/docker-entrypoint-initdb.d  # scripts SQL iniciales
-      
-  db:
-    image: postgres:16-alpine
-    restart: always
-    env_file:
-      - ./config/db.env
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d vitanexo_postgres_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,23 +40,24 @@ services:
     command: ["redis-server", "--requirepass", "$${REDIS_PASSWORD}"]
 
   cms-backend:
-    build: ./cms-backend   # proyecto en Node.js
+    build: ./cms-backend
     restart: always
     depends_on:
-      db:
+      vitanexo-db:
         condition: service_healthy
       redis:
         condition: service_started
     env_file:
-      - ./config/cms.env
+      - ./cms-backend/.env
     ports:
       - "8000:8000"
     volumes:
       - ./cms-backend:/app
     command: npm run start:dev
+    
 
   microservices-backend:
-    build: ./microservices-backend   # FastAPI
+    build: ./microservices-backend
     restart: always
     depends_on:
       - influxdb
@@ -79,19 +71,16 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
 
   frontend:
-    build: ./frontend   # Next.js
+    build: ./frontend
     restart: always
     depends_on:
       - cms-backend
     ports:
       - "3000:3000"
-    #env_file:
-    # - ./config/frontend.env
     volumes:
       - ./frontend:/usr/src/app
     command: sh -c "npm install && npm run dev"
 
 volumes:
-  postgres_data:
-  influxdb_data:
   vitanexo_data:
+  influxdb_data:

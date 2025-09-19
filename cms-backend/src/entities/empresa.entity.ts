@@ -1,45 +1,25 @@
-// src/entities/empresa.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-import { Departamento } from './departamento.entity';
-import { User } from './user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Employee } from './employee.entity';
 
-@Entity('empresas')
+
+@Entity('enterprises')
 export class Empresa {
-  @PrimaryGeneratedColumn()
-  empresa_id!: number;
+@PrimaryGeneratedColumn({ name: 'id_enterprise' })
+id!: number;
 
-  @Column({ length: 150, unique: true })
-  nombre!: string;
 
-  @Column({ length: 100, nullable: true })
-  sector?: string;
+@Column({ length: 150, unique: true })
+name!: string;
 
-  @Column({ type: 'text', nullable: true })
-  direccion?: string;
 
-  @Column({ length: 20, nullable: true })
-  telefono?: string;
+@Column({ length: 15 })
+telephone!: string;
 
-  @Column({ length: 150, unique: true })
-  correo_contacto!: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
-  created_at!: Date;
+@Column({ length: 150, unique: true })
+email!: string;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updated_at!: Date;
 
-  // 🔗 Relaciones
-  @OneToMany(() => Departamento, (departamento) => departamento.empresa)
-  departamentos!: Departamento[];
-
-  @OneToMany(() => User, (user) => user.empresa)
-  usuarios!: User[];
+@OneToMany(() => Employee, (e) => e.empresa)
+empleados!: Employee[];
 }
