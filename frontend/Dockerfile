@@ -1,39 +1,22 @@
-# Etapa 1: Build
-FROM node:24-alpine AS builder
+# Dockerfile para desarrollo
+FROM node:24-alpine
 
-# Carpeta de trabajo
+# Actualizar paquetes de Alpine para parches de seguridad
+RUN apk update && apk upgrade --no-cache
+
 WORKDIR /app
 
-# Copiar package.json y lockfile primero para aprovechar la cache
+# Copiar package.json y lockfile para cache de dependencias
 COPY package*.json ./
 
-# Instalar dependencias completas (dev + prod) para poder hacer el build
+# Instalar dependencias (prod + dev)
 RUN npm install --legacy-peer-deps
 
-# Copiar el resto del código
+# Copiar resto del código
 COPY . .
 
-# Build de la aplicación
-#RUN npm run build
-
-
-# Etapa 2: Runtime
-# FROM node:24-alpine AS runner
-
-# WORKDIR /app
-
-# # Definir entorno como producción
-# ENV NODE_ENV=production
-
-# # Copiar solo lo necesario desde el builder
-# COPY --from=builder /app/package*.json ./
-# COPY --from=builder /app/node_modules ./node_modules
-# COPY --from=builder /app/.next ./.next
-# COPY --from=builder /app/public ./public
-# COPY --from=builder /app/next.config.* ./
-
-# Puerto expuesto
+# Exponer puerto de Next.js
 EXPOSE 3000
 
-# Comando de arranque (Next.js en prod usa "start")
+# Comando de desarrollo
 CMD ["npm", "run", "dev"]

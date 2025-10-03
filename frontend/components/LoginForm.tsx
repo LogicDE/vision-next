@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,15 +14,25 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
   const { login } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await login(email, password);
+      const currentUser = await login(email, password); // <-- obtenemos usuario actualizado
+      if (!currentUser) throw new Error('Usuario no encontrado');
+
       toast.success('Inicio de sesión exitoso');
+
+      if (currentUser.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/user');
+      }
     } catch (error) {
       toast.error('Error en el inicio de sesión');
     } finally {

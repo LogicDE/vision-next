@@ -27,6 +27,8 @@ import { MentalStateMonitor } from '@/components/user/MentalStateMonitor';
 import { AIAssistant } from '@/components/user/AIAssistant';
 import { UserSettings } from '@/components/user/UserSettings';
 import { NotificationsPanel } from '@/components/user/NotificationsPanel';
+import { SessionTimeout } from '@/components/SessionTimeoutModal';
+
 
 export function UserDashboard() {
   const { user, logout } = useAuth();
@@ -171,6 +173,7 @@ export function UserDashboard() {
           Cerrar Sesión
         </Button>
       </div>
+      <SessionTimeout />
     </div>
   );
 }

@@ -27,6 +27,7 @@ import { UsersManagement } from '@/components/admin/UsersManagement';
 import { OrganizationsManagement } from '@/components/admin/OrganizationsManagement';
 import { KPIDashboard } from '@/components/admin/KPIDashboard';
 import { AlertsManagement } from '@/components/admin/AlertsManagement';
+import { SessionTimeout } from '@/components/SessionTimeoutModal';
 
 export function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -34,6 +35,7 @@ export function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+      <SessionTimeout />
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex h-16 items-center px-4 lg:px-6">

@@ -4,8 +4,9 @@ import { Employee } from '../entities/employee.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
+import { RedisService } from '../redis/redis.service';
+import { JwtRedisGuard } from './jwt-redis.guard';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { ConfigService } from '@nestjs/config';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, RedisService, JwtRedisGuard],
   controllers: [AuthController],
+  exports: [JwtRedisGuard], // para poder usarlo en otros módulos si es necesario
 })
 export class AuthModule {}

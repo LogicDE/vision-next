@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   vitanexo-db:
     image: postgres:16-alpine
@@ -37,7 +35,7 @@ services:
       - "6379:6379"
     env_file:
       - ./config/redis.env
-    command: ["redis-server", "--requirepass", "$${REDIS_PASSWORD}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
 
   cms-backend:
     build: ./cms-backend
