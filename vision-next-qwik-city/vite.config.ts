@@ -5,12 +5,18 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig(() => {
   return {
     plugins: [qwikVite(), tsconfigPaths()],
+    server: {
+      host: '0.0.0.0',
+      port: 3000,
+    },
     dev: {
       headers: {
         'Cache-Control': 'public, max-age=0',
       },
     },
     preview: {
+      host: '0.0.0.0',
+      port: 3000,
       headers: {
         'Cache-Control': 'public, max-age=600',
       },

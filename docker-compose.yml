@@ -47,9 +47,6 @@ services:
       - ./config/cms.env
     ports:
       - "8000:8000"
-    volumes:
-      - ./cms-backend:/app
-    command: npm run start:dev
 
   microservices-backend:
     build: ./microservices-backend   # FastAPI
@@ -66,14 +63,14 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
 
   frontend:
-    build: ./frontend   # Next.js
+    build: ./vision-next-qwik-city   # Qwik City
     restart: always
     depends_on:
       - cms-backend
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/usr/src/app
+      - ./vision-next-qwik-city:/app
     command: sh -c "npm install && npm run dev"
 
 volumes:
