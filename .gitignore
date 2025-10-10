@@ -105,3 +105,8 @@ redis_data/
 /microservices-backend/.pytest_cache/
 /microservices-backend/venv/
 /microservices-backend/env/
+
+
+.env
+/config/cms.env
+/config/db.env
