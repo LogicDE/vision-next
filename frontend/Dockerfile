@@ -1,5 +1,5 @@
 # Dockerfile para desarrollo
-FROM node:24-alpine
+FROM node:18-alpine
 
 # Actualizar paquetes de Alpine para parches de seguridad
 RUN apk update && apk upgrade --no-cache
