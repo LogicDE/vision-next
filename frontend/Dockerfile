@@ -1,21 +1,20 @@
-# Dockerfile para desarrollo
-FROM node:24-alpine
+# Etapa base
+FROM node:22-slim AS base
+WORKDIR /usr/src/app
 
-# Actualizar paquetes de Alpine para parches de seguridad
-RUN apk update && apk upgrade --no-cache
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-# Copiar package.json y lockfile para cache de dependencias
+# Copiar solo package.json y lock para cache de dependencias
 COPY package*.json ./
 
-# Instalar dependencias (prod + dev)
-RUN npm install --legacy-peer-deps
+# Instalar dependencias
+RUN npm ci --legacy-peer-deps
 
-# Copiar resto del código
+# Copiar el resto del proyecto
 COPY . .
 
-# Exponer puerto de Next.js
+# Exponer puerto
 EXPOSE 3000
 
 # Comando de desarrollo

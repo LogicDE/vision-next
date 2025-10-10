@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
-import { Group } from './group.entity';
 
 @Entity({ name: 'events' })
 export class Event {
@@ -10,10 +9,6 @@ export class Event {
   @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
-
-  @ManyToOne(() => Group, (g) => g.events, { nullable: true })
-  @JoinColumn({ name: 'id_group' })
-  group?: Group;  // <-- aquí agregamos la propiedad que faltaba
 
   @Column({ name: 'title_message', type: 'varchar' })
   title_message!: string;

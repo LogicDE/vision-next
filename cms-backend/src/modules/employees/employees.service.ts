@@ -81,7 +81,7 @@ export class EmployeesService {
       empresa: empresa,
     };
 
-    if (dto.manager_id) {
+    if (dto.manager_id !== undefined && dto.manager_id !== null) {
       const manager = await this.empRepo.findOne({ where: { id: dto.manager_id } });
       if (!manager) throw new NotFoundException('Manager no encontrado');
       employeeData.manager = manager;

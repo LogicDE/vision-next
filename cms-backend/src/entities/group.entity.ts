@@ -27,9 +27,4 @@ export class Group {
   @OneToMany(() => GroupSurveyScore, (gs) => gs.group)
   surveys!: GroupSurveyScore[];
 
-  @OneToMany(() => Event, (ev) => ev.group)
-  events!: Event[];
-
-  @OneToMany(() => Intervention, (iv) => iv.group)
-  interventions!: Intervention[];
 }

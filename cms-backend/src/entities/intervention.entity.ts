@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
-import { Group } from './group.entity';
 
 @Entity({ name: 'interventions' })
 export class Intervention {
@@ -10,10 +9,6 @@ export class Intervention {
   @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
-
-  @ManyToOne(() => Group, (g) => g.interventions, { nullable: true })
-  @JoinColumn({ name: 'id_group' })
-  group?: Group;
 
   @Column({ type: 'varchar' })
   type!: string;

@@ -30,7 +30,7 @@ export class GroupsService {
 
   async findAll() {
     return this.groupRepo.find({
-      relations: ['manager', 'members', 'events', 'interventions'],
+      relations: ['manager', 'members', 'dailyMetrics', 'surveys'],
       order: { id_group: 'ASC' },
     });
   }
@@ -38,7 +38,7 @@ export class GroupsService {
   async findOne(id: number) {
     const group = await this.groupRepo.findOne({
       where: { id_group: id },
-      relations: ['manager', 'members', 'events', 'interventions'],
+      relations: ['manager', 'members', 'dailyMetrics', 'surveys'],
     });
     if (!group) throw new NotFoundException('Grupo no encontrado');
     return group;

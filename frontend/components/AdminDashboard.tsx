@@ -13,20 +13,19 @@ import {
   TrendingUp, 
   AlertCircle, 
   LogOut,
-  Settings,
-  BarChart3,
   Heart,
   Brain,
   Shield,
   Bell,
-  UserPlus
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { UsersManagement } from '@/components/admin/UsersManagement';
-import { OrganizationsManagement } from '@/components/admin/OrganizationsManagement';
+import { EnterprisesManagement } from '@/components/admin/EnterprisesManagement'; // ✅ Reemplazado
 import { KPIDashboard } from '@/components/admin/KPIDashboard';
 import { AlertsManagement } from '@/components/admin/AlertsManagement';
+import { GroupsManagement } from '@/components/admin/GroupsManagement';
 import { SessionTimeout } from '@/components/SessionTimeoutModal';
 
 export function AdminDashboard() {
@@ -36,6 +35,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       <SessionTimeout />
+      
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex h-16 items-center px-4 lg:px-6">
@@ -80,28 +80,29 @@ export function AdminDashboard() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Panel de Control</h2>
             <p className="text-muted-foreground">
-              Gestiona organizaciones, usuarios y monitorea datos bicognitivos
+              Gestiona empresas, usuarios, grupos y monitorea datos bicognitivos
             </p>
           </div>
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Nuevo Usuario
-          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-12">
+          {/* Tabs List */}
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-12">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
+              <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Usuarios</span>
             </TabsTrigger>
-            <TabsTrigger value="organizations" className="flex items-center space-x-2">
+            <TabsTrigger value="enterprises" className="flex items-center space-x-2">
               <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Organizaciones</span>
+              <span className="hidden sm:inline">Empresas</span>
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="flex items-center space-x-2">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Grupos</span>
             </TabsTrigger>
             <TabsTrigger value="kpis" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
@@ -113,6 +114,7 @@ export function AdminDashboard() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Tabs Content */}
           <TabsContent value="overview">
             <AdminStats />
           </TabsContent>
@@ -121,8 +123,12 @@ export function AdminDashboard() {
             <UsersManagement />
           </TabsContent>
 
-          <TabsContent value="organizations">
-            <OrganizationsManagement />
+          <TabsContent value="enterprises">
+            <EnterprisesManagement />
+          </TabsContent>
+
+          <TabsContent value="groups">
+            <GroupsManagement />
           </TabsContent>
 
           <TabsContent value="kpis">

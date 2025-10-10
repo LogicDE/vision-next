@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS employees (
 -- =========================================================
 -- AUDITORÍA
 -- =========================================================
-
 CREATE TABLE IF NOT EXISTS audit_logs (
     id_event_log SERIAL PRIMARY KEY,
     id_actor INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
@@ -216,76 +215,6 @@ CREATE INDEX IF NOT EXISTS idx_groups_employees_group
     ON groups_employees(id_group);
 
 -- =========================================================
--- VISTAS KPIs
--- =========================================================
-CREATE OR REPLACE VIEW vw_kpi_realtime AS
-SELECT 
-    TO_CHAR(window_start, 'HH24:00') AS time,
-    AVG(CASE WHEN metric_name = 'heart_rate' THEN value END) AS heartRate,
-    AVG(CASE WHEN metric_name = 'mental_state' THEN value END) AS mentalState,
-    AVG(CASE WHEN metric_name = 'stress' THEN value END) AS stress,
-    COUNT(DISTINCT id_user) AS users
-FROM daily_employee_metrics
-WHERE window_start >= NOW() - INTERVAL '24 hours'
-GROUP BY TO_CHAR(window_start, 'HH24:00')
-ORDER BY MIN(window_start);
-
-CREATE OR REPLACE VIEW vw_kpi_weekly AS
-SELECT
-    TO_CHAR(date, 'FMDay') AS day,
-    AVG(CASE WHEN metric_name = 'heart_rate' THEN value END) AS heartRate,
-    AVG(CASE WHEN metric_name = 'mental_state' THEN value END) AS mentalState,
-    COUNT(DISTINCT gs.id_survey) AS alerts,
-    AVG(gs.group_score) AS satisfaction
-FROM daily_group_metrics gm
-LEFT JOIN group_survey_scores gs
-    ON gs.id_group = gm.id_group
-WHERE gm.date >= CURRENT_DATE - INTERVAL '7 days'
-GROUP BY TO_CHAR(date, 'FMDay')
-ORDER BY MIN(date);
-
-CREATE OR REPLACE VIEW vw_kpi_radar AS
-SELECT 'Salud Cardiovascular' AS metric, COALESCE(AVG(value), 0) AS value
-FROM daily_employee_metrics WHERE metric_name = 'heart_rate'
-UNION ALL
-SELECT 'Estado Mental', COALESCE(AVG(value), 0)
-FROM daily_employee_metrics WHERE metric_name = 'mental_state'
-UNION ALL
-SELECT 'Nivel de Estrés', 100 - COALESCE(AVG(value), 0)
-FROM daily_employee_metrics WHERE metric_name = 'stress'
-UNION ALL
-SELECT 'Calidad del Sueño', COALESCE(AVG(value), 0)
-FROM daily_employee_metrics WHERE metric_name = 'sleep_quality'
-UNION ALL
-SELECT 'Actividad Física', COALESCE(AVG(value), 0)
-FROM daily_employee_metrics WHERE metric_name = 'activity_level'
-UNION ALL
-SELECT 'Bienestar General', COALESCE(AVG(value), 0)
-FROM daily_group_metrics WHERE metric_name = 'wellbeing';
-
--- =========================================================
--- STORED PROCEDURES PARA VISTAS KPIs
--- =========================================================
-CREATE OR REPLACE FUNCTION sp_kpi_realtime()
-RETURNS TABLE(time TEXT, heartRate DOUBLE PRECISION, mentalState DOUBLE PRECISION, stress DOUBLE PRECISION, users INT)
-AS $$
-    SELECT * FROM vw_kpi_realtime;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION sp_kpi_weekly()
-RETURNS TABLE(day TEXT, heartRate DOUBLE PRECISION, mentalState DOUBLE PRECISION, alerts INT, satisfaction DOUBLE PRECISION)
-AS $$
-    SELECT * FROM vw_kpi_weekly;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION sp_kpi_radar()
-RETURNS TABLE(metric TEXT, value DOUBLE PRECISION)
-AS $$
-    SELECT * FROM vw_kpi_radar;
-$$ LANGUAGE sql;
-
--- =========================================================
--- =========================================================
 -- PAISES Y ESTADOS
 -- =========================================================
 INSERT INTO countries(name) VALUES 
@@ -331,11 +260,11 @@ ON CONFLICT DO NOTHING;
 -- GRUPOS Y ASIGNACIÓN DE EMPLEADOS
 -- =========================================================
 INSERT INTO groups(id_manager, name)
-VALUES (2, 'Grupo Demo')  -- Admin como manager
+VALUES (2, 'Grupo Demo')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO groups_employees(id_group, id_employee)
-SELECT id_group, 4  -- User como miembro
+SELECT id_group, 4
 FROM groups
 WHERE name='Grupo Demo'
 ON CONFLICT DO NOTHING;
@@ -385,13 +314,11 @@ INSERT INTO questions(id_survey, question)
 SELECT gs.id_survey, 'Pregunta de prueba ' || i
 FROM group_survey_scores gs
 CROSS JOIN generate_series(1,3) AS i
-WHERE gs.id_group = (SELECT id_group FROM groups WHERE name='Grupo Demo')
+WHERE gs.id_group IN (SELECT id_group FROM groups WHERE name='Grupo Demo')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO indiv_survey_scores(id_survey, id_user, indiv_score)
-SELECT gs.id_survey, 4, (random()*100)::int  -- Solo User
+SELECT gs.id_survey, 4, (random()*100)::int
 FROM group_survey_scores gs
-WHERE gs.id_group = (SELECT id_group FROM groups WHERE name='Grupo Demo')
+WHERE gs.id_group IN (SELECT id_group FROM groups WHERE name='Grupo Demo')
 ON CONFLICT DO NOTHING;
--- =========================================================
-

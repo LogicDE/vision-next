@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Intervention } from '../../entities/intervention.entity';
 import { Employee } from '../../entities/employee.entity';
-import { Group } from '../../entities/group.entity';
-import { Repository } from 'typeorm';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { UpdateInterventionDto } from './dto/update-intervention.dto';
 
@@ -15,9 +14,6 @@ export class InterventionsService {
 
     @InjectRepository(Employee)
     private readonly empRepo: Repository<Employee>,
-
-    @InjectRepository(Group)
-    private readonly groupRepo: Repository<Group>,
   ) {}
 
   async create(dto: CreateInterventionDto) {
@@ -34,18 +30,12 @@ export class InterventionsService {
       (intervention as any).manager = manager;
     }
 
-    if (dto.id_group) {
-      const group = await this.groupRepo.findOne({ where: { id_group: dto.id_group } });
-      if (!group) throw new NotFoundException('Grupo no encontrado');
-      (intervention as any).group = group;
-    }
-
     return this.interRepo.save(intervention);
   }
 
   async findAll() {
     return this.interRepo.find({
-      relations: ['manager', 'group'],
+      relations: ['manager'],
       order: { id_inter: 'ASC' },
     });
   }
@@ -53,7 +43,7 @@ export class InterventionsService {
   async findOne(id: number) {
     const inter = await this.interRepo.findOne({
       where: { id_inter: id },
-      relations: ['manager', 'group'],
+      relations: ['manager'],
     });
     if (!inter) throw new NotFoundException('Intervención no encontrada');
     return inter;
@@ -69,16 +59,6 @@ export class InterventionsService {
         const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
         if (!manager) throw new NotFoundException('Manager no encontrado');
         (inter as any).manager = manager;
-      }
-    }
-
-    if (dto.id_group !== undefined) {
-      if (dto.id_group === null) {
-        (inter as any).group = null;
-      } else {
-        const group = await this.groupRepo.findOne({ where: { id_group: dto.id_group } });
-        if (!group) throw new NotFoundException('Grupo no encontrado');
-        (inter as any).group = group;
       }
     }
 

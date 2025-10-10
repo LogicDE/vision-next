@@ -12,31 +12,31 @@ export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
   @Post()
-  @Roles('Admin')
+  @Roles('admin')
   create(@Body() dto: CreateServiceDto) {
     return this.servicesService.create(dto);
   }
 
   @Get()
-  @Roles('Admin', 'Manager')
+  @Roles('admin', 'manager')
   findAll() {
     return this.servicesService.findAll();
   }
 
   @Get(':id')
-  @Roles('Admin', 'Manager')
+  @Roles('admin', 'manager')
   findOne(@Param('id') id: number) {
     return this.servicesService.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('Admin')
+  @Roles('admin')
   update(@Param('id') id: number, @Body() dto: UpdateServiceDto) {
     return this.servicesService.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('Admin')
+  @Roles('admin')
   remove(@Param('id') id: number) {
     return this.servicesService.remove(+id);
   }
