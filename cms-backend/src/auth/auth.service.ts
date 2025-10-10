@@ -85,7 +85,7 @@ export class AuthService {
       refresh_token,
       user: {
         id: employee.id,
-        nombre: `${employee.firstName} ${employee.lastName}`,
+        nombre: `${employee.first_name} ${employee.last_name}`,
         email: employee.email,
         rol: employee.rol.name,
       },

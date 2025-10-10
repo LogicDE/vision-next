@@ -1,25 +1,29 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { State } from './state.entity';
 import { Employee } from './employee.entity';
-
+import { Device } from './device.entity';
 
 @Entity('enterprises')
 export class Empresa {
-@PrimaryGeneratedColumn({ name: 'id_enterprise' })
-id!: number;
+  @PrimaryGeneratedColumn({ name: 'id_enterprise' })
+  id!: number;
 
+  @Column({ unique: true, length: 150 })
+  name!: string;
 
-@Column({ length: 150, unique: true })
-name!: string;
+  @Column({ length: 15 })
+  telephone!: string;
 
+  @Column({ unique: true, length: 150 })
+  email!: string;
 
-@Column({ length: 15 })
-telephone!: string;
+  @ManyToOne(() => State, (state) => state.enterprises, { eager: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_state' })
+  state!: State;
 
+  @OneToMany(() => Employee, (employee) => employee.empresa)
+  employees!: Employee[];
 
-@Column({ length: 150, unique: true })
-email!: string;
-
-
-@OneToMany(() => Employee, (e) => e.empresa)
-empleados!: Employee[];
+  @OneToMany(() => Device, (device) => device.empresa)
+  devices!: Device[];
 }

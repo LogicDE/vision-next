@@ -2,11 +2,22 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ConfigAppModule } from './config/config.module';
-import { Employee } from './entities/employee.entity';
-import { Rol } from './entities/rol.entity';
-import { Empresa } from './entities/empresa.entity';
 import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { CountriesModule } from './modules/countries/countries.module';
+import { StatesModule } from './modules/states/states.module';
+import { EnterprisesModule } from './modules/enterprises/enterprises.module';
+import { ActionsModule } from './modules/actions/actions.module';
+import { ServicesModule } from './modules/services/services.module';
+import { InterventionsModule } from './modules/interventions/interventions.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { EventsModule } from './modules/events/events.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
+
+import * as Entities from './entities';
+import { AuditLogModule } from './modules/auditlogs/auditlogs.module';
 
 @Module({
   imports: [
@@ -21,12 +32,26 @@ import { AppController } from './app.controller';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASS'),
         database: configService.get<string>('DB_NAME'),
-        entities: [Employee, Rol, Empresa],
+        entities: Object.values(Entities),
         synchronize: false, // usar migrations en producción
+        autoLoadEntities: true, 
       }),
     }),
     AuthModule,
+    EmployeesModule,
+    RolesModule,
+    CountriesModule,
+    StatesModule,
+    EnterprisesModule,
+    ActionsModule,
+    ServicesModule,
+    InterventionsModule,
+    GroupsModule,
+    EventsModule,
+    MetricsModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
+  providers: [],
 })
 export class AppModule {}

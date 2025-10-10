@@ -21,6 +21,6 @@ import { JwtRedisGuard } from './jwt-redis.guard';
   ],
   providers: [AuthService, RedisService, JwtRedisGuard],
   controllers: [AuthController],
-  exports: [JwtRedisGuard], // para poder usarlo en otros módulos si es necesario
+  exports: [JwtRedisGuard, JwtModule, RedisService], // para poder usarlo en otros módulos si es necesario
 })
 export class AuthModule {}
