@@ -46,7 +46,7 @@ services:
       redis:
         condition: service_started
     env_file:
-      - ./config/cms.env
+      - ./cms-backend/.env
     ports:
       - "8000:8000"
     volumes:
