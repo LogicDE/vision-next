@@ -87,6 +87,48 @@ export function KPIDashboard() {
 
   const avg = (arr?: number[]) => (arr && arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '-');
 
+  // Función para exportar CSV
+const exportToCSV = (filename: string, data: any[]) => {
+  if (!data.length) return alert("No hay datos para exportar.");
+  const headers = Object.keys(data[0]);
+  const csv = [
+    headers.join(","), 
+    ...data.map(row => headers.map(h => JSON.stringify(row[h] ?? "")).join(","))
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", `${filename}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Función para exportar Excel (XLSX simple con CSV MIME)
+const exportToExcel = (filename: string, data: any[]) => {
+  if (!data.length) return alert("No hay datos para exportar.");
+  const headers = Object.keys(data[0]);
+  const csv = [
+    headers.join("\t"), 
+    ...data.map(row => headers.map(h => row[h]).join("\t"))
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", `${filename}.xls`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Función para exportar PDF (simple, usando impresión del navegador)
+const exportToPDF = () => {
+  window.print();
+};
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -106,10 +148,46 @@ export function KPIDashboard() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualizar
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
+
+            <div className="relative">
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => {
+      const menu = document.getElementById("export-menu");
+      if (menu) menu.classList.toggle("hidden");
+    }}
+  >
+    <Download className="h-4 w-4 mr-2" />
+    Exportar
+  </Button>
+
+  <div
+    id="export-menu"
+    className="hidden absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-lg z-10"
+  >
+    <button
+      onClick={() => exportToCSV("kpis_realtime", realtime)}
+      className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+    >
+      Exportar CSV
+    </button>
+    <button
+      onClick={() => exportToExcel("kpis_weekly", weekly)}
+      className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+    >
+      Exportar Excel
+    </button>
+    <button
+      onClick={exportToPDF}
+      className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+    >
+      Exportar PDF
+    </button>
+  </div>
+</div>
+
+
           </div>
         </CardHeader>
       </Card>
