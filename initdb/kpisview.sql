@@ -87,3 +87,75 @@ STABLE
 AS $$
     SELECT * FROM vw_kpi_radar;
 $$;
+
+-- =========================================================
+-- PROCEDIMIENTOS CREATE PROCEDURE
+-- =========================================================
+-- Procedimiento para listar logs de auditoría recientes
+CREATE OR REPLACE PROCEDURE prc_recent_audit_logs(IN limit_rows INT DEFAULT 10)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    RAISE NOTICE 'Últimos % registros de auditoría:', limit_rows;
+    FOR rec IN
+        SELECT id_event_log, id_actor, id_action, occurred_at, object_type
+        FROM audit_logs
+        ORDER BY occurred_at DESC
+        LIMIT limit_rows
+    LOOP
+        RAISE NOTICE 'Evento: %, Actor: %, Acción: %, Fecha: %, Objeto: %',
+            rec.id_event_log, rec.id_actor, rec.id_action, rec.occurred_at, rec.object_type;
+    END LOOP;
+END;
+$$;
+
+
+-- Medicion para poder hacer el rendimiento promedio por grupo.
+
+CREATE OR REPLACE PROCEDURE prc_group_performance_summary()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    RAISE NOTICE 'Rendimiento promedio por grupo:';
+    FOR rec IN
+        SELECT g.name AS group_name,
+               ROUND(AVG(dgm.value), 2) AS avg_wellbeing,
+               COUNT(DISTINCT dem.id_user) AS active_users
+        FROM groups g
+        LEFT JOIN daily_group_metrics dgm ON dgm.id_group = g.id_group
+        LEFT JOIN groups_employees ge ON ge.id_group = g.id_group
+        LEFT JOIN daily_employee_metrics dem ON dem.id_user = ge.id_employee
+        GROUP BY g.name
+        ORDER BY avg_wellbeing DESC
+    LOOP
+        RAISE NOTICE 'Grupo: %, Bienestar promedio: %, Usuarios activos: %',
+            rec.group_name, rec.avg_wellbeing, rec.active_users;
+    END LOOP;
+END;
+$$;
+
+
+-- Lista empleados filtrados por rol
+
+CREATE OR REPLACE PROCEDURE prc_list_employees_by_role(IN role_name TEXT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    RAISE NOTICE 'Empleados con rol "%":', role_name;
+
+    FOR rec IN
+        SELECT e.username, e.email, e.status
+        FROM employees e
+        JOIN roles r ON r.id_role = e.id_role
+        WHERE r.name = role_name
+    LOOP
+        RAISE NOTICE 'Usuario: %, Email: %, Estado: %', rec.username, rec.email, rec.status;
+    END LOOP;
+END;
+$$;
