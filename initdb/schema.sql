@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS group_survey_scores (
 
 CREATE TABLE IF NOT EXISTS questions (
     id_question SERIAL PRIMARY KEY,
-    id_survey INTEGER NOT NULL REFERENCES group_survey_scores(id_survey) ON DELETE CASCADE,
+admin@visionnext.com    id_survey INTEGER NOT NULL REFERENCES group_survey_scores(id_survey) ON DELETE CASCADE,
     question VARCHAR NOT NULL
 );
 
@@ -217,7 +217,7 @@ CREATE INDEX IF NOT EXISTS idx_groups_employees_group
 -- =========================================================
 -- PAISES Y ESTADOS
 -- =========================================================
-INSERT INTO countries(name) VALUES 
+INSERT INTO countries(name) VALUES
 ('Mexico'), ('Colombia'), ('Argentina')
 ON CONFLICT DO NOTHING;
 
@@ -237,46 +237,107 @@ FROM states s
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
--- ROLES
+-- ROLES (lowercase for consistency)
 -- =========================================================
 INSERT INTO roles(name, description) VALUES
-('Admin','Administrador del sistema'),
-('Manager','Gerente de grupo'),
-('Employee','Empleado regular')
+('admin','Administrador del sistema'),
+('manager','Gerente de grupo'),
+('employee','Empleado regular')
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
--- EMPLEADOS
+-- EMPLEADOS CON HASHES REALES
+-- Password for all users: 123456
+-- Hash: $2b$12$lNGIKCwB5I2kTcn3o9tQbuv5wKiQjavTeco1xEhegyaOxqIvK4s7i
 -- =========================================================
-INSERT INTO employees(id_manager, id_enterprise, id_state, id_role, first_name, last_name, email, username, password_hash, telephone)
-SELECT NULL, e.id_enterprise, e.id_state, r.id_role, 
-       'User' || i, 'Test', 'user' || i || '@test.com', 'user' || i, 'hash_test', '5551234' || LPAD(i::text,4,'0')
+
+-- Admin user: carlos@demo.com
+INSERT INTO employees(id_manager, id_enterprise, id_state, id_role, first_name, last_name, email, username, password_hash, telephone, status)
+SELECT NULL,
+       (SELECT id_enterprise FROM enterprises LIMIT 1),
+       (SELECT id_state FROM states LIMIT 1),
+       (SELECT id_role FROM roles WHERE name='admin'),
+       'Carlos',
+       'Admin',
+       'carlos@demo.com',
+       'carlos',
+       '$2b$12$lNGIKCwB5I2kTcn3o9tQbuv5wKiQjavTeco1xEhegyaOxqIvK4s7i',
+       '5551234001',
+       'active'
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+
+-- Regular user: juan.perez@demo.com
+INSERT INTO employees(id_manager, id_enterprise, id_state, id_role, first_name, last_name, email, username, password_hash, telephone, status)
+SELECT NULL,
+       (SELECT id_enterprise FROM enterprises LIMIT 1),
+       (SELECT id_state FROM states LIMIT 1),
+       (SELECT id_role FROM roles WHERE name='employee'),
+       'Juan',
+       'Perez',
+       'juan.perez@demo.com',
+       'juan.perez',
+       '$2b$12$lNGIKCwB5I2kTcn3o9tQbuv5wKiQjavTeco1xEhegyaOxqIvK4s7i',
+       '5551234002',
+       'active'
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+
+-- Additional test employees with proper hashes
+INSERT INTO employees(id_manager, id_enterprise, id_state, id_role, first_name, last_name, email, username, password_hash, telephone, status)
+SELECT NULL,
+       e.id_enterprise,
+       e.id_state,
+       (SELECT id_role FROM roles WHERE name='employee'),
+       'User' || i,
+       'Test',
+       'user' || i || '@test.com',
+       'user' || i,
+       '$2b$12$lNGIKCwB5I2kTcn3o9tQbuv5wKiQjavTeco1xEhegyaOxqIvK4s7i',
+       '5551234' || LPAD(i::text,4,'0'),
+       'active'
 FROM enterprises e
 CROSS JOIN generate_series(1,5) AS i
-JOIN roles r ON r.name='Employee'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- =========================================================
 -- GRUPOS Y ASIGNACIÓN DE EMPLEADOS
 -- =========================================================
+-- Assign first admin as manager of demo group
 INSERT INTO groups(id_manager, name)
-VALUES (2, 'Grupo Demo')
+SELECT (SELECT id_employee FROM employees WHERE email='carlos@demo.com'), 'Grupo Demo'
 ON CONFLICT DO NOTHING;
 
+-- Add juan.perez to the demo group
 INSERT INTO groups_employees(id_group, id_employee)
-SELECT id_group, 4
-FROM groups
-WHERE name='Grupo Demo'
+SELECT g.id_group, e.id_employee
+FROM groups g, employees e
+WHERE g.name='Grupo Demo' AND e.email='juan.perez@demo.com'
+ON CONFLICT DO NOTHING;
+
+-- Add other test users to the demo group
+INSERT INTO groups_employees(id_group, id_employee)
+SELECT g.id_group, e.id_employee
+FROM groups g
+CROSS JOIN employees e
+WHERE g.name='Grupo Demo'
+  AND e.email IN ('user1@test.com', 'user2@test.com', 'user3@test.com')
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
 -- MÉTRICAS DIARIAS EMPLEADO
 -- =========================================================
 INSERT INTO daily_employee_metrics(id_user, date, metric_name, agg_type, value, window_start, window_end, job_version)
-SELECT e.id_employee, CURRENT_DATE - (i % 7), m.metric, 'avg', (random()*100)::int, NOW() - interval '1 hour' * i, NOW() - interval '1 hour' * (i-1), 'v1'
+SELECT e.id_employee,
+       CURRENT_DATE - (i % 7),
+       m.metric,
+       'avg',
+       (random()*100)::int,
+       NOW() - interval '1 hour' * i,
+       NOW() - interval '1 hour' * (i-1),
+       'v1'
 FROM employees e
 CROSS JOIN generate_series(1,50) AS i
 CROSS JOIN (VALUES ('heart_rate'),('mental_state'),('stress'),('sleep_quality'),('activity_level')) AS m(metric)
+WHERE e.email NOT LIKE '%admin%'
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
@@ -318,7 +379,11 @@ WHERE gs.id_group IN (SELECT id_group FROM groups WHERE name='Grupo Demo')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO indiv_survey_scores(id_survey, id_user, indiv_score)
-SELECT gs.id_survey, 4, (random()*100)::int
+SELECT gs.id_survey,
+       e.id_employee,
+       (random()*100)::int
 FROM group_survey_scores gs
+CROSS JOIN employees e
 WHERE gs.id_group IN (SELECT id_group FROM groups WHERE name='Grupo Demo')
+  AND e.email IN ('juan.perez@demo.com', 'user1@test.com', 'user2@test.com')
 ON CONFLICT DO NOTHING;
