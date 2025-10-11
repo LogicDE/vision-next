@@ -10,8 +10,12 @@ export const metadata: Metadata = {
   title: 'VisionNext Monitor - Sistema de Monitoreo Bicognitivo',
   description: 'Sistema avanzado de monitoreo de datos bicognitivos con IA integrada',
   keywords: ['salud', 'monitoreo', 'bicognitivo', 'IA', 'bienestar'],
-  viewport: 'width=device-width, initial-scale=1',
 };
+
+// Función para generar el viewport sin warnings
+export function generateViewport() {
+  return { width: 'device-width', initialScale: 1 };
+}
 
 export default function RootLayout({
   children,

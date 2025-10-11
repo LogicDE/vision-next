@@ -1,21 +1,19 @@
-# Etapa base
-FROM node:22-slim AS base
-WORKDIR /usr/src/app
+FROM node:22-alpine AS base
 
 # Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache libc6-compat openssl
 
-# Copiar solo package.json y lock para cache de dependencias
+WORKDIR /usr/src/app
+
+# Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci --legacy-peer-deps
+# Instalar dependencias (usa npm ci si existe package-lock.json)
+RUN npm ci --legacy-peer-deps 2>/dev/null || npm install --legacy-peer-deps
 
-# Copiar el resto del proyecto
+# Copiar código fuente (node_modules ya no se copia gracias a .dockerignore)
 COPY . .
 
-# Exponer puerto
 EXPOSE 3000
 
-# Comando de desarrollo
 CMD ["npm", "run", "dev"]

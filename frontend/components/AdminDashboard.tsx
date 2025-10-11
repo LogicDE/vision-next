@@ -17,16 +17,28 @@ import {
   Brain,
   Shield,
   Bell,
-  Settings,
+  FileText
 } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { UsersManagement } from '@/components/admin/UsersManagement';
-import { EnterprisesManagement } from '@/components/admin/EnterprisesManagement'; // ✅ Reemplazado
+import { EnterprisesManagement } from '@/components/admin/EnterprisesManagement';
 import { KPIDashboard } from '@/components/admin/KPIDashboard';
 import { AlertsManagement } from '@/components/admin/AlertsManagement';
 import { GroupsManagement } from '@/components/admin/GroupsManagement';
+import { AuditLogsManagement } from '@/components/admin/AuditLogsManagement'; 
 import { SessionTimeout } from '@/components/SessionTimeoutModal';
+
+const TABS = [
+  { value: 'overview', label: 'Overview', icon: <TrendingUp className="h-4 w-4" />, component: AdminStats },
+  { value: 'users', label: 'Usuarios', icon: <Users className="h-4 w-4" />, component: UsersManagement },
+  { value: 'enterprises', label: 'Empresas', icon: <Building2 className="h-4 w-4" />, component: EnterprisesManagement },
+  { value: 'groups', label: 'Grupos', icon: <Activity className="h-4 w-4" />, component: GroupsManagement },
+  { value: 'kpis', label: 'KPIs', icon: <TrendingUp className="h-4 w-4" />, component: KPIDashboard },
+  { value: 'alerts', label: 'Alertas', icon: <AlertCircle className="h-4 w-4" />, component: AlertsManagement },
+  { value: 'auditlogs', label: 'Audit Logs', icon: <FileText className="h-4 w-4" />, component: AuditLogsManagement },
+];
 
 export function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -35,7 +47,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       <SessionTimeout />
-      
+
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex h-16 items-center px-4 lg:px-6">
@@ -46,7 +58,7 @@ export function AdminDashboard() {
               VisionNext Admin
             </h1>
           </div>
-          
+
           <div className="ml-auto flex items-center space-x-4">
             <Badge variant="secondary" className="hidden md:flex items-center space-x-1">
               <Shield className="h-3 w-3" />
@@ -87,57 +99,21 @@ export function AdminDashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Tabs List */}
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-12">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center space-x-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Usuarios</span>
-            </TabsTrigger>
-            <TabsTrigger value="enterprises" className="flex items-center space-x-2">
-              <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Empresas</span>
-            </TabsTrigger>
-            <TabsTrigger value="groups" className="flex items-center space-x-2">
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Grupos</span>
-            </TabsTrigger>
-            <TabsTrigger value="kpis" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">KPIs</span>
-            </TabsTrigger>
-            <TabsTrigger value="alerts" className="flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Alertas</span>
-            </TabsTrigger>
+          <TabsList className={`grid w-full grid-cols-2 lg:grid-cols-${TABS.length} h-12`}>
+            {TABS.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value} className="flex items-center space-x-2">
+                {tab.icon}
+                <span className="hidden sm:inline">{tab.label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* Tabs Content */}
-          <TabsContent value="overview">
-            <AdminStats />
-          </TabsContent>
-
-          <TabsContent value="users">
-            <UsersManagement />
-          </TabsContent>
-
-          <TabsContent value="enterprises">
-            <EnterprisesManagement />
-          </TabsContent>
-
-          <TabsContent value="groups">
-            <GroupsManagement />
-          </TabsContent>
-
-          <TabsContent value="kpis">
-            <KPIDashboard />
-          </TabsContent>
-
-          <TabsContent value="alerts">
-            <AlertsManagement />
-          </TabsContent>
+          {TABS.map(tab => (
+            <TabsContent key={tab.value} value={tab.value}>
+              <tab.component />
+            </TabsContent>
+          ))}
         </Tabs>
       </main>
     </div>

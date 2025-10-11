@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -9,34 +9,46 @@ export function SessionTimeout() {
   const { refreshToken, logout } = useAuth();
   const [showModal, setShowModal] = useState(false);
 
-  let warningTimer: NodeJS.Timeout;
-  let logoutTimer: NodeJS.Timeout;
+  const warningTimer = useRef<NodeJS.Timeout>();
+  const logoutTimer = useRef<NodeJS.Timeout>();
 
+  // Resetear timers
   const resetTimers = () => {
-    clearTimeout(warningTimer);
-    clearTimeout(logoutTimer);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    if (logoutTimer.current) clearTimeout(logoutTimer.current);
 
-    warningTimer = setTimeout(() => setShowModal(true), 1000 * 60 * 4); // Aviso 1 min antes
-    logoutTimer = setTimeout(() => {
+    // Aviso 1 min antes
+    warningTimer.current = setTimeout(() => setShowModal(true), 1000 * 60 * 4);
+
+    //De prueba
+    warningTimer.current = setTimeout(() => setShowModal(true), 1000 * 10);
+
+
+    // Logout a los 5 min
+    logoutTimer.current = setTimeout(() => {
       setShowModal(false);
       logout();
-    }, 1000 * 60 * 5); // Logout a los 5 min
+    }, 1000 * 60 * 5);
   };
 
   useEffect(() => {
-    const events = ['mousemove', 'keydown', 'click'];
-    events.forEach(e => window.addEventListener(e, resetTimers));
+    // Eventos que indican actividad del usuario
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'touchmove'];
+    const handleActivity = () => resetTimers();
 
+    events.forEach(e => window.addEventListener(e, handleActivity));
+
+    // Inicializamos timers
     resetTimers();
 
-    return () => events.forEach(e => window.removeEventListener(e, resetTimers));
+    return () => events.forEach(e => window.removeEventListener(e, handleActivity));
   }, []);
 
   const continueSession = async () => {
     try {
-      await refreshToken(); // Backend genera nuevo JWT y refresca cookie
+      await refreshToken(); 
       setShowModal(false);
-      resetTimers(); // 🔹 Reiniciamos timers
+      resetTimers(); // Reiniciar timers
     } catch {
       logout();
     }

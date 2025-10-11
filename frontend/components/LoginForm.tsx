@@ -20,21 +20,21 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // evita múltiples clicks
     setLoading(true);
 
     try {
-      const currentUser = await login(email, password); // <-- obtenemos usuario actualizado
+      const currentUser = await login(email, password);
       if (!currentUser) throw new Error('Usuario no encontrado');
 
       toast.success('Inicio de sesión exitoso');
 
-      if (currentUser.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/user');
-      }
-    } catch (error) {
-      toast.error('Error en el inicio de sesión');
+      if (currentUser.role === 'admin') router.push('/admin');
+      else router.push('/user');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || error.message || 'Error en el inicio de sesión';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -104,8 +104,8 @@ export function LoginForm() {
                   className="h-12"
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
                 disabled={loading}
               >
