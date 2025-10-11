@@ -2,31 +2,37 @@ import axios from 'axios';
 
 export const API_URL = (() => {
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost') return process.env.NEXT_PUBLIC_API_URL;
+    if (window.location.hostname === 'localhost') {
+      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    }
     return 'http://cms-backend:8000';
   }
-  return process.env.NEXT_PUBLIC_API_URL;
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 })();
 
 export const MICROSERVICES_URL = (() => {
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost') return process.env.NEXT_PUBLIC_MICROSERVICES_URL;
+    if (window.location.hostname === 'localhost') {
+      return process.env.NEXT_PUBLIC_MICROSERVICES_URL || 'http://localhost:9000';
+    }
     return 'http://microservices-backend:9000';
   }
-  return process.env.NEXT_PUBLIC_MICROSERVICES_URL;
+  return process.env.NEXT_PUBLIC_MICROSERVICES_URL || 'http://localhost:9000';
 })();
 
 export const WEBSOCKET_URL = (() => {
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost') return process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+    if (window.location.hostname === 'localhost') {
+      return process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000/ws';
+    }
     return 'ws://cms-backend:8000/ws';
   }
-  return process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+  return process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000/ws';
 })();
 
 // 🌟 Instancia Axios
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL || 'http://localhost:8000',
   withCredentials: true,
 });
 
@@ -45,8 +51,25 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // ✅ Validate error structure before accessing properties
+    if (!error || !error.config) {
+      console.warn('Invalid error object in interceptor:', error);
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
 
+    // 🛑 CRITICAL: Never retry if the failing request IS the refresh itself
+    const isRefreshEndpoint = originalRequest.url?.includes('/auth/refresh') || 
+                              originalRequest.url?.includes('/auth/logout');
+    
+    if (isRefreshEndpoint) {
+      isRefreshing = false; // Reset flag
+      processQueue(error, null); // Clear queue
+      return Promise.reject(error);
+    }
+
+    // ✅ Only attempt refresh for 401 errors with valid response structure
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -67,7 +90,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         processQueue(refreshError, null); // rechazamos todas las promesas
-        if (typeof window !== 'undefined') window.location.href = '/login';
+        // Don't redirect here - let the component handle it
         return Promise.reject(refreshError);
       }
     }

@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
 
   // Obtener usuario actual
@@ -42,6 +43,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const res = await api.get('/auth/me');
       const data = res.data;
+      
+      // ✅ Validate response data structure
+      if (!data || typeof data !== 'object') {
+        console.warn('Invalid user data received:', data);
+        return null;
+      }
+      
       return {
         id: data.id,
         name: data.nombre,
@@ -51,7 +59,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         organization: data.organizacion || 'Vision Next',
       };
     } catch (e) {
-      setSessionExpired(true);
+      console.log('fetchUser failed:', e);
+      // ✅ No marcar sesión expirada si nunca hubo sesión
       return null;
     }
   }, []);
@@ -89,34 +98,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Refresh token
   const refreshToken = useCallback(async () => {
+    // ✅ No intentar refresh si no hay usuario activo o no está inicializado
+    if (!user || !isInitialized) {
+      return;
+    }
+    
     try {
       await api.post('/auth/refresh');
       const currentUser = await fetchUser();
       if (currentUser) setUser(currentUser);
       setSessionExpired(false);
-    } catch {
+    } catch (error) {
       setUser(null);
       setSessionExpired(true);
       router.push('/login');
     }
-  }, [fetchUser, router]);
+  }, [fetchUser, router]); // Removed user and isInitialized from dependencies
 
-  // Auto-refresh cada 4:30 min si el JWT dura 5 min
+  // Auto-refresh cada 4:30 min si el JWT dura 5 min (solo si hay usuario)
   useEffect(() => {
-    const interval = setInterval(refreshToken, 1000 * 60 * 4.5);
-    return () => clearInterval(interval);
-  }, [refreshToken]);
+    if (!user || !isInitialized) return; // ✅ Solo refrescar si hay sesión activa y está inicializado
+    
+    const interval = setInterval(() => {
+      refreshToken();
+    }, 1000 * 60 * 4.5);
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user?.id, isInitialized]); // Only depend on user ID, not the whole user object
 
-  // Inicialización
+  // Inicialización (solo una vez)
   useEffect(() => {
+    if (isInitialized) return; // Prevenir re-inicialización
+    
     const initAuth = async () => {
-      setLoading(true);
-      const currentUser = await fetchUser();
-      if (currentUser) setUser(currentUser);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const currentUser = await fetchUser();
+        if (currentUser) setUser(currentUser);
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+      } finally {
+        setLoading(false);
+        setIsInitialized(true);
+      }
     };
     initAuth();
-  }, [fetchUser]);
+  }, [fetchUser, isInitialized]);
 
   return (
     <AuthContext.Provider
