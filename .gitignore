@@ -107,7 +107,7 @@ redis_data/
 /microservices-backend/env/
 
 
-.env
-/config/*.env
-/cms-backend/*.env
+#.env
+#/config/*.env
+#/cms-backend/*.env
 
