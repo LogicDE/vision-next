@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.347" timestamp="2025-10-20T17:57:23.256442+00:00" hostname="321fdad364c8"><testcase classname="smoke.test_cms_smoke" name="test_health_check" time="0.040"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">def test_health_check():
+        r = requests.get(f"{BASE_URL}/health")
+&gt;       assert r.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = &lt;Response [404]&gt;.status_code
+
+smoke/test_cms_smoke.py:8: AssertionError</failure></testcase></testsuite></testsuites>

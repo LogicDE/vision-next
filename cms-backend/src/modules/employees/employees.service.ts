@@ -339,4 +339,30 @@ export class EmployeesService {
       timestamp: new Date().toISOString()
     };
   }
+
+  async seedEmployee(dto: CreateEmployeeDto, actor: Employee) {
+  // ---------------- Generar username único ----------------
+  let attempts = 0;
+  do {
+    dto.username = `user${Math.floor(Math.random() * 1000000)}`;
+    const exists = await this.empRepo.findOne({ where: { username: dto.username } });
+    if (!exists) break;
+    attempts++;
+  } while (attempts < 5);
+
+  // ---------------- Generar email único ----------------
+  attempts = 0;
+  do {
+    if (!dto.email) dto.email = `user${Math.floor(Math.random() * 1000000)}@test.com`;
+    const exists = await this.empRepo.findOne({ where: { email: dto.email } });
+    if (!exists) break;
+    attempts++;
+  } while (attempts < 5);
+
+  // Crear empleado usando el método create existente
+  const result = await this.create(dto, actor, '127.0.0.1');
+
+  return result;
+}
+
 }

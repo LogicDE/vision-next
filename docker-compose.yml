@@ -1,3 +1,5 @@
+version: '3.9'  # importante para soportar todas las propiedades
+
 services:
   vitanexo-db:
     image: postgres:16-alpine
@@ -33,8 +35,8 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    env_file:
-      - ./config/redis.env
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
 
   cms-backend:
@@ -53,7 +55,6 @@ services:
       - ./cms-backend:/app
       - /app/node_modules
     command: npm run start:dev
-    
 
   microservices-backend:
     build: ./microservices-backend
@@ -82,6 +83,37 @@ services:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
     command: npm run dev
+
+  cms-tests:
+    build:
+      context: ./test
+      dockerfile: Dockerfile.test
+    container_name: cms-tests
+    depends_on:
+      cms-backend:
+        condition: service_started
+    volumes:
+      - ./test/smoke:/tests/smoke
+      - ./test/locust:/tests/locust
+      - ./test/reports:/tests/reports
+      - ./test/baseline:/tests/baseline
+    environment:
+      CMS_API_URL: "http://cms-backend:8000"
+      LOCUST_USERS: 50
+      LOCUST_SPAWN_RATE: 5
+      LOCUST_RUNTIME: 2m
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    working_dir: /tests
+    command: >
+      sh -c "
+      echo 'Ejecutando tests smoke...' &&
+      pytest --maxfail=1 --disable-warnings -v smoke --junitxml=/tests/reports/smoke_report.xml &&
+      echo 'Ejecutando tests baseline...' &&
+      pytest --maxfail=1 --disable-warnings -v baseline --junitxml=/tests/reports/baseline_report.xml &&
+      echo '=== Ejecutando Locust ===' &&
+      cd /tests/locust &&
+      locust -f locustfile.py --host=$CMS_API_URL --users $LOCUST_USERS --spawn-rate $LOCUST_SPAWN_RATE --run-time $LOCUST_RUNTIME --headless --csv=/tests/reports/locust_report --html=/tests/reports/locust_report.html
+      "
 
 volumes:
   vitanexo_data:

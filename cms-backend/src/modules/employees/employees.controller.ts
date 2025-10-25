@@ -6,6 +6,7 @@ import { JwtRedisGuard } from '../../auth/jwt-redis.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { Request } from 'express';
+import { Employee } from '../../entities/employee.entity';
 
 @Controller('employees')
 @UseGuards(JwtRedisGuard, RolesGuard)
@@ -47,4 +48,36 @@ export class EmployeesController {
     const ip = req.ip;
     return this.employeesService.remove(+id, actor, ip);
   }
+
+@Post('seed')
+async seedEmployee(@Body() dto: CreateEmployeeDto) {
+  try {
+    // Crear actor "Seeder"
+    const actor = new Employee();
+    actor.id = 1;
+    actor.first_name = 'Seeder';
+    actor.last_name = 'System';
+    actor.email = 'seeder@system.local';
+
+    dto.id_role = dto.id_role ?? 2;
+    dto.id_enterprise = 2;
+
+    // Llamamos al service para generar usuario
+    const result = await this.employeesService.seedEmployee(dto, actor);
+
+    return result;
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error creando usuario:', message);
+
+    return {
+      success: false,
+      message,
+      timestamp: new Date().toISOString()
+    };
+  }
 }
+
+}
+

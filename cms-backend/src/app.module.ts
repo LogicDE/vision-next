@@ -18,6 +18,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
 
 import * as Entities from './entities';
 import { AuditLogModule } from './modules/auditlogs/auditlogs.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AuditLogModule } from './modules/auditlogs/auditlogs.module';
     EventsModule,
     MetricsModule,
     AuditLogModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [],

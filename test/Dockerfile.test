@@ -1,0 +1,40 @@
+# Dockerfile.test optimizado
+FROM python:3.11-slim
+
+WORKDIR /tests
+
+# ---------------- Dependencias del sistema ----------------
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    build-essential \
+    bash \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------- Dependencias de Python ----------------
+RUN pip install --no-cache-dir requests psycopg2-binary pytest locust
+
+# ---------------- Copiar tests ----------------
+COPY smoke /tests/smoke
+COPY baseline /tests/baseline
+COPY locust /tests/locust
+COPY locust/users.json /tests/locust/users.json
+
+# Crear carpeta de reports
+RUN mkdir -p /tests/reports
+
+# ---------------- Variables de entorno ----------------
+ENV CMS_API_URL=http://cms-backend:8000
+ENV LOCUST_USERS=50
+ENV LOCUST_SPAWN_RATE=5
+ENV LOCUST_RUNTIME=2m
+
+# ---------------- Comando por defecto ----------------
+CMD ["sh", "-c", "\
+    echo '=== Ejecutando Smoke Tests ===' && \
+    pytest --maxfail=1 --disable-warnings -v smoke --junitxml=/tests/reports/smoke_report.xml && \
+    echo '=== Ejecutando Baseline Tests ===' && \
+    pytest --maxfail=1 --disable-warnings -v baseline --junitxml=/tests/reports/baseline_report.xml && \
+    echo '=== Ejecutando Locust ===' && \
+    locust -f locust/locustfile.py --host=$CMS_API_URL --users $LOCUST_USERS --spawn-rate $LOCUST_SPAWN_RATE --run-time $LOCUST_RUNTIME --headless --csv=/tests/reports/locust_report --html=/tests/reports/locust_report.html"]
