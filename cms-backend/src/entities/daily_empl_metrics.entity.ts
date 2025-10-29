@@ -1,22 +1,20 @@
-import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+// daily_empl_metrics.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
 
-export type MetricEnum = 'heart_rate' | 'mental_state' | 'stress' | 'sleep_quality' | 'activity_level' | 'wellbeing';
-export type AggEnum = 'avg' | 'sum' | 'min' | 'max';
-
 @Entity({ name: 'daily_employee_metrics' })
-export class DailyEmployeeMetric {
-  @PrimaryColumn({ name: 'id_user' })
-  id_user!: number;
+export class DailyEmployeeMetrics {
+  @PrimaryGeneratedColumn({ name: 'id_metric' })
+  id_metric!: number;
 
-  @PrimaryColumn({ name: 'date', type: 'date' })
-  date!: string;
+  @Column({ type: 'date' })
+  date!: Date;
 
-  @PrimaryColumn({ name: 'metric_name', type: 'varchar' })
-  metric_name!: MetricEnum;
+  @Column({ type: 'varchar', length: 50 })
+  metric_name!: 'heart_rate' | 'mental_state' | 'stress' | 'sleep_quality' | 'activity_level' | 'wellbeing';
 
-  @PrimaryColumn({ name: 'agg_type', type: 'varchar' })
-  agg_type!: AggEnum;
+  @Column({ type: 'varchar', length: 10 })
+  agg_type!: 'avg' | 'sum' | 'min' | 'max';
 
   @Column({ type: 'double precision' })
   value!: number;
@@ -27,16 +25,18 @@ export class DailyEmployeeMetric {
   @Column({ type: 'timestamptz', nullable: true })
   window_end?: Date;
 
-  @Column({ name: 'job_version', type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   job_version?: string;
 
-  @Column({ name: 'computed_at', type: 'timestamptz', default: () => 'NOW()' })
-  computed_at!: Date;
-
-  @Column({ name: 'group_snapshot', type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true })
   group_snapshot?: number;
 
-  @ManyToOne(() => Employee)
+  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  computed_at!: Date;
+
+  @ManyToOne(() => Employee, (employee) => employee.metrics, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'id_user' })
-  user!: Employee;
+  employee!: Employee;
 }

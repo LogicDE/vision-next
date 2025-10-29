@@ -20,9 +20,9 @@ export class GroupsService {
     const group = this.groupRepo.create({ name: dto.name });
 
     if (dto.id_manager) {
-      const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+      const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
       if (!manager) throw new NotFoundException('Manager no encontrado');
-      (group as any).manager = manager;
+      group.manager = manager;
     }
 
     return this.groupRepo.save(group);
@@ -30,7 +30,7 @@ export class GroupsService {
 
   async findAll() {
     return this.groupRepo.find({
-      relations: ['manager', 'members', 'dailyMetrics', 'surveys'],
+      relations: ['manager', 'groupEmployees', 'metrics', 'surveys'],
       order: { id_group: 'ASC' },
     });
   }
@@ -38,7 +38,7 @@ export class GroupsService {
   async findOne(id: number) {
     const group = await this.groupRepo.findOne({
       where: { id_group: id },
-      relations: ['manager', 'members', 'dailyMetrics', 'surveys'],
+      relations: ['manager', 'groupEmployees', 'metrics', 'surveys'],
     });
     if (!group) throw new NotFoundException('Grupo no encontrado');
     return group;
@@ -49,11 +49,11 @@ export class GroupsService {
 
     if (dto.id_manager !== undefined) {
       if (dto.id_manager === null) {
-        (group as any).manager = null;
+        group.manager = undefined;
       } else {
-        const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+        const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
         if (!manager) throw new NotFoundException('Manager no encontrado');
-        (group as any).manager = manager;
+        group.manager = manager;
       }
     }
 

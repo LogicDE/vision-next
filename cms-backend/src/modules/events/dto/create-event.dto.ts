@@ -5,10 +5,6 @@ export class CreateEventDto {
   @IsNumber()
   id_manager?: number;
 
-  @IsOptional()
-  @IsNumber()
-  id_group?: number;
-
   @IsString()
   @IsNotEmpty()
   title_message!: string;

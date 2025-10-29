@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Empresa } from '../../entities/empresa.entity';
+import { Enterprise } from '../../entities/enterprise.entity';
 import { State } from '../../entities/state.entity';
 import { CreateEnterpriseDto } from './dto/create-enterprise.dto';
 import { UpdateEnterpriseDto } from './dto/update-enterprise.dto';
@@ -9,17 +9,20 @@ import { UpdateEnterpriseDto } from './dto/update-enterprise.dto';
 @Injectable()
 export class EnterprisesService {
   constructor(
-    @InjectRepository(Empresa)
-    private enterpriseRepo: Repository<Empresa>,
+    @InjectRepository(Enterprise)
+    private enterpriseRepo: Repository<Enterprise>,
     @InjectRepository(State)
     private stateRepo: Repository<State>,
   ) {}
 
   async create(dto: CreateEnterpriseDto) {
-    const exists = await this.enterpriseRepo.findOne({ where: [{ name: dto.name }, { email: dto.email }] });
-    if (exists) throw new BadRequestException('Ya existe una empresa con ese nombre o correo');
+    const existingName = await this.enterpriseRepo.findOne({ where: { name: dto.name } });
+    if (existingName) throw new BadRequestException('Ya existe una empresa con ese nombre');
 
-    const state = await this.stateRepo.findOne({ where: { id: dto.id_state } });
+    const existingEmail = await this.enterpriseRepo.findOne({ where: { email: dto.email } });
+    if (existingEmail) throw new BadRequestException('Ya existe una empresa con ese correo');
+
+    const state = await this.stateRepo.findOne({ where: { id_state: dto.id_state } });
     if (!state) throw new NotFoundException('Estado no encontrado');
 
     const enterprise = this.enterpriseRepo.create({
@@ -33,11 +36,14 @@ export class EnterprisesService {
   }
 
   findAll() {
-    return this.enterpriseRepo.find({ relations: ['state'] });
+    return this.enterpriseRepo.find({ relations: ['state', 'country'] });
   }
 
   async findOne(id: number) {
-    const enterprise = await this.enterpriseRepo.findOne({ where: { id }, relations: ['state'] });
+    const enterprise = await this.enterpriseRepo.findOne({
+      where: { id_enterprise: id },
+      relations: ['state', 'country']
+    });
     if (!enterprise) throw new NotFoundException('Empresa no encontrada');
     return enterprise;
   }
@@ -46,7 +52,7 @@ export class EnterprisesService {
     const enterprise = await this.findOne(id);
 
     if (dto.id_state) {
-      const state = await this.stateRepo.findOne({ where: { id: dto.id_state } });
+      const state = await this.stateRepo.findOne({ where: { id_state: dto.id_state } });
       if (!state) throw new NotFoundException('Estado no encontrado');
       enterprise.state = state;
     }
@@ -64,3 +70,4 @@ export class EnterprisesService {
     return { message: 'Empresa eliminada correctamente' };
   }
 }
+

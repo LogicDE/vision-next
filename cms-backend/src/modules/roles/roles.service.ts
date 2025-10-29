@@ -16,29 +16,29 @@ export class RolesService {
     const existing = await this.rolRepo.findOne({ where: { name: dto.name } });
     if (existing) throw new BadRequestException('El rol ya existe');
 
-    const r = this.rolRepo.create(dto);
-    return this.rolRepo.save(r);
+    const role = this.rolRepo.create(dto);
+    return this.rolRepo.save(role);
   }
 
   findAll() {
-    return this.rolRepo.find({ relations: ['empleados'] });
+    return this.rolRepo.find({ relations: ['employees'] }); // corregido
   }
 
   async findOne(id: number) {
-    const r = await this.rolRepo.findOne({ where: { id }, relations: ['empleados'] });
-    if (!r) throw new NotFoundException('Rol no encontrado');
-    return r;
+    const role = await this.rolRepo.findOne({ where: { id_role: id }, relations: ['employees'] }); // corregido
+    if (!role) throw new NotFoundException('Rol no encontrado');
+    return role;
   }
 
   async update(id: number, dto: UpdateRoleDto) {
-    await this.findOne(id); 
-    await this.rolRepo.update(id, dto);
-    return this.findOne(id);
+    const role = await this.findOne(id);
+    Object.assign(role, dto); // más seguro que update()
+    return this.rolRepo.save(role);
   }
 
   async remove(id: number) {
-    await this.findOne(id);
-    await this.rolRepo.delete(id);
+    const role = await this.findOne(id);
+    await this.rolRepo.remove(role);
     return { message: 'Rol eliminado' };
   }
 }

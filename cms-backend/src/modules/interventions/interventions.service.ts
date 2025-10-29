@@ -19,15 +19,14 @@ export class InterventionsService {
   async create(dto: CreateInterventionDto) {
     const intervention = this.interRepo.create({
       type: dto.type,
+      title: dto.title,
       description: dto.description,
-      title_message: dto.title_message,
-      body_message: dto.body_message,
     });
 
     if (dto.id_manager) {
-      const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+      const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
       if (!manager) throw new NotFoundException('Manager no encontrado');
-      (intervention as any).manager = manager;
+      intervention.manager = manager;
     }
 
     return this.interRepo.save(intervention);
@@ -35,15 +34,15 @@ export class InterventionsService {
 
   async findAll() {
     return this.interRepo.find({
-      relations: ['manager'],
-      order: { id_inter: 'ASC' },
+      relations: ['manager', 'employee', 'alert'],
+      order: { id_intervention: 'ASC' },
     });
   }
 
   async findOne(id: number) {
     const inter = await this.interRepo.findOne({
-      where: { id_inter: id },
-      relations: ['manager'],
+      where: { id_intervention: id },
+      relations: ['manager', 'employee', 'alert'],
     });
     if (!inter) throw new NotFoundException('Intervención no encontrada');
     return inter;
@@ -54,11 +53,11 @@ export class InterventionsService {
 
     if (dto.id_manager !== undefined) {
       if (dto.id_manager === null) {
-        (inter as any).manager = null;
+        inter.manager = undefined;
       } else {
-        const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+        const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
         if (!manager) throw new NotFoundException('Manager no encontrado');
-        (inter as any).manager = manager;
+        inter.manager = manager;
       }
     }
 
@@ -71,4 +70,18 @@ export class InterventionsService {
     await this.interRepo.remove(inter);
     return { message: 'Intervención eliminada correctamente' };
   }
+
+  async assignToEmployee(employeeId: number, title: string, type = 'Automática', description?: string) {
+  const employee = await this.empRepo.findOne({ where: { id_employee: employeeId } });
+  if (!employee) throw new NotFoundException('Empleado no encontrado');
+
+  const intervention = this.interRepo.create({
+    type,
+    title,
+    description,
+    employee,
+  });
+
+  return this.interRepo.save(intervention);
+}
 }

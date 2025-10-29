@@ -1,30 +1,43 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Enterprise } from './enterprise.entity';
 import { Employee } from './employee.entity';
-import { GroupsEmployees } from './groups_empl.entity';
-import { DailyGroupMetric } from './daily_group_metrics.entity';
+import { GroupEmployee } from './groups_empl.entity';
+import { DailyGroupMetrics } from './daily_group_metrics.entity';
 import { GroupSurveyScore } from './group_survey_score.entity';
-import { Event } from './event.entity';
-import { Intervention } from './intervention.entity';
 
 @Entity({ name: 'groups' })
 export class Group {
   @PrimaryGeneratedColumn({ name: 'id_group' })
   id_group!: number;
 
-  @Column({ name: 'name', type: 'varchar', length: 100 })
-  name!: string;
+  @Column({ name: 'name' })
+  name!: string; // Cambiado de 'nombre' a 'name' para consistencia con DTO
 
-  @ManyToOne(() => Employee)
+  @Column({ nullable: true })
+  descripcion?: string;
+
+  // Relación con empresa
+  @ManyToOne(() => Enterprise, (enterprise) => enterprise.groups, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'id_enterprise' })
+  empresa!: Enterprise;
+
+  // Manager opcional
+  @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: 'id_manager' })
-  manager!: Employee;
+  manager?: Employee;
 
-  @OneToMany(() => GroupsEmployees, (ge) => ge.group)
-  members!: GroupsEmployees[];
+  // Relación con empleados
+  @OneToMany(() => GroupEmployee, (ge) => ge.group)
+  groupEmployees!: GroupEmployee[];
 
-  @OneToMany(() => DailyGroupMetric, (dg) => dg.group)
-  dailyMetrics!: DailyGroupMetric[];
+  // Relación con métricas de grupo
+  @OneToMany(() => DailyGroupMetrics, (metric) => metric.group)
+  metrics!: DailyGroupMetrics[];
 
-  @OneToMany(() => GroupSurveyScore, (gs) => gs.group)
+  // Relación con encuestas
+  @OneToMany(() => GroupSurveyScore, (survey) => survey.group)
   surveys!: GroupSurveyScore[];
-
 }

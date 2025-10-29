@@ -8,7 +8,7 @@ export class Event {
 
   @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: 'id_manager' })
-  manager?: Employee;
+  manager?: Employee; 
 
   @Column({ name: 'title_message', type: 'varchar' })
   title_message!: string;

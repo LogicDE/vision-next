@@ -39,7 +39,7 @@ export class AuthService {
       relations: ['rol'],
     });
 
-    if (employee && (await bcrypt.compare(password, employee.passwordHash))) {
+    if (employee && (await bcrypt.compare(password, employee.password_hash))) {
       return employee;
     }
     return null;
@@ -54,8 +54,8 @@ export class AuthService {
     const jtiRefresh = uuidv4();
 
     // Payloads
-    const payloadAccess = { sub: employee.id, email: employee.email, role: employee.rol.name, jti: jtiAccess };
-    const payloadRefresh = { sub: employee.id, email: employee.email, role: employee.rol.name, jti: jtiRefresh };
+    const payloadAccess = { sub: employee.id_employee, email: employee.email, role: employee.rol.name, jti: jtiAccess };
+    const payloadRefresh = { sub: employee.id_employee, email: employee.email, role: employee.rol.name, jti: jtiRefresh };
 
     const access_token = this.jwtService.sign(payloadAccess, {
       secret: this.configService.get<string>('JWT_SECRET'),
@@ -74,17 +74,17 @@ export class AuthService {
     await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, accessTTL);
     await this.redisService.set(`jwt:allow:${jtiRefresh}`, 1, refreshTTL);
 
-    await this.redisService.sadd(`jwt:active:${employee.id}`, jtiAccess);
-    await this.redisService.sadd(`jwt:active:${employee.id}`, jtiRefresh);
+    await this.redisService.sadd(`jwt:active:${employee.id_employee}`, jtiAccess);
+    await this.redisService.sadd(`jwt:active:${employee.id_employee}`, jtiRefresh);
 
-    await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: employee.id, type: 'access', exp: Date.now() + accessTTL * 1000 }, accessTTL);
-    await this.redisService.set(`jwt:meta:${jtiRefresh}`, { user_id: employee.id, type: 'refresh', exp: Date.now() + refreshTTL * 1000 }, refreshTTL);
+    await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: employee.id_employee, type: 'access', exp: Date.now() + accessTTL * 1000 }, accessTTL);
+    await this.redisService.set(`jwt:meta:${jtiRefresh}`, { user_id: employee.id_employee, type: 'refresh', exp: Date.now() + refreshTTL * 1000 }, refreshTTL);
 
     return {
       access_token,
       refresh_token,
       user: {
-        id: employee.id,
+        id: employee.id_employee,
         nombre: `${employee.first_name} ${employee.last_name}`,
         email: employee.email,
         rol: employee.rol.name,

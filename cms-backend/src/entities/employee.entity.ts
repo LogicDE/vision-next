@@ -1,42 +1,73 @@
+// employee.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Rol } from './rol.entity';
-import { Empresa } from './empresa.entity';
+import { Enterprise } from './enterprise.entity';
+import { GroupEmployee } from './groups_empl.entity';
+import { DailyEmployeeMetrics } from './daily_empl_metrics.entity';
+import { AuditLog } from './auditlog.entity';
+import { Intervention } from './intervention.entity';
+import { Alert } from './alert.entity';
+import { IndivSurveyScore } from './indiv_survey_score.entity';
 
-@Entity('employees')
+@Entity({ name: 'employees' })
 export class Employee {
   @PrimaryGeneratedColumn({ name: 'id_employee' })
-  id!: number;
+  id_employee!: number;
 
-  @Column()
+  @Column({ name: 'first_name' })
   first_name!: string;
 
-  @Column()
+  @Column({ name: 'last_name' })
   last_name!: string;
 
-  @Column({ length: 150, unique: true })
+  @Column({ unique: true })
   email!: string;
 
-  @Column({ length: 100, unique: true })
+  @Column({ unique: true })
   username!: string;
 
   @Column({ name: 'password_hash' })
-  passwordHash!: string;
+  password_hash!: string;
 
-  @Column({ length: 15, nullable: true })
+  @Column({ type: 'varchar', length: 15, nullable: true })
   telephone?: string;
 
-  @ManyToOne(() => Rol, rol => rol.empleados)
+  @Column({ type: 'varchar', length: 20, default: 'active' })
+  status!: string;
+
+  @ManyToOne(() => Rol, (rol) => rol.employees, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'id_role' })
   rol!: Rol;
 
-  @ManyToOne(() => Empresa, empresa => empresa.employees)
+  @ManyToOne(() => Enterprise, (enterprise) => enterprise.employees, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'id_enterprise' })
-  empresa!: Empresa;
+  enterprise!: Enterprise;
 
-  @ManyToOne(() => Employee, emp => emp.subordinates, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Employee, (employee) => employee.managedInterventions)
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
 
-  @OneToMany(() => Employee, emp => emp.manager)
-  subordinates!: Employee[];
+  @OneToMany(() => Intervention, (intervention) => intervention.employee)
+  interventions!: Intervention[];
+
+  @OneToMany(() => Intervention, (intervention) => intervention.manager)
+  managedInterventions!: Intervention[];
+
+  @OneToMany(() => Alert, (alert) => alert.employee)
+  alerts!: Alert[];
+
+  @OneToMany(() => IndivSurveyScore, (score) => score.user)
+  indivSurveyScores!: IndivSurveyScore[];
+
+  // 🔹 Relación con grupos
+  @OneToMany(() => GroupEmployee, (ge) => ge.employee)
+  groups!: GroupEmployee[];
+
+  // 🔹 Relación con métricas
+  @OneToMany(() => DailyEmployeeMetrics, (metric) => metric.employee)
+  metrics!: DailyEmployeeMetrics[];
+
+  // 🔹 Relación con auditoría
+  @OneToMany(() => AuditLog, (log) => log.actor)
+  auditLogs!: AuditLog[];
 }

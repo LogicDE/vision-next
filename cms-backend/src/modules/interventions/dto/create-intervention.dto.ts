@@ -5,23 +5,19 @@ export class CreateInterventionDto {
   @IsNumber()
   id_manager?: number;
 
-  @IsOptional()
-  @IsNumber()
-  id_group?: number;
-
   @IsString()
   @IsNotEmpty()
   type!: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   description?: string;
 
   @IsString()
   @IsNotEmpty()
-  title_message!: string;
+  title!: string; // Cambiado de title_message
 
   @IsString()
-  @IsNotEmpty()
-  body_message!: string;
+  @IsOptional()
+  body?: string; // Si quieres un campo extra, o se puede eliminar
 }

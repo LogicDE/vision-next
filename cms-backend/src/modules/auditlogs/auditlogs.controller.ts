@@ -15,3 +15,4 @@ export class AuditLogController {
     return this.auditLogService.findAll();
   }
 }
+

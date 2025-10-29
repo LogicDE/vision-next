@@ -1,20 +1,24 @@
-import { Entity, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
+// groups_empl.entity.ts
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Group } from './group.entity';
 import { Employee } from './employee.entity';
 
 @Entity({ name: 'groups_employees' })
-export class GroupsEmployees {
-  @PrimaryColumn({ name: 'id_group' })
-  id_group!: number;
+export class GroupEmployee {
+  @PrimaryGeneratedColumn({ name: 'id_group_employee' })
+  id_group_employee!: number;
 
-  @PrimaryColumn({ name: 'id_employee' })
-  id_employee!: number;
-
-  @ManyToOne(() => Group, (g) => g.members, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Group, (group) => group.groupEmployees, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'id_group' })
   group!: Group;
 
-  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, (employee) => employee.groups, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'id_employee' })
   employee!: Employee;
 }

@@ -21,63 +21,25 @@ export class AuditLogService {
 
   async log(
     actor: Employee,
-    actionName: string,        // Ej: 'CREATE', 'UPDATE', 'DELETE'
-    objectType: string,        // Ej: 'Employee'
+    actionName: string,
+    objectType: string,
     changeSet: any,
-    serviceName?: string,      // Ej: 'EmployeesService'
+    serviceName?: string,
     ip?: string,
   ): Promise<AuditLog> {
-    // Buscar acción y servicio por nombre
-    const action = await this.actionRepo.findOne({ 
-      where: { action_name: actionName } 
-    });
-    
-    const service = serviceName
-      ? await this.serviceRepo.findOne({ 
-          where: { service_name: serviceName } 
-        })
-      : null;
+    const action = actionName ? await this.actionRepo.findOne({ where: { action_name: actionName } }) : null;
+    const service = serviceName ? await this.serviceRepo.findOne({ where: { service_name: serviceName } }) : null;
 
-    // Construir el objeto values dinámicamente (sin nulls)
-    const values: any = {
+    const auditLog = this.auditRepo.create({
+      actor,
+      action: action || undefined,
+      service: service || undefined,
       object_type: objectType,
       change_set: changeSet,
-      occurred_at: new Date(),
-    };
-
-    // Solo agregar las relaciones si existen (evita nulls)
-    if (actor?.id) {
-      values.actor = { id: actor.id };
-    }
-
-    if (action?.id_action) {
-      values.action = { id_action: action.id_action };
-    }
-
-    if (service?.id_service) {
-      values.service = { id_service: service.id_service };
-    }
-
-    if (ip) {
-      values.ip_actor = ip;
-    }
-
-    // Insertar usando QueryBuilder
-    const insertResult = await this.auditRepo
-      .createQueryBuilder()
-      .insert()
-      .into(AuditLog)
-      .values(values)
-      .execute();
-
-    // Obtener el log creado con sus relaciones
-    const logId = insertResult.identifiers[0].id_event_log;
-    const savedLog = await this.auditRepo.findOne({
-      where: { id_event_log: logId },
-      relations: ['actor', 'action', 'service'],
+      ip_actor: ip,
     });
 
-    return savedLog!;
+    return this.auditRepo.save(auditLog);
   }
 
   async findAll(): Promise<AuditLog[]> {
@@ -89,7 +51,7 @@ export class AuditLogService {
 
   async findByActor(actorId: number): Promise<AuditLog[]> {
     return this.auditRepo.find({
-      where: { actor: { id: actorId } },
+      where: { actor: { id_employee: actorId } },
       relations: ['actor', 'action', 'service'],
       order: { occurred_at: 'DESC' },
     });
@@ -109,10 +71,7 @@ export class AuditLogService {
       .leftJoinAndSelect('audit_log.actor', 'actor')
       .leftJoinAndSelect('audit_log.action', 'action')
       .leftJoinAndSelect('audit_log.service', 'service')
-      .where('audit_log.occurred_at BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      })
+      .where('audit_log.occurred_at BETWEEN :start AND :end', { start: startDate, end: endDate })
       .orderBy('audit_log.occurred_at', 'DESC')
       .getMany();
   }

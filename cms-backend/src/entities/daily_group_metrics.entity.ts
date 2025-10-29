@@ -1,20 +1,20 @@
-import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+// daily_group_metrics.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Group } from './group.entity';
-import { MetricEnum, AggEnum } from './daily_empl_metrics.entity';
 
 @Entity({ name: 'daily_group_metrics' })
-export class DailyGroupMetric {
-  @PrimaryColumn({ name: 'id_group' })
-  id_group!: number;
+export class DailyGroupMetrics {
+  @PrimaryGeneratedColumn({ name: 'id_metric_group' })
+  id_metric_group!: number;
 
-  @PrimaryColumn({ name: 'date', type: 'date' })
-  date!: string;
+  @Column({ type: 'date' })
+  date!: Date;
 
-  @PrimaryColumn({ name: 'metric_name', type: 'varchar' })
-  metric_name!: MetricEnum;
+  @Column({ type: 'varchar', length: 50 })
+  metric_name!: 'heart_rate' | 'mental_state' | 'stress' | 'sleep_quality' | 'activity_level' | 'wellbeing';
 
-  @PrimaryColumn({ name: 'agg_type', type: 'varchar' })
-  agg_type!: AggEnum;
+  @Column({ type: 'varchar', length: 10 })
+  agg_type!: 'avg' | 'sum' | 'min' | 'max';
 
   @Column({ type: 'double precision' })
   value!: number;
@@ -25,16 +25,18 @@ export class DailyGroupMetric {
   @Column({ type: 'timestamptz', nullable: true })
   window_end?: Date;
 
-  @Column({ name: 'job_version', type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   job_version?: string;
 
-  @Column({ name: 'computed_at', type: 'timestamptz', default: () => 'NOW()' })
-  computed_at!: Date;
-
-  @Column({ name: 'group_snapshot', type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true })
   group_snapshot?: number;
 
-  @ManyToOne(() => Group)
+  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  computed_at!: Date;
+
+  @ManyToOne(() => Group, (group) => group.metrics, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'id_group' })
   group!: Group;
 }

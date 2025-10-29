@@ -70,6 +70,16 @@ services:
       - ./microservices-backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
 
+  burnout-microservice:
+    build: ./microservicio_burnout   # Microservicio de predicción de burnout
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./microservicio_burnout:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+
   frontend:
     build: 
       context: ./frontend

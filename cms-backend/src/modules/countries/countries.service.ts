@@ -24,7 +24,10 @@ export class CountriesService {
   }
 
   async findOne(id: number) {
-    const c = await this.countryRepo.findOne({ where: { id }, relations: ['states'] });
+    const c = await this.countryRepo.findOne({ 
+      where: { id_country: id },
+      relations: ['states'] 
+    });
     if (!c) throw new NotFoundException('País no encontrado');
     return c;
   }
@@ -41,3 +44,4 @@ export class CountriesService {
     return { message: 'País eliminado correctamente' };
   }
 }
+

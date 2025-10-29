@@ -28,9 +28,9 @@ export class EventsService {
     });
 
     if (dto.id_manager) {
-      const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+      const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
       if (!manager) throw new NotFoundException('Manager no encontrado');
-      (event as any).manager = manager;
+      event.manager = manager;
     }
 
     return this.eventRepo.save(event);
@@ -57,11 +57,11 @@ export class EventsService {
 
     if (dto.id_manager !== undefined) {
       if (dto.id_manager === null) {
-        (event as any).manager = null;
+        event.manager = undefined;
       } else {
-        const manager = await this.empRepo.findOne({ where: { id: dto.id_manager } });
+        const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
         if (!manager) throw new NotFoundException('Manager no encontrado');
-        (event as any).manager = manager;
+        event.manager = manager;
       }
     }
 

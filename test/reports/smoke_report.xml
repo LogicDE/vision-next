@@ -1,1 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="3" time="0.803" timestamp="2025-10-20T21:48:59.149428+00:00" hostname="15f4d8769d6f"><testcase classname="smoke.test_cms_smoke" name="test_health_check" time="0.010" /><testcase classname="smoke.test_cms_smoke" name="test_login" time="0.298" /><testcase classname="smoke.test_cms_smoke" name="test_employees_list" time="0.277" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="1.213" timestamp="2025-10-27T16:21:30.130102+00:00" hostname="16f6c7fb79fa"><testcase classname="smoke.test_cms_smoke" name="test_health_check" time="0.027" /><testcase classname="smoke.test_cms_smoke" name="test_login" time="0.508" /><testcase classname="smoke.test_cms_smoke" name="test_employees_list" time="0.346"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">def test_employees_list():
+        with requests.Session() as s:
+            # Login
+            r = s.post(f"{BASE_URL}/auth/login", json={"email": "carlos@demo.com", "password": "123456"})
+            assert r.status_code in [200, 201]
+    
+            # Obtener empleados
+            r = s.get(f"{BASE_URL}/employees")
+&gt;           assert r.status_code == 200
+E           assert 500 == 200
+E            +  where 500 = &lt;Response [500]&gt;.status_code
+
+smoke/test_cms_smoke.py:26: AssertionError</failure></testcase></testsuite></testsuites>

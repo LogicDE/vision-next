@@ -1,15 +1,19 @@
+// country.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { State } from './state.entity';
+import { Enterprise } from './enterprise.entity';
 
-@Entity('countries')
+@Entity({ name: 'countries' })
 export class Country {
   @PrimaryGeneratedColumn({ name: 'id_country' })
-  id!: number;
+  id_country!: number;
 
-  @Column({ length: 56, unique: true })
+  @Column({ type: 'varchar', length: 56, unique: true })
   name!: string;
 
-  // Relación con states
   @OneToMany(() => State, (state) => state.country)
   states!: State[];
+
+  @OneToMany(() => Enterprise, (enterprise) => enterprise.country)
+  enterprises!: Enterprise[];
 }

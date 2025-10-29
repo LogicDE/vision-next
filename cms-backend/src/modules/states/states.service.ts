@@ -16,11 +16,13 @@ export class StatesService {
   ) {}
 
   async create(dto: CreateStateDto) {
-    const existing = await this.stateRepo.findOne({ where: { name: dto.name, country: { id: dto.id_country } } });
-    if (existing) throw new BadRequestException('El estado ya existe para este país');
-
-    const country = await this.countryRepo.findOne({ where: { id: dto.id_country } });
+    const country = await this.countryRepo.findOne({ where: { id_country: dto.id_country } });
     if (!country) throw new NotFoundException('País no encontrado');
+
+    const existing = await this.stateRepo.findOne({
+      where: { name: dto.name, country: { id_country: dto.id_country } },
+    });
+    if (existing) throw new BadRequestException('El estado ya existe para este país');
 
     const state = this.stateRepo.create({ name: dto.name, country });
     return this.stateRepo.save(state);
@@ -31,7 +33,10 @@ export class StatesService {
   }
 
   async findOne(id: number) {
-    const state = await this.stateRepo.findOne({ where: { id }, relations: ['country', 'enterprises'] });
+    const state = await this.stateRepo.findOne({
+      where: { id_state: id },
+      relations: ['country', 'enterprises'],
+    });
     if (!state) throw new NotFoundException('Estado no encontrado');
     return state;
   }
@@ -40,7 +45,7 @@ export class StatesService {
     const state = await this.findOne(id);
 
     if (dto.id_country) {
-      const country = await this.countryRepo.findOne({ where: { id: dto.id_country } });
+      const country = await this.countryRepo.findOne({ where: { id_country: dto.id_country } });
       if (!country) throw new NotFoundException('País no encontrado');
       state.country = country;
     }
@@ -51,8 +56,8 @@ export class StatesService {
   }
 
   async remove(id: number) {
-    await this.findOne(id);
-    await this.stateRepo.delete(id);
+    const state = await this.findOne(id);
+    await this.stateRepo.remove(state);
     return { message: 'Estado eliminado correctamente' };
   }
 }
