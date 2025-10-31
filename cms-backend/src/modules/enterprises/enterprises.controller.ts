@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
 import { EnterprisesService } from './enterprises.service';
 import { CreateEnterpriseDto } from './dto/create-enterprise.dto';
 import { UpdateEnterpriseDto } from './dto/update-enterprise.dto';
@@ -9,36 +9,35 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('enterprises')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class EnterprisesController {
-  constructor(private readonly enterprisesService: EnterprisesService) {}
+  constructor(private readonly service: EnterprisesService) {}
 
   @Post()
-  @Roles('admin')
+  @Roles('Admin')
   create(@Body() dto: CreateEnterpriseDto) {
-    return this.enterprisesService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
-  @Roles('admin', 'user')
+  @Roles('Admin', 'Manager')
   findAll() {
-    return this.enterprisesService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('admin', 'user')
+  @Roles('Admin', 'Manager')
   findOne(@Param('id') id: number) {
-    return this.enterprisesService.findOne(+id);
+    return this.service.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('admin')
+  @Roles('Admin')
   update(@Param('id') id: number, @Body() dto: UpdateEnterpriseDto) {
-    return this.enterprisesService.update(+id, dto);
+    return this.service.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin')
   remove(@Param('id') id: number) {
-    return this.enterprisesService.remove(+id);
+    return this.service.remove(+id);
   }
 }
-

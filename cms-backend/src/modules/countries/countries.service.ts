@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Country } from '../../entities/country.entity';
@@ -9,31 +9,28 @@ import { UpdateCountryDto } from './dto/update-country.dto';
 export class CountriesService {
   constructor(
     @InjectRepository(Country)
-    private countryRepo: Repository<Country>,
+    private readonly countryRepo: Repository<Country>,
   ) {}
 
-  async create(dto: CreateCountryDto) {
-    const exists = await this.countryRepo.findOne({ where: { name: dto.name } });
-    if (exists) throw new BadRequestException('El país ya existe');
-    const c = this.countryRepo.create(dto);
-    return this.countryRepo.save(c);
+  create(dto: CreateCountryDto) {
+    const country = this.countryRepo.create(dto);
+    return this.countryRepo.save(country);
   }
 
   findAll() {
-    return this.countryRepo.find({ relations: ['states'] });
+    return this.countryRepo.find({ relations: ['adminSubdivisions', 'postalCodes'] });
   }
 
   async findOne(id: number) {
-    const c = await this.countryRepo.findOne({ 
-      where: { id_country: id },
-      relations: ['states'] 
+    const country = await this.countryRepo.findOne({
+      where: { id },
+      relations: ['adminSubdivisions', 'postalCodes'],
     });
-    if (!c) throw new NotFoundException('País no encontrado');
-    return c;
+    if (!country) throw new NotFoundException('Country no encontrado');
+    return country;
   }
 
   async update(id: number, dto: UpdateCountryDto) {
-    await this.findOne(id);
     await this.countryRepo.update(id, dto);
     return this.findOne(id);
   }
@@ -41,7 +38,6 @@ export class CountriesService {
   async remove(id: number) {
     await this.findOne(id);
     await this.countryRepo.delete(id);
-    return { message: 'País eliminado correctamente' };
+    return { message: 'Country eliminado' };
   }
 }
-

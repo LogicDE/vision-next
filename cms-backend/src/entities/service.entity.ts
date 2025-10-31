@@ -1,13 +1,20 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+// ===================
+// service.entity.ts
+// ===================
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { AuditLog } from './audit-log.entity';
 
-@Entity({ name: 'services' })
+@Entity('services')
 export class Service {
   @PrimaryGeneratedColumn({ name: 'id_service' })
-  id_service!: number;
+  id!: number;
 
-  @Column({ name: 'service_name', type: 'varchar', length: 100 })
-  service_name!: string;
+  @Column({ length: 100 })
+  serviceName!: string;
 
-  @Column({ name: 'service_desc', type: 'varchar', nullable: true })
-  service_desc?: string;
+  @Column({ length: 255, nullable: true })
+  serviceDesc?: string;
+
+  @OneToMany(() => AuditLog, (log: AuditLog) => log.service)
+  auditLogs!: AuditLog[];
 }

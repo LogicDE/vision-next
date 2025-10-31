@@ -1,8 +1,11 @@
-import { IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsString, Length } from 'class-validator';
 
 export class CreateCountryDto {
   @IsString()
-  @IsNotEmpty()
-  @Length(2, 56)
+  @Length(2, 5)
+  isoCode!: string;
+
+  @IsString()
+  @Length(1, 100)
   name!: string;
 }

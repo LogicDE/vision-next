@@ -9,35 +9,35 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('groups')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) {}
+  constructor(private readonly service: GroupsService) {}
 
   @Post()
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   create(@Body() dto: CreateGroupDto) {
-    return this.groupsService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findAll() {
-    return this.groupsService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findOne(@Param('id') id: number) {
-    return this.groupsService.findOne(+id);
+    return this.service.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   update(@Param('id') id: number, @Body() dto: UpdateGroupDto) {
-    return this.groupsService.update(+id, dto);
+    return this.service.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin', 'Manager')
   remove(@Param('id') id: number) {
-    return this.groupsService.remove(+id);
+    return this.service.remove(+id);
   }
 }

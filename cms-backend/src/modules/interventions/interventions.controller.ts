@@ -9,35 +9,35 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('interventions')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class InterventionsController {
-  constructor(private readonly interService: InterventionsService) {}
+  constructor(private readonly service: InterventionsService) {}
 
   @Post()
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   create(@Body() dto: CreateInterventionDto) {
-    return this.interService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findAll() {
-    return this.interService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findOne(@Param('id') id: number) {
-    return this.interService.findOne(+id);
+    return this.service.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   update(@Param('id') id: number, @Body() dto: UpdateInterventionDto) {
-    return this.interService.update(+id, dto);
+    return this.service.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin', 'Manager')
   remove(@Param('id') id: number) {
-    return this.interService.remove(+id);
+    return this.service.remove(+id);
   }
 }

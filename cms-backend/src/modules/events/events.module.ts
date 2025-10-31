@@ -1,15 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../../auth/auth.module';
 import { Event } from '../../entities/event.entity';
 import { Employee } from '../../entities/employee.entity';
-import { Group } from '../../entities/group.entity';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
-import { AuthModule } from '../../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Event, Employee, Group]),
+    TypeOrmModule.forFeature([Event, Employee]),
     AuthModule,
   ],
   controllers: [EventsController],

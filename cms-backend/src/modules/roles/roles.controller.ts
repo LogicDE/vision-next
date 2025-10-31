@@ -9,36 +9,35 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('roles')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class RolesController {
-  constructor(private readonly rolesService: RolesService) {}
+  constructor(private readonly service: RolesService) {}
 
   @Post()
-  @Roles('admin') 
+  @Roles('Admin')
   create(@Body() dto: CreateRoleDto) {
-    return this.rolesService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
-  @Roles('admin', 'user') 
+  @Roles('Admin')
   findAll() {
-    return this.rolesService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('admin', 'user')
+  @Roles('Admin')
   findOne(@Param('id') id: number) {
-    return this.rolesService.findOne(+id);
+    return this.service.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('admin')
+  @Roles('Admin')
   update(@Param('id') id: number, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.update(+id, dto);
+    return this.service.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin')
   remove(@Param('id') id: number) {
-    return this.rolesService.remove(+id);
+    return this.service.remove(+id);
   }
 }
-

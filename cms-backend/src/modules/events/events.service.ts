@@ -11,67 +11,74 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
-
     @InjectRepository(Employee)
-    private readonly empRepo: Repository<Employee>,
+    private readonly employeeRepo: Repository<Employee>,
   ) {}
 
   async create(dto: CreateEventDto) {
-    const event = this.eventRepo.create({
-      title_message: dto.title_message,
-      body_message: dto.body_message,
-      coordinator_name: dto.coordinator_name,
-      start_date: dto.start_date,
-      start_time: dto.start_time,
-      end_date: dto.end_date,
-      end_time: dto.end_time,
-    });
+    // Buscar manager solo si managerId está definido
+    const manager =
+      dto.managerId
+        ? (await this.employeeRepo.findOne({ where: { id: dto.managerId } })) ?? undefined
+        : undefined;
 
-    if (dto.id_manager) {
-      const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
-      if (!manager) throw new NotFoundException('Manager no encontrado');
-      event.manager = manager;
-    }
+    const event = this.eventRepo.create({
+      ...dto,
+      manager,
+      startAt: dto.startAt ? new Date(dto.startAt) : undefined,
+      endAt: new Date(dto.endAt),
+    });
 
     return this.eventRepo.save(event);
   }
 
-  async findAll() {
-    return this.eventRepo.find({
-      relations: ['manager'],
-      order: { id_event: 'ASC' },
-    });
+  findAll() {
+    return this.eventRepo.find({ relations: ['manager'] });
   }
 
   async findOne(id: number) {
     const event = await this.eventRepo.findOne({
-      where: { id_event: id },
+      where: { id },
       relations: ['manager'],
     });
-    if (!event) throw new NotFoundException('Evento no encontrado');
+
+    if (!event) throw new NotFoundException('Event no encontrado');
     return event;
   }
 
   async update(id: number, dto: UpdateEventDto) {
     const event = await this.findOne(id);
 
-    if (dto.id_manager !== undefined) {
-      if (dto.id_manager === null) {
-        event.manager = undefined;
-      } else {
-        const manager = await this.empRepo.findOne({ where: { id_employee: dto.id_manager } });
-        if (!manager) throw new NotFoundException('Manager no encontrado');
-        event.manager = manager;
-      }
+    // Actualizar manager solo si managerId fue proporcionado
+    if (dto.managerId !== undefined) {
+      const manager =
+        dto.managerId
+          ? (await this.employeeRepo.findOne({ where: { id: dto.managerId } })) ?? undefined
+          : undefined;
+      event.manager = manager;
     }
 
-    Object.assign(event, dto);
+    // Actualizar fechas opcionales correctamente
+    if (dto.startAt !== undefined) {
+      event.startAt = dto.startAt ? new Date(dto.startAt) : undefined;
+    }
+    if (dto.endAt !== undefined) {
+      event.endAt = new Date(dto.endAt);
+    }
+
+    // Asignar resto de campos
+    Object.assign(event, {
+      titleMessage: dto.titleMessage ?? event.titleMessage,
+      bodyMessage: dto.bodyMessage ?? event.bodyMessage,
+      coordinatorName: dto.coordinatorName ?? event.coordinatorName,
+    });
+
     return this.eventRepo.save(event);
   }
 
   async remove(id: number) {
     const event = await this.findOne(id);
     await this.eventRepo.remove(event);
-    return { message: 'Evento eliminado correctamente' };
+    return { message: 'Event eliminado' };
   }
 }

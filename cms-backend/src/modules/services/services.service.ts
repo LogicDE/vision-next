@@ -22,20 +22,19 @@ export class ServicesService {
   }
 
   async findOne(id: number) {
-    const service = await this.serviceRepo.findOne({ where: { id_service: id } });
-    if (!service) throw new NotFoundException('Servicio no encontrado');
+    const service = await this.serviceRepo.findOne({ where: { id: id } });
+    if (!service) throw new NotFoundException('Service no encontrado');
     return service;
   }
 
   async update(id: number, dto: UpdateServiceDto) {
-    const service = await this.findOne(id);
-    Object.assign(service, dto);
-    return this.serviceRepo.save(service);
+    await this.serviceRepo.update(id, dto);
+    return this.findOne(id);
   }
 
   async remove(id: number) {
-    const service = await this.findOne(id);
-    await this.serviceRepo.remove(service);
-    return { message: 'Servicio eliminado correctamente' };
+    await this.findOne(id);
+    await this.serviceRepo.delete(id);
+    return { message: 'Service eliminada' };
   }
 }

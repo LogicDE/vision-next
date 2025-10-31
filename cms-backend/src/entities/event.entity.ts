@@ -1,33 +1,27 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
 
-@Entity({ name: 'events' })
+@Entity('events')
 export class Event {
   @PrimaryGeneratedColumn({ name: 'id_event' })
-  id_event!: number;
+  id!: number;
 
-  @ManyToOne(() => Employee, { nullable: true })
+  @ManyToOne(() => Employee, (e) => e.managedEvents, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_manager' })
-  manager?: Employee; 
+  manager?: Employee;
 
-  @Column({ name: 'title_message', type: 'varchar' })
-  title_message!: string;
+  @Column({ length: 100 })
+  titleMessage!: string;
 
-  @Column({ name: 'body_message', type: 'varchar' })
-  body_message!: string;
+  @Column({ length: 255 })
+  bodyMessage!: string;
 
-  @Column({ name: 'coordinator_name', type: 'varchar', nullable: true })
-  coordinator_name?: string;
+  @Column({ length: 200, nullable: true })
+  coordinatorName?: string;
 
-  @Column({ type: 'date', nullable: true })
-  start_date?: string;
+  @Column({ type: 'timestamptz', nullable: true })
+  startAt?: Date;
 
-  @Column({ type: 'time', nullable: true })
-  start_time?: string;
-
-  @Column({ type: 'date' })
-  end_date!: string;
-
-  @Column({ type: 'time' })
-  end_time!: string;
+  @Column({ type: 'timestamptz' })
+  endAt!: Date;
 }

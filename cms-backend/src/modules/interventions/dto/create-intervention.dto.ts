@@ -1,23 +1,24 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Length } from 'class-validator';
 
 export class CreateInterventionDto {
   @IsOptional()
   @IsNumber()
-  id_manager?: number;
+  managerId?: number;
 
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 100)
   type!: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @Length(0, 255)
   description?: string;
 
   @IsString()
-  @IsNotEmpty()
-  title!: string; // Cambiado de title_message
+  @Length(1, 100)
+  titleMessage!: string;
 
   @IsString()
-  @IsOptional()
-  body?: string; // Si quieres un campo extra, o se puede eliminar
+  @Length(1, 255)
+  bodyMessage!: string;
 }

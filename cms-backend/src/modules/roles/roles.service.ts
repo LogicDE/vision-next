@@ -1,44 +1,46 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Rol } from '../../entities/rol.entity';
 import { Repository } from 'typeorm';
+import { Role } from '../../entities/role.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Injectable()
 export class RolesService {
   constructor(
-    @InjectRepository(Rol)
-    private rolRepo: Repository<Rol>,
+    @InjectRepository(Role)
+    private repo: Repository<Role>,
   ) {}
 
-  async create(dto: CreateRoleDto) {
-    const existing = await this.rolRepo.findOne({ where: { name: dto.name } });
-    if (existing) throw new BadRequestException('El rol ya existe');
-
-    const role = this.rolRepo.create(dto);
-    return this.rolRepo.save(role);
+  create(dto: CreateRoleDto) {
+    const role = this.repo.create(dto);
+    return this.repo.save(role);
   }
 
   findAll() {
-    return this.rolRepo.find({ relations: ['employees'] }); // corregido
+    return this.repo.find({
+      relations: ['rolePermissions', 'employees'],
+    });
   }
 
   async findOne(id: number) {
-    const role = await this.rolRepo.findOne({ where: { id_role: id }, relations: ['employees'] }); // corregido
-    if (!role) throw new NotFoundException('Rol no encontrado');
+    const role = await this.repo.findOne({
+      where: { id },
+      relations: ['rolePermissions', 'employees'],
+    });
+    if (!role) throw new NotFoundException('Role no encontrado');
     return role;
   }
 
   async update(id: number, dto: UpdateRoleDto) {
     const role = await this.findOne(id);
-    Object.assign(role, dto); // más seguro que update()
-    return this.rolRepo.save(role);
+    Object.assign(role, dto);
+    return this.repo.save(role);
   }
 
   async remove(id: number) {
     const role = await this.findOne(id);
-    await this.rolRepo.remove(role);
-    return { message: 'Rol eliminado' };
+    await this.repo.remove(role);
+    return { message: 'Role eliminado' };
   }
 }

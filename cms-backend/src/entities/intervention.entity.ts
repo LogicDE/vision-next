@@ -1,24 +1,24 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
 
-@Entity({ name: 'interventions' })
+@Entity('interventions')
 export class Intervention {
   @PrimaryGeneratedColumn({ name: 'id_inter' })
-  id_inter!: number;
+  id!: number;
 
-  @ManyToOne(() => Employee, { nullable: true })
+  @ManyToOne(() => Employee, (e) => e.managedInterventions, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
 
-  @Column({ type: 'varchar' })
+  @Column({ length: 100 })
   type!: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ length: 255, nullable: true })
   description?: string;
 
-  @Column({ name: 'title_message', type: 'varchar' })
-  title_message!: string;
+  @Column({ length: 100 })
+  titleMessage!: string;
 
-  @Column({ name: 'body_message', type: 'varchar' })
-  body_message!: string;
+  @Column({ length: 255 })
+  bodyMessage!: string;
 }

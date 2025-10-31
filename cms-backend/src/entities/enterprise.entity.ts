@@ -1,45 +1,24 @@
-// enterprise.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { State } from './state.entity';
-import { Country } from './country.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { EnterpriseLocation } from './enterprise-location.entity';
 import { Employee } from './employee.entity';
-import { Device } from './device.entity';
-import { Group } from './group.entity';
 
-@Entity({ name: 'enterprises' })
+@Entity('enterprises')
 export class Enterprise {
   @PrimaryGeneratedColumn({ name: 'id_enterprise' })
-  id_enterprise!: number;
+  id!: number;
 
-  @Column({ type: 'varchar', length: 150, unique: true })
+  @Column({ length: 150 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 15 })
+  @Column({ length: 15 })
   telephone!: string;
 
-  @Column({ type: 'varchar', length: 150 })
+  @Column({ length: 150, unique: true })
   email!: string;
 
-  @ManyToOne(() => State, (state) => state.enterprises, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'id_state' })
-  state!: State;
+  @OneToMany(() => EnterpriseLocation, (l: EnterpriseLocation) => l.enterprise)
+  locations!: EnterpriseLocation[];
 
-  @ManyToOne(() => Country, (country) => country.enterprises, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'id_country' })
-  country!: Country;
-
-  @OneToMany(() => Employee, (employee) => employee.enterprise)
+  @OneToMany(() => Employee, (e: Employee) => e.enterprise)
   employees!: Employee[];
-
-  @OneToMany(() => Device, (device) => device.empresa)
-  devices!: Device[];
-
-  @OneToMany(() => Group, (group) => group.empresa)
-  groups!: Group[];
 }

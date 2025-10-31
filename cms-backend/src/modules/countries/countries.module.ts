@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../../auth/auth.module';
 import { Country } from '../../entities/country.entity';
 import { CountriesService } from './countries.service';
 import { CountriesController } from './countries.controller';
-import { AuthModule } from '../../auth/auth.module';
 
 @Module({
   imports: [

@@ -1,73 +1,76 @@
-// employee.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { Rol } from './rol.entity';
 import { Enterprise } from './enterprise.entity';
-import { GroupEmployee } from './groups_empl.entity';
-import { DailyEmployeeMetrics } from './daily_empl_metrics.entity';
-import { AuditLog } from './auditlog.entity';
+import { Role } from './role.entity';
+import { Group } from './group.entity';
+import { GroupEmployee } from './group-employee.entity';
+import { GroupSnapshotMember } from './group-snapshot-member.entity';
+import { IndivSurveyScore } from './indiv-survey-score.entity';
 import { Intervention } from './intervention.entity';
-import { Alert } from './alert.entity';
-import { IndivSurveyScore } from './indiv_survey_score.entity';
+import { Event } from './event.entity';
+import { AuditLog } from './audit-log.entity';
 
-@Entity({ name: 'employees' })
+@Entity('employees')
 export class Employee {
   @PrimaryGeneratedColumn({ name: 'id_employee' })
-  id_employee!: number;
+  id!: number;
 
-  @Column({ name: 'first_name' })
-  first_name!: string;
-
-  @Column({ name: 'last_name' })
-  last_name!: string;
-
-  @Column({ unique: true })
-  email!: string;
-
-  @Column({ unique: true })
-  username!: string;
-
-  @Column({ name: 'password_hash' })
-  password_hash!: string;
-
-  @Column({ type: 'varchar', length: 15, nullable: true })
-  telephone?: string;
-
-  @Column({ type: 'varchar', length: 20, default: 'active' })
-  status!: string;
-
-  @ManyToOne(() => Rol, (rol) => rol.employees, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'id_role' })
-  rol!: Rol;
-
-  @ManyToOne(() => Enterprise, (enterprise) => enterprise.employees, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'id_enterprise' })
-  enterprise!: Enterprise;
-
-  @ManyToOne(() => Employee, (employee) => employee.managedInterventions)
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
 
-  @OneToMany(() => Intervention, (intervention) => intervention.employee)
-  interventions!: Intervention[];
+  @ManyToOne(() => Enterprise, (e) => e.employees, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_enterprise' })
+  enterprise!: Enterprise;
 
-  @OneToMany(() => Intervention, (intervention) => intervention.manager)
+  @ManyToOne(() => Role, (r) => r.employees, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'id_role' })
+  role!: Role;
+
+  @Column({ length: 100 })
+  firstName!: string;
+
+  @Column({ length: 100 })
+  lastName!: string;
+
+  @Column({ length: 150, unique: true })
+  email!: string;
+
+  @Column({ length: 100, unique: true })
+  username!: string;
+
+  @Column({ length: 255 })
+  passwordHash!: string;
+
+  @Column({ length: 15, nullable: true })
+  telephone?: string;
+
+  @Column({ length: 20, default: 'active' })
+  status!: string;
+
+  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  createdAt!: Date;
+
+  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  updatedAt!: Date;
+
+  @OneToMany(() => Group, (g) => g.manager)
+  managedGroups!: Group[];
+
+  @OneToMany(() => GroupEmployee, (ge) => ge.employee)
+  groupMemberships!: GroupEmployee[];
+
+  @OneToMany(() => GroupSnapshotMember, (gsm) => gsm.employee)
+  snapshots!: GroupSnapshotMember[];
+
+  @OneToMany(() => IndivSurveyScore, (iss) => iss.employee)
+  surveyScores!: IndivSurveyScore[];
+
+  @OneToMany(() => Event, (e) => e.manager)
+  managedEvents!: Event[];
+
+  @OneToMany(() => Intervention, (i) => i.manager)
   managedInterventions!: Intervention[];
 
-  @OneToMany(() => Alert, (alert) => alert.employee)
-  alerts!: Alert[];
-
-  @OneToMany(() => IndivSurveyScore, (score) => score.user)
-  indivSurveyScores!: IndivSurveyScore[];
-
-  // 🔹 Relación con grupos
-  @OneToMany(() => GroupEmployee, (ge) => ge.employee)
-  groups!: GroupEmployee[];
-
-  // 🔹 Relación con métricas
-  @OneToMany(() => DailyEmployeeMetrics, (metric) => metric.employee)
-  metrics!: DailyEmployeeMetrics[];
-
-  // 🔹 Relación con auditoría
   @OneToMany(() => AuditLog, (log) => log.actor)
   auditLogs!: AuditLog[];
 }

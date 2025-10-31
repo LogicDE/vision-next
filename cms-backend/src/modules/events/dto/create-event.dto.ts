@@ -1,35 +1,27 @@
-import { IsString, IsOptional, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsNumber, Length } from 'class-validator';
 
 export class CreateEventDto {
-  @IsOptional()
   @IsNumber()
-  id_manager?: number;
+  @IsOptional()
+  managerId?: number;
 
   @IsString()
-  @IsNotEmpty()
-  title_message!: string;
+  @Length(1, 100)
+  titleMessage!: string;
 
   @IsString()
-  @IsNotEmpty()
-  body_message!: string;
+  @Length(1, 255)
+  bodyMessage!: string;
 
   @IsOptional()
   @IsString()
-  coordinator_name?: string;
+  @Length(1, 200)
+  coordinatorName?: string;
 
   @IsOptional()
-  @IsString()
-  start_date?: string;
+  @IsDateString()
+  startAt?: string;
 
-  @IsOptional()
-  @IsString()
-  start_time?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  end_date!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  end_time!: string;
+  @IsDateString()
+  endAt!: string;
 }

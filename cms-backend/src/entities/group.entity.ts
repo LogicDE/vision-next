@@ -1,43 +1,31 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { Enterprise } from './enterprise.entity';
 import { Employee } from './employee.entity';
-import { GroupEmployee } from './groups_empl.entity';
-import { DailyGroupMetrics } from './daily_group_metrics.entity';
-import { GroupSurveyScore } from './group_survey_score.entity';
+import { GroupEmployee } from './group-employee.entity';
+import { GroupSnapshot } from './group-snapshot.entity';
+import { GroupSurveyScore } from './group-survey-score.entity';
+import { Question } from './question.entity';
 
-@Entity({ name: 'groups' })
+@Entity('groups')
 export class Group {
   @PrimaryGeneratedColumn({ name: 'id_group' })
-  id_group!: number;
+  id!: number;
 
-  @Column({ name: 'name' })
-  name!: string; // Cambiado de 'nombre' a 'name' para consistencia con DTO
-
-  @Column({ nullable: true })
-  descripcion?: string;
-
-  // Relación con empresa
-  @ManyToOne(() => Enterprise, (enterprise) => enterprise.groups, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'id_enterprise' })
-  empresa!: Enterprise;
-
-  // Manager opcional
-  @ManyToOne(() => Employee, { nullable: true })
+  @ManyToOne(() => Employee, (e) => e.managedGroups, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'id_manager' })
-  manager?: Employee;
+  manager!: Employee;
 
-  // Relación con empleados
+  @Column({ length: 100 })
+  name!: string;
+
   @OneToMany(() => GroupEmployee, (ge) => ge.group)
-  groupEmployees!: GroupEmployee[];
+  members!: GroupEmployee[];
 
-  // Relación con métricas de grupo
-  @OneToMany(() => DailyGroupMetrics, (metric) => metric.group)
-  metrics!: DailyGroupMetrics[];
+  @OneToMany(() => GroupSnapshot, (gs) => gs.group)
+  snapshots!: GroupSnapshot[];
 
-  // Relación con encuestas
-  @OneToMany(() => GroupSurveyScore, (survey) => survey.group)
+  @OneToMany(() => GroupSurveyScore, (gss) => gss.group)
   surveys!: GroupSurveyScore[];
+
+  @OneToMany(() => Question, (q) => q.group)
+  questions!: Question[];
 }

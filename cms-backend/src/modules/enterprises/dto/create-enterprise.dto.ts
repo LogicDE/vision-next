@@ -1,17 +1,15 @@
-import { IsEmail, IsInt, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsString, IsEmail, Length } from 'class-validator';
 
 export class CreateEnterpriseDto {
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 150)
   name!: string;
 
   @IsString()
-  @Matches(/^\d{9,15}$/, { message: 'El teléfono debe tener entre 9 y 15 dígitos' })
+  @Length(1, 15)
   telephone!: string;
 
   @IsEmail()
+  @Length(1, 150)
   email!: string;
-
-  @IsInt()
-  id_state!: number;
 }

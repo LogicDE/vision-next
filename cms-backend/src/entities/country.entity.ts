@@ -1,19 +1,21 @@
-// country.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { State } from './state.entity';
-import { Enterprise } from './enterprise.entity';
+import { AdminSubdivision } from './admin-subdivision.entity';
+import { PostalCode } from './postal-code.entity';
 
-@Entity({ name: 'countries' })
+@Entity('countries')
 export class Country {
   @PrimaryGeneratedColumn({ name: 'id_country' })
-  id_country!: number;
+  id!: number;
 
-  @Column({ type: 'varchar', length: 56, unique: true })
+  @Column({ name: 'iso_code', length: 5, unique: true })
+  isoCode!: string;
+
+  @Column({ length: 100 })
   name!: string;
 
-  @OneToMany(() => State, (state) => state.country)
-  states!: State[];
+  @OneToMany(() => AdminSubdivision, (a: AdminSubdivision) => a.country)
+  adminSubdivisions!: AdminSubdivision[];
 
-  @OneToMany(() => Enterprise, (enterprise) => enterprise.country)
-  enterprises!: Enterprise[];
+  @OneToMany(() => PostalCode, (p: PostalCode) => p.country)
+  postalCodes!: PostalCode[];
 }

@@ -9,35 +9,35 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('events')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(private readonly service: EventsService) {}
 
   @Post()
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   create(@Body() dto: CreateEventDto) {
-    return this.eventsService.create(dto);
+    return this.service.create(dto);
   }
 
   @Get()
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findAll() {
-    return this.eventsService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('admin', 'editor', 'viewer')
+  @Roles('Admin', 'Manager')
   findOne(@Param('id') id: number) {
-    return this.eventsService.findOne(+id);
+    return this.service.findOne(+id);
   }
 
   @Put(':id')
-  @Roles('admin', 'editor')
+  @Roles('Admin', 'Manager')
   update(@Param('id') id: number, @Body() dto: UpdateEventDto) {
-    return this.eventsService.update(+id, dto);
+    return this.service.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles('Admin')
   remove(@Param('id') id: number) {
-    return this.eventsService.remove(+id);
+    return this.service.remove(+id);
   }
 }

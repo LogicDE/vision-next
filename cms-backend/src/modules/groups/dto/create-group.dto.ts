@@ -1,11 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNumber, Length } from 'class-validator';
 
 export class CreateGroupDto {
-  @IsString()
-  @IsNotEmpty()
-  name!: string;
-
-  @IsOptional()
   @IsNumber()
-  id_manager?: number;
+  managerId!: number;
+
+  @IsString()
+  @Length(1, 100)
+  name!: string;
 }
