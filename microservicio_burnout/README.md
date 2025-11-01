@@ -1,289 +1,149 @@
-<<<<<<< Updated upstream
-# Microservicio de Predicción de Burnout
-
-Este microservicio utiliza machine learning para predecir la probabilidad de burnout en empleados basándose en datos biométricos y de comportamiento.
-
-## 🚀 Estado del Proyecto
-
-✅ **PRODUCCIÓN LISTA** - El microservicio está completamente funcional y optimizado para uso en producción.
-
-## Características
-
-- **Modelo**: Gradient Boosting Classifier pre-entrenado
-- **Precisión**: 99.67% (validación cruzada)
-- **API REST**: 6 endpoints documentados
-- **Autocontenido**: No requiere archivos de datos externos
-- **Dockerizado**: Listo para despliegue en contenedores
-
-## Estructura del Proyecto
-=======
 # Microservicio de Burnout
 
-## Descripción
+## 📋 Descripción
 
-Microservicio completo para análisis de burnout que integra:
+Microservicio completo para análisis y prevención de burnout que integra:
 - **Predicción de burnout** mediante Machine Learning (Gradient Boosting)
 - **Sistema de alertas** automático basado en umbrales
 - **Dashboard** con resumen completo del estado del empleado
 - **Generación de intervenciones** personalizadas
 
-## Arquitectura
->>>>>>> Stashed changes
+## 🏗️ Arquitectura
 
 ```
 microservicio_burnout/
 ├── app/
-<<<<<<< Updated upstream
-│   ├── __init__.py
-│   ├── main.py              # API FastAPI
-│   └── burnout_model.py     # Clase del modelo ML
+│   ├── main.py                      # API FastAPI principal
+│   ├── burnout_model.py             # Modelo ML para predicción
+│   ├── AlertsService/               # Servicio de generación de alertas
+│   ├── DashboardService/            # Servicio de resumen y dashboard
+│   ├── InterventionService/         # Servicio de intervenciones
+│   └── clients/                     # Cliente HTTP para cms-backend
 ├── models/
-│   └── burnout_model.pkl    # Modelo entrenado guardado
-├── requirements.txt         # Dependencias Python
-├── Dockerfile              # Imagen Docker
-├── README.md               # Este archivo
-└── ARCHITECTURE.md         # Documentación técnica
+│   └── burnout_model.pkl            # Modelo ML entrenado
+├── requirements.txt                 # Dependencias Python
+├── Dockerfile                       # Imagen Docker
+├── README.md                        # Este archivo
+└── ARCHITECTURE.md                  # Documentación técnica detallada
 ```
 
-## Instalación y Uso
-
-### Opción 1: Ejecución Directa
-
-```bash
-# 1. Instalar dependencias
-pip install -r requirements.txt
-
-# 2. Ejecutar el microservicio
-uvicorn app.main:app --host 0.0.0.0 --port 8001
-```
-
-### Opción 2: Docker
-
-```bash
-# Construir imagen
-docker build -t burnout-microservice .
-
-# Ejecutar contenedor
-docker run -p 8001:8001 burnout-microservice
-```
-
-### Opción 3: Docker Compose
-
-```bash
-# Ejecutar con docker-compose
-docker-compose up burnout-microservice
-```
-
-**Nota**: El modelo ya está pre-entrenado y listo para usar. No es necesario entrenarlo nuevamente.
-=======
-│   ├── main.py                    # API FastAPI principal
-│   ├── burnout_model.py           # Modelo de ML para predicción
-│   ├── AlertsService/             # Servicio de generación de alertas
-│   │   ├── __init__.py
-│   │   └── alerts_service.py
-│   ├── DashboardService/          # Servicio de resumen y dashboard
-│   │   ├── __init__.py
-│   │   └── dashboard_service.py
-│   ├── InterventionService/       # Servicio de intervenciones
-│   │   ├── __init__.py
-│   │   └── intervention_service.py
-│   └── clients/                   # Clientes HTTP
-│       ├── __init__.py
-│       └── metrics_client.py      # Cliente para cms-backend
-├── tests/                         # Tests unitarios y de integración
-│   ├── test_alerts_service.py
-│   ├── test_dashboard_service.py
-│   ├── test_intervention_service.py
-│   └── test_integration.py
-├── models/                        # Modelos ML entrenados
-│   └── burnout_model.pkl
-├── requirements.txt               # Dependencias Python
-├── Dockerfile                     # Imagen Docker
-└── README.md                      # Este archivo
-```
-
-## Características Principales
+## ✨ Características Principales
 
 ### 1. AlertsService
-- Detecta riesgo de burnout basado en probabilidad y métricas
-- Genera alertas con niveles de severidad: low, medium, high, critical
+- Detecta riesgo de burnout cuando probabilidad > 0.5
+- Clasifica severidad: low, medium, high, critical
 - Identifica factores contribuyentes específicos
 - Genera acciones inmediatas recomendadas
 - Determina necesidad de notificación a supervisor
 
 ### 2. DashboardService
-- Genera resumen global del estado del empleado
-- Analiza métricas fisiológicas, cognitivas y comportamentales
-- Calcula scores por categoría (fisiológico, cognitivo, bienestar, carga laboral)
-- Identifica principales causas del riesgo
-- Genera recomendaciones generales
+- Resumen completo del estado del empleado
+- Análisis de 6+ métricas clave
+- Scores por 4 categorías (fisiológico, cognitivo, bienestar, carga laboral)
+- Identificación de top 5 causas principales
+- Recomendaciones personalizadas
 
 ### 3. InterventionService
-- Crea planes de intervención personalizados
-- Organiza intervenciones por marco temporal (inmediato, corto, medio, largo plazo)
-- Clasifica por prioridad (crítica, alta, media, baja)
-- Genera plan de acción en fases
-- Define resultados esperados y métricas de seguimiento
+- 40+ intervenciones específicas implementadas
+- Organización por timeframe (inmediato, corto, medio, largo plazo)
+- Clasificación por prioridad (crítica, alta, media, baja)
+- Plan de acción en 4 fases con criterios de éxito
+- Seguimiento y resultados esperados
 
-### 4. Integración con CMS Backend
-- Cliente HTTP para obtener métricas del servicio `metrics` en cms-backend
-- Soporta autenticación JWT
-- Manejo de errores con métricas por defecto
->>>>>>> Stashed changes
+### 4. MetricsClient
+- Integración con cms-backend/src/modules/metrics
+- Autenticación JWT
+- Transformación automática de datos
+- Fallback a métricas por defecto en caso de error
 
-## API Endpoints
+## 🚀 Instalación y Despliegue
 
-### Información General
-- `GET /` - Información del microservicio
-<<<<<<< Updated upstream
-- `GET /api/burnout/health` - Estado de salud
+### Requisitos Previos
+- Python 3.9+
+- Docker (opcional, recomendado)
 
-### Modelo
-- `GET /api/burnout/metrics` - Obtener métricas del modelo
-
-### Predicciones
-- `GET /api/burnout/predict/{user_id}` - Predecir burnout (datos simulados)
-- `POST /api/burnout/predict/{user_id}` - Predecir burnout (datos personalizados)
-
-## Ejemplo de Uso
-
-### Predicción con datos simulados
-```bash
-curl http://localhost:8001/api/burnout/predict/123
-```
-
-### Predicción con datos personalizados
-```bash
-curl -X POST "http://localhost:8001/api/burnout/predict/123" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "time_to_recover": 30.92,
-       "high_stress_prevalence_perc": 0.0,
-       "median_hrv": 44.01,
-       "avg_pulse": 72.40,
-       "sleep_score": 79.74,
-       "media_hrv": 44.01,
-       "eda_peaks": 14.28,
-       "time_to_recover_hrv": 30.92,
-       "weekly_hours_in_meetings": 17.32,
-       "time_on_focus_blocks": 4.84,
-       "absenteesim_days": 0.97,
-       "high_stress_prevalence": 0.0,
-       "nps_score": 8.34,
-       "intervention_acceptance_rate": 0.37
-     }'
-```
-
-### Respuesta
-```json
-{
-  "user_id": 123,
-  "burnout_probability": 0.76,
-  "burnout_prediction": 1,
-  "model_used": "GradientBoostingClassifier"
-}
-```
-
-## Variables de Entrada
-
-El modelo utiliza las siguientes variables para la predicción:
-
-- `time_to_recover`: Tiempo de recuperación
-- `high_stress_prevalence_perc`: Porcentaje de prevalencia de alto estrés
-- `median_hrv`: HRV mediano
-- `avg_pulse`: Pulso promedio
-- `sleep_score`: Puntuación de sueño
-- `media_hrv`: HRV media
-- `eda_peaks`: Picos EDA
-- `time_to_recover_hrv`: Tiempo de recuperación HRV
-- `weekly_hours_in_meetings`: Horas semanales en reuniones
-- `time_on_focus_blocks`: Tiempo en bloques de enfoque
-- `absenteesim_days`: Días de ausentismo
-- `high_stress_prevalence`: Prevalencia de alto estrés
-- `nps_score`: Puntuación NPS
-- `intervention_acceptance_rate`: Tasa de aceptación de intervenciones
-
-## Métricas del Modelo
-
-- **Precisión CV**: 99.67% (validación cruzada 10-fold)
-- **Desviación estándar**: 1.00%
-- **Precisión test**: 98.89%
-- **Precisión**: 100%
-- **Recall**: 92.31%
-- **F1-Score**: 96%
-
-## Notas Técnicas
-
-- El modelo está basado en el notebook "P P2 601270.ipynb"
-- Utiliza Gradient Boosting Classifier como algoritmo principal
-- Los datos se normalizan usando StandardScaler
-- El modelo se guarda en formato pickle para persistencia
-- La variable objetivo es binaria: 1 si burnout_risk_score > 0.5, 0 en caso contrario
-- **Estado**: Pre-entrenado y listo para producción
-- **Dependencias**: No requiere archivos de datos externos
-
-## 🎯 Inicio Rápido
+### Opción 1: Docker (Recomendado)
 
 ```bash
-# Clonar y ejecutar
+# Construir la imagen
+docker build -t microservicio-burnout .
+
+# Ejecutar el contenedor
+docker run -d \
+  -p 8001:8001 \
+  -e CMS_BACKEND_URL=http://cms-backend:3000 \
+  --name burnout-service \
+  microservicio-burnout
+```
+
+### Opción 2: Docker Compose
+
+Agregar al `docker-compose.yml` del proyecto:
+
+```yaml
+services:
+  microservicio-burnout:
+    build: ./microservicio_burnout
+    container_name: burnout-service
+    ports:
+      - "8001:8001"
+    environment:
+      - CMS_BACKEND_URL=http://cms-backend:3000
+    depends_on:
+      - cms-backend
+    networks:
+      - vision-network
+    restart: unless-stopped
+```
+
+Luego ejecutar:
+
+```bash
+docker-compose up -d microservicio-burnout
+```
+
+### Opción 3: Ejecución Local
+
+```bash
+# Instalar dependencias
 cd microservicio_burnout
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8001
 
-# Probar
-curl http://localhost:8001/api/burnout/predict/123
+# Iniciar el servicio
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-¡El microservicio está listo para usar! 🚀
-=======
-- `GET /api/burnout/health` - Health check
+## 🌐 API Endpoints
+
+### Información y Salud
+```
+GET  /                           # Información del microservicio
+GET  /api/burnout/health         # Estado de salud del servicio
+```
 
 ### Gestión del Modelo
-- `POST /api/burnout/train` - Entrenar modelo
-- `GET /api/burnout/metrics` - Métricas del modelo
-
-### Predicción
-- `GET /api/burnout/predict/{user_id}` - Predicción simple
-- `POST /api/burnout/predict/{user_id}` - Predicción con datos personalizados
-
-### Análisis Completo (NUEVOS)
-- `GET /api/burnout/analyze/{user_id}` - Análisis completo integrando todos los servicios
-- `GET /api/burnout/alerts/{user_id}` - Solo alertas
-- `GET /api/burnout/dashboard/{user_id}` - Solo dashboard
-- `GET /api/burnout/interventions/{user_id}` - Solo intervenciones
-- `POST /api/burnout/analyze-custom` - Análisis con métricas manuales
-
-## Instalación y Uso
-
-### Requisitos
-- Python 3.9+
-- pip
-
-### Instalación
-
-```bash
-cd microservicio_burnout
-pip install -r requirements.txt
+```
+POST /api/burnout/train          # Entrenar modelo (si tienes datos)
+POST /api/burnout/load-model     # Cargar/recargar modelo manualmente
+GET  /api/burnout/metrics        # Métricas del modelo ML
 ```
 
-### Ejecutar el servicio
-
-```bash
-cd microservicio_burnout
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+### Predicción Básica
+```
+GET  /api/burnout/predict/{id}   # Predicción simple de burnout
+POST /api/burnout/predict/{id}   # Predicción con datos personalizados
 ```
 
-O con Docker:
-
-```bash
-docker-compose up microservicio-burnout
+### Análisis Completo
+```
+GET  /api/burnout/analyze/{id}          # Análisis completo integrado
+GET  /api/burnout/alerts/{id}           # Solo generación de alertas
+GET  /api/burnout/dashboard/{id}        # Solo resumen de dashboard
+GET  /api/burnout/interventions/{id}    # Solo plan de intervenciones
+POST /api/burnout/analyze-custom        # Análisis con métricas manuales
 ```
 
-### Variables de Entorno
-
-- `CMS_BACKEND_URL` - URL del cms-backend (default: http://cms-backend:3000)
-
-## Uso de la API
+## 📊 Uso del API
 
 ### Ejemplo: Análisis Completo
 
@@ -292,7 +152,7 @@ curl -X GET "http://localhost:8001/api/burnout/analyze/123" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-Respuesta:
+**Respuesta:**
 ```json
 {
   "user_id": 123,
@@ -314,14 +174,12 @@ Respuesta:
     "overview": {...},
     "key_metrics": [...],
     "category_scores": {...},
-    "main_causes": [...],
-    "recommendations": [...]
+    "main_causes": [...]
   },
   "interventions": {
     "total_interventions": 12,
     "interventions_by_timeframe": {...},
-    "action_plan": {...},
-    "follow_up_recommendations": {...}
+    "action_plan": {...}
   }
 }
 ```
@@ -329,7 +187,8 @@ Respuesta:
 ### Ejemplo: Solo Alertas
 
 ```bash
-curl -X GET "http://localhost:8001/api/burnout/alerts/123"
+curl -X GET "http://localhost:8001/api/burnout/alerts/123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ### Ejemplo: Con Métricas Personalizadas
@@ -338,14 +197,14 @@ curl -X GET "http://localhost:8001/api/burnout/alerts/123"
 curl -X POST "http://localhost:8001/api/burnout/analyze-custom?user_id=123" \
   -H "Content-Type: application/json" \
   -d '{
-    "time_to_recover": 45.0,
-    "high_stress_prevalence_perc": 35.0,
+    "time_to_recover": 40.0,
+    "high_stress_prevalence_perc": 30.0,
     "median_hrv": 35.0,
     "avg_pulse": 80.0,
     "sleep_score": 60.0,
     "media_hrv": 35.0,
     "eda_peaks": 18.0,
-    "time_to_recover_hrv": 45.0,
+    "time_to_recover_hrv": 40.0,
     "weekly_hours_in_meetings": 28.0,
     "time_on_focus_blocks": 3.0,
     "absenteesim_days": 1.5,
@@ -355,105 +214,51 @@ curl -X POST "http://localhost:8001/api/burnout/analyze-custom?user_id=123" \
   }'
 ```
 
-## Testing
+## 🔗 Integración con el Proyecto
 
-### Ejecutar todos los tests
-
-```bash
-cd microservicio_burnout
-pytest tests/ -v
-```
-
-### Ejecutar tests específicos
-
-```bash
-# Tests de AlertsService
-pytest tests/test_alerts_service.py -v
-
-# Tests de DashboardService
-pytest tests/test_dashboard_service.py -v
-
-# Tests de InterventionService
-pytest tests/test_intervention_service.py -v
-
-# Tests de integración
-pytest tests/test_integration.py -v
-```
-
-### Cobertura de tests
-
-```bash
-pytest tests/ --cov=app --cov-report=html
-```
-
-## Flujo de Análisis
-
-1. **Obtención de Métricas**
-   - Se obtienen las métricas del usuario desde cms-backend/metrics
-   - O se proporcionan manualmente para testing
-
-2. **Predicción de Burnout**
-   - El modelo ML analiza las métricas
-   - Genera probabilidad de burnout (0-1)
-   - Clasifica como burnout (1) o no burnout (0)
-
-3. **Generación de Alerta**
-   - Si probabilidad > 0.5, se genera alerta
-   - Se determina severidad (low/medium/high/critical)
-   - Se identifican factores contribuyentes
-   - Se generan acciones inmediatas
-
-4. **Creación de Dashboard**
-   - Se analiza el estado general del empleado
-   - Se calculan scores por categoría
-   - Se identifican causas principales
-   - Se generan recomendaciones
-
-5. **Generación de Intervenciones**
-   - Se crean intervenciones específicas para cada causa
-   - Se organizan por timeframe y prioridad
-   - Se genera plan de acción en fases
-   - Se definen métricas de seguimiento
-
-## Integración con el Sistema
-
-### Desde el Frontend
-
-```javascript
-// Obtener análisis completo
-const response = await fetch(
-  `http://localhost:8001/api/burnout/analyze/${userId}`,
-  {
-    headers: {
-      'Authorization': `Bearer ${jwtToken}`
-    }
-  }
-);
-const analysis = await response.json();
-```
-
-### Desde el Backend (NestJS)
+### Desde el Frontend (Next.js)
 
 ```typescript
-import { HttpService } from '@nestjs/axios';
+// lib/burnoutClient.ts
+import axios from 'axios';
 
-async getBurnoutAnalysis(userId: number) {
-  const response = await this.httpService.get(
-    `http://microservicio-burnout:8001/api/burnout/analyze/${userId}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    }
-  ).toPromise();
-  
+const burnoutClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_BURNOUT_URL || 'http://localhost:8001',
+});
+
+export async function getBurnoutAnalysis(userId: number) {
+  const response = await burnoutClient.get(`/api/burnout/analyze/${userId}`);
   return response.data;
 }
 ```
 
-## Métricas Requeridas
+### Desde el CMS Backend (NestJS)
 
-El servicio espera las siguientes métricas del usuario:
+```typescript
+// burnout.service.ts
+import { HttpService } from '@nestjs/axios';
+
+@Injectable()
+export class BurnoutService {
+  constructor(private readonly httpService: HttpService) {}
+
+  async getAnalysis(userId: number) {
+    const url = `${process.env.BURNOUT_SERVICE_URL}/api/burnout/analyze/${userId}`;
+    const response = await firstValueFrom(this.httpService.get(url));
+    return response.data;
+  }
+}
+```
+
+## ⚙️ Variables de Entorno
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `CMS_BACKEND_URL` | URL del cms-backend para obtener métricas | `http://cms-backend:3000` |
+
+## 📈 Métricas Requeridas
+
+El servicio espera 14 métricas del usuario:
 
 ### Métricas Fisiológicas
 - `median_hrv` - Variabilidad cardíaca mediana (ms)
@@ -475,62 +280,106 @@ El servicio espera las siguientes métricas del usuario:
 - `nps_score` - Net Promoter Score (0-10)
 - `intervention_acceptance_rate` - Tasa de aceptación de intervenciones (0-1)
 
-## Desarrollo
+## 📖 Documentación
 
-### Agregar nuevas intervenciones
+- **API Interactiva**: `http://localhost:8001/docs` (Swagger UI)
+- **Documentación Alternativa**: `http://localhost:8001/redoc`
+- **Arquitectura Detallada**: Ver [ARCHITECTURE.md](ARCHITECTURE.md)
 
-Edita `app/InterventionService/intervention_service.py` y agrega métodos para nuevos tipos de intervención:
+## 🔒 Seguridad
 
-```python
-def _interventions_new_type(self, metrics, severity):
-    return [
-        {
-            "id": "NEW-001",
-            "category": "nueva_categoria",
-            "priority": "high",
-            "timeframe": "immediate",
-            "title": "Título de la intervención",
-            "description": "Descripción detallada",
-            "action_steps": [
-                "Paso 1",
-                "Paso 2"
-            ],
-            "expected_benefit": "Beneficio esperado",
-            "duration": "1 semana"
-        }
-    ]
-```
+- Autenticación mediante JWT tokens
+- Validación de entrada con Pydantic
+- Headers CORS configurables
+- Sin almacenamiento de datos sensibles
 
-### Agregar nuevos tipos de alerta
-
-Edita `app/AlertsService/alerts_service.py` y modifica el enum `AlertType`:
-
-```python
-class AlertType(str, Enum):
-    NUEVO_TIPO = "nuevo_tipo"
-```
-
-## Solución de Problemas
+## 🐛 Solución de Problemas
 
 ### Error: "Modelo no disponible"
-- Entrenar el modelo: `curl -X POST http://localhost:8001/api/burnout/train`
-- O colocar un modelo pre-entrenado en `models/burnout_model.pkl`
+**Solución**: Cargar el modelo manualmente:
+```bash
+curl -X POST "http://localhost:8001/api/burnout/load-model"
+```
 
 ### Error de conexión con cms-backend
-- Verificar que cms-backend está corriendo
-- Verificar URL en variable de entorno `CMS_BACKEND_URL`
-- El servicio continuará funcionando con métricas por defecto
+**Solución**: Verificar:
+1. Que cms-backend está corriendo
+2. La variable de entorno `CMS_BACKEND_URL`
+3. El servicio continuará funcionando con métricas por defecto
 
-### Tests fallan
-- Instalar dependencias de test: `pip install pytest pytest-asyncio`
-- Verificar que todos los módulos están instalados
+### Servicio no inicia
+**Solución**: Verificar:
+```bash
+# Ver logs del contenedor
+docker logs burnout-service
 
-## Licencia
+# Verificar que el puerto 8001 está disponible
+netstat -an | grep 8001
+```
 
-Proyecto académico - Universidad [Nombre]
+## 📊 Flujo de Análisis
 
-## Contacto
+```
+Usuario (ID) ──► GET /api/burnout/analyze/{user_id}
+                        │
+                        ▼
+                  MetricsClient
+                  Obtener métricas del cms-backend
+                        │
+                        ▼
+                  BurnoutPredictor
+                  Predecir probabilidad de burnout
+                        │
+                        ▼
+                  AlertsService
+                  ¿Probabilidad > 0.5? → Generar alerta
+                        │
+                        ▼
+                  DashboardService
+                  Analizar estado completo
+                  - Calcular scores
+                  - Identificar causas
+                        │
+                        ▼
+                  InterventionService
+                  Generar plan de intervenciones
+                  - Basado en causas principales
+                  - Organizado por prioridad
+                        │
+                        ▼
+                  Respuesta JSON Completa
+```
 
-Para preguntas o soporte, contactar al equipo de desarrollo.
+## 🎯 Rendimiento
 
->>>>>>> Stashed changes
+- Predicción de burnout: < 100ms
+- Análisis completo: < 500ms (sin latencia de red)
+- Soporte para múltiples requests concurrentes
+- Cache de modelo ML en memoria
+
+## 📝 Notas de Versión
+
+### Versión 2.0.0 (Actual)
+- ✅ Sistema modular con 3 servicios especializados
+- ✅ Integración con cms-backend
+- ✅ Sistema de alertas automático
+- ✅ Dashboard completo
+- ✅ 40+ intervenciones personalizadas
+- ✅ Listo para producción
+
+## 📄 Licencia
+
+Proyecto académico - Universidad
+
+## 👥 Soporte
+
+Para consultas o problemas:
+1. Revisar la documentación en [ARCHITECTURE.md](ARCHITECTURE.md)
+2. Consultar la API interactiva en `/docs`
+3. Contactar al equipo de desarrollo
+
+---
+
+**Estado**: ✅ Producción  
+**Versión**: 2.0.0  
+**Última actualización**: Noviembre 2025
