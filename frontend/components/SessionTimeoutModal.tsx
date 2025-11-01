@@ -1,42 +1,32 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Clock, AlertTriangle, RefreshCw, LogOut, Loader2 } from 'lucide-react';
 
+const WARNING_TIME = 1000 * 10; // 10 segundos para pruebas (cambiar a 1000 * 60 * 4 en producción)
+const LOGOUT_TIME = 1000 * 60 * 5; // 5 minutos
+const COUNTDOWN_DURATION = 60; // segundos
+
 export function SessionTimeout() {
   const { refreshToken, logout } = useAuth();
   const [showModal, setShowModal] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(COUNTDOWN_DURATION);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const warningTimer = useRef<NodeJS.Timeout>();
   const logoutTimer = useRef<NodeJS.Timeout>();
   const countdownInterval = useRef<NodeJS.Timeout>();
 
-  // Resetear timers
-  const resetTimers = () => {
+  const clearAllTimers = useCallback(() => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
     if (logoutTimer.current) clearTimeout(logoutTimer.current);
     if (countdownInterval.current) clearInterval(countdownInterval.current);
+  }, []);
 
-    // Aviso 1 min antes (en producción: 1000 * 60 * 4)
-    warningTimer.current = setTimeout(() => {
-      setShowModal(true);
-      setCountdown(60);
-      startCountdown();
-    }, 1000 * 10); // De prueba: 10 segundos
-
-    // Logout a los 5 min (en producción: 1000 * 60 * 5)
-    logoutTimer.current = setTimeout(() => {
-      setShowModal(false);
-      logout();
-    }, 1000 * 60 * 5);
-  };
-
-  const startCountdown = () => {
+  const startCountdown = useCallback(() => {
     countdownInterval.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -46,56 +36,76 @@ export function SessionTimeout() {
         return prev - 1;
       });
     }, 1000);
-  };
+  }, []);
+
+  const resetTimers = useCallback(() => {
+    clearAllTimers();
+
+    warningTimer.current = setTimeout(() => {
+      setShowModal(true);
+      setCountdown(COUNTDOWN_DURATION);
+      startCountdown();
+    }, WARNING_TIME);
+
+    logoutTimer.current = setTimeout(() => {
+      setShowModal(false);
+      logout();
+    }, LOGOUT_TIME);
+  }, [clearAllTimers, startCountdown, logout]);
 
   useEffect(() => {
-    // Eventos que indican actividad del usuario
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'touchmove'];
+    
     const handleActivity = () => {
       if (!showModal) {
         resetTimers();
       }
     };
 
-    events.forEach(e => window.addEventListener(e, handleActivity));
-
-    // Inicializamos timers
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
     resetTimers();
 
     return () => {
       events.forEach(e => window.removeEventListener(e, handleActivity));
-      if (warningTimer.current) clearTimeout(warningTimer.current);
-      if (logoutTimer.current) clearTimeout(logoutTimer.current);
-      if (countdownInterval.current) clearInterval(countdownInterval.current);
+      clearAllTimers();
     };
-  }, [showModal]);
+  }, [showModal, resetTimers, clearAllTimers]);
 
-  const continueSession = async () => {
+  const continueSession = useCallback(async () => {
     setIsRefreshing(true);
     try {
       await refreshToken(); 
       setShowModal(false);
-      setCountdown(60);
-      if (countdownInterval.current) clearInterval(countdownInterval.current);
+      setCountdown(COUNTDOWN_DURATION);
+      clearAllTimers();
       resetTimers();
     } catch {
       logout();
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [refreshToken, logout, clearAllTimers, resetTimers]);
 
-  const handleLogout = () => {
-    if (countdownInterval.current) clearInterval(countdownInterval.current);
+  const handleLogout = useCallback(() => {
+    clearAllTimers();
     setShowModal(false);
     logout();
-  };
+  }, [logout, clearAllTimers]);
 
-  const formatTime = (seconds: number) => {
+  const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
+
+  const getColorByTime = useCallback((time: number) => {
+    if (time > 30) return { text: 'text-blue-400', gradient: 'from-blue-500 to-cyan-500' };
+    if (time > 10) return { text: 'text-amber-400', gradient: 'from-amber-500 to-orange-500' };
+    return { text: 'text-red-400', gradient: 'from-red-500 to-pink-500' };
+  }, []);
+
+  const colors = getColorByTime(countdown);
+  const circleProgress = 2 * Math.PI * 56;
 
   return (
     <Dialog open={showModal} onOpenChange={setShowModal} aria-describedby="session-timeout-desc">
@@ -121,7 +131,6 @@ export function SessionTimeout() {
           {/* Countdown Circle */}
           <div className="flex flex-col items-center space-y-4">
             <div className="relative w-32 h-32">
-              {/* Background Circle */}
               <svg className="w-32 h-32 transform -rotate-90">
                 <circle
                   cx="64"
@@ -132,7 +141,6 @@ export function SessionTimeout() {
                   fill="none"
                   className="text-slate-700"
                 />
-                {/* Progress Circle */}
                 <circle
                   cx="64"
                   cy="64"
@@ -140,43 +148,28 @@ export function SessionTimeout() {
                   stroke="currentColor"
                   strokeWidth="8"
                   fill="none"
-                  strokeDasharray={`${2 * Math.PI * 56}`}
-                  strokeDashoffset={`${2 * Math.PI * 56 * (1 - countdown / 60)}`}
-                  className={`transition-all duration-1000 ${
-                    countdown > 30 
-                      ? 'text-blue-500' 
-                      : countdown > 10 
-                      ? 'text-amber-500' 
-                      : 'text-red-500'
-                  }`}
+                  strokeDasharray={circleProgress}
+                  strokeDashoffset={circleProgress * (1 - countdown / COUNTDOWN_DURATION)}
+                  className={`transition-all duration-1000 ${colors.text.replace('text-', 'text-').replace('400', '500')}`}
                   strokeLinecap="round"
                 />
               </svg>
               
-              {/* Timer Display */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <Clock className="w-6 h-6 text-gray-400 mb-1" />
-                <span className={`text-3xl font-bold ${
-                  countdown > 30 
-                    ? 'text-blue-400' 
-                    : countdown > 10 
-                    ? 'text-amber-400' 
-                    : 'text-red-400'
-                }`}>
+                <span className={`text-3xl font-bold ${colors.text}`}>
                   {formatTime(countdown)}
                 </span>
                 <span className="text-xs text-gray-500 mt-1">restantes</span>
               </div>
             </div>
 
-            {/* Warning Message */}
             <div className="text-center space-y-2">
               <p className="text-gray-300">
-                Por inactividad, tu sesión se cerrará automáticamente en <span className="font-bold text-amber-400">{formatTime(countdown)}</span>
+                Por inactividad, tu sesión se cerrará en{' '}
+                <span className="font-bold text-amber-400">{formatTime(countdown)}</span>
               </p>
-              <p className="text-sm text-gray-500">
-                ¿Deseas continuar tu sesión?
-              </p>
+              <p className="text-sm text-gray-500">¿Deseas continuar tu sesión?</p>
             </div>
           </div>
 
@@ -232,14 +225,8 @@ export function SessionTimeout() {
         {/* Progress Bar at Bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800">
           <div 
-            className={`h-full transition-all duration-1000 ${
-              countdown > 30 
-                ? 'bg-gradient-to-r from-blue-500 to-cyan-500' 
-                : countdown > 10 
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500' 
-                : 'bg-gradient-to-r from-red-500 to-pink-500'
-            }`}
-            style={{ width: `${(countdown / 60) * 100}%` }}
+            className={`h-full transition-all duration-1000 bg-gradient-to-r ${colors.gradient}`}
+            style={{ width: `${(countdown / COUNTDOWN_DURATION) * 100}%` }}
           ></div>
         </div>
       </DialogContent>

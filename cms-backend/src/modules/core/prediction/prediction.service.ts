@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PredictionService {
-  async predictBurnout(userId: string, metrics: any[]): Promise<number> {
-    // Placeholder: retorna probabilidad entre 0 y 1
-    // Aquí podrías integrar un modelo ML o API externa
-    const score = Math.random(); // Ejemplo aleatorio
-    return score;
+  constructor(private readonly httpService: HttpService) {}
+
+  async predictBurnout(userId: string): Promise<any> {
+    try {
+      const url = `http://burnout-microservice:8001/api/burnout/analyze/${userId}`;
+      const response = await firstValueFrom(this.httpService.get(url));
+      // Retornamos todo el objeto de análisis para usar en ReportService
+      return response.data;
+    } catch (error) {
+      console.error('Error calling burnout microservice:', error);
+      throw new Error('Burnout prediction failed');
+    }
   }
 }

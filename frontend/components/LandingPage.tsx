@@ -184,29 +184,6 @@ export default function LandingPage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
                 </Button>
               </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-8 pt-8">
-                <div className="flex items-center space-x-2">
-                  <div className="text-left">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-400">500+ empresas</p>
-                  </div>
-                </div>
-                <div className="h-8 w-px bg-white/20"></div>
-                <div className="text-left">
-                  <p className="text-2xl font-bold text-white">98%</p>
-                  <p className="text-xs text-gray-400">Satisfacción</p>
-                </div>
-                <div className="text-left">
-                  <p className="text-2xl font-bold text-white">2.5x</p>
-                  <p className="text-xs text-gray-400">ROI Promedio</p>
-                </div>
-              </div>
             </div>
 
             {/* Right Visual - Interactive Dashboard Mockup */}
@@ -311,20 +288,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof Bar */}
-      <section className="py-12 px-4 border-y border-white/10 bg-slate-900/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-center text-gray-400 mb-8">Confiado por equipos líderes en México y Latinoamérica</p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-50">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-32 h-12 bg-gradient-to-r from-white/10 to-white/5 rounded-lg"></div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
-      <section id="features" className="py-32 px-4 sm:px-6 lg:px-8 relative">
+      <section id="features" className="py-26 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-6 mb-20">
             <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm font-medium text-blue-300">
@@ -402,7 +367,7 @@ export default function LandingPage() {
       </section>
 
       {/* Benefits Section - Bento Grid */}
-      <section id="benefits" className="py-32 px-4 sm:px-6 lg:px-8 relative">
+      <section id="benefits" className="py-28 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-6 mb-20">
             <h2 className="text-4xl sm:text-5xl font-bold text-white">
@@ -461,80 +426,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="relative rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-1 shadow-2xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/50 via-purple-600/50 to-pink-600/50 animate-pulse"></div>
-            <div className="relative bg-slate-950 rounded-3xl p-8 sm:p-12 lg:p-16 text-center space-y-8">
-              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
-                Conoce al equipo || En DESARROLLO{' '}
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  hoy mismo
-                </span>
-              </h3>
-              <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto">
-                Enfocados en el Desarrollo y mejora de VisionNext para integraciones empresariales
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-slate-900/50 backdrop-blur-sm border-t border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-white mb-4">Producto</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#features" className="hover:text-blue-400 transition-colors">Características</a></li>
-                <li><a href="#benefits" className="hover:text-blue-400 transition-colors">Precios</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Casos de Uso</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Sobre Nosotros</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Blog</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Recursos</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Documentación</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">API</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Soporte</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Privacidad</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Términos</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Seguridad</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-bold text-white text-lg">VisionNext</span>
-            </div>
-            <p className="text-sm text-gray-500">
-              © 2025 VisionNext. Todos los derechos reservados.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

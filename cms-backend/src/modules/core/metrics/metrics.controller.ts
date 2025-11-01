@@ -27,28 +27,41 @@ export class MetricsController {
   }
 
   // 🔹 KPIs en tiempo real por usuario con alertas y notificaciones
-  @Get('realtime/:userId')
-  @Roles('Admin', 'Manager', 'Employee')
-  async getRealtimeMetrics(@Param('userId') userId: string) {
-    const realtimeKPIs = await this.metricsService.getRealtime();
+@Get('realtime/:userId')
+@Roles('Admin', 'Manager', 'Employee')
+async getRealtimeMetrics(@Param('userId') userId: string) {
+  const realtimeKPIs = await this.metricsService.getRealtime();
 
-    // Generar alertas dinámicas en Redis
-    for (const metric of realtimeKPIs) {
-      await this.alertsService.generateAlert(userId, 'stress', metric.stress);
-    }
+  // 🔹 Obtener predicción de burnout (es un número)
+  const burnoutScore = await this.predictionService.predictBurnout(userId);
 
-    // Enviar notificaciones inmediatas
-    const notifications = await this.notificationService.sendNotifications(userId);
-
-    // Obtener dashboard agregado (cache o cálculo)
-    const dashboard = await this.dashboardService.getUserDashboard(userId);
-
-    return {
-      realtimeKPIs,
-      dashboard,
-      notifications,
-    };
+  // 🔹 Generar alertas locales
+  for (const metric of realtimeKPIs) {
+    await this.alertsService.generateLocalAlert(userId, 'stress', metric.stress);
   }
+
+  // 🔹 Obtener alertas combinadas (local + IA)
+  const combinedAlerts = await this.alertsService.getCombinedAlerts(
+    userId,
+    burnoutScore, // ahora es número directamente
+    realtimeKPIs
+  );
+
+  // 🔹 Enviar notificaciones usando alertas combinadas
+  const notifications = await this.notificationService.sendNotifications(userId, combinedAlerts);
+
+  // 🔹 Obtener dashboard actualizado
+  const dashboard = await this.dashboardService.getUserDashboard(userId);
+
+  return {
+    realtimeKPIs,
+    dashboard,
+    notifications,
+    alerts: combinedAlerts,
+  };
+}
+
+
 
   // 🔹 KPIs semanales
   @Get('weekly')
@@ -69,7 +82,7 @@ export class MetricsController {
   @Roles('Admin', 'Manager', 'Employee')
   async predictBurnout(@Param('userId') userId: string) {
     const metrics = await this.metricsService.getEmployeeMetrics(userId);
-    const score = await this.predictionService.predictBurnout(userId, metrics);
+    const score = await this.predictionService.predictBurnout(userId);
     return { userId, burnoutRisk: score };
   }
 }

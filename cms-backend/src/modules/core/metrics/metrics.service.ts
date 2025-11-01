@@ -19,7 +19,7 @@ export class MetricsService {
 
   async getEmployeeMetrics(userId: string) {
     return this.dataSource.query(
-      `SELECT * FROM daily_employee_metrics WHERE id_employee = $1 ORDER BY timestamp DESC LIMIT 100`,
+      `SELECT * FROM daily_employee_metrics WHERE id_employee = $1 ORDER BY id_snapshot DESC LIMIT 100`,
       [userId],
     );
   }

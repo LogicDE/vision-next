@@ -90,7 +90,7 @@ import { ReportsModule } from './modules/core/reports/reports.module';
     DashboardModule,
     AlertsModule,
     NotificationModule,
-    PredictionModule, //Por integrar con la Ia de prediccion bunout
+    PredictionModule, 
     CacheModule,
     FiltersModule,
     ReportsModule,

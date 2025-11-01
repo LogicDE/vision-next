@@ -53,10 +53,10 @@ export function LoginForm() {
   const demoLogin = (role: 'Admin' | 'User') => {
     const demoEmail =
       role === 'Admin'
-        ? 'admin@biocognitive.com'
-        : 'usuario@biocognitive.com';
+        ? 'carlos@vitanexo.com'
+        : 'juan.perez@demo.com';
     setEmail(demoEmail);
-    setPassword('demo123');
+    setPassword('123456');
   };
 
   // Calcular offset parallax
@@ -88,7 +88,7 @@ export function LoginForm() {
       </div>
 
       {/* Contenedor principal */}
-      <div className="w-full max-w-md px-4 sm:px-0 animate-fadeIn">
+      <div className="w-full max-w-md px-4 py-8 sm:px-0 animate-fadeIn">
         {/* Logo + título */}
         <div className="text-center mb-8 space-y-4">
           <div className="flex justify-center items-center space-x-2">

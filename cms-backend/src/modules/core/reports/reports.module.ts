@@ -6,9 +6,10 @@ import { MetricsModule } from '../metrics/metrics.module';
 import { AlertsModule } from '../alerts/alerts.module';
 import { AuthModule } from '../../../auth/auth.module';
 import { CacheModule } from '../../infrastructure/cache/cache.module';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
-  imports: [PredictionModule, MetricsModule, AlertsModule, AuthModule, CacheModule],
+  imports: [PredictionModule, MetricsModule, AlertsModule, AuthModule, CacheModule, DashboardModule],
   providers: [ReportService],
   controllers: [ReportController],
   exports: [ReportService],
