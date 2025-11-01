@@ -13,20 +13,21 @@ export class GroupSnapshot {
   @JoinColumn({ name: 'id_group' })
   group!: Group;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ name: 'snapshot_at', type: 'timestamptz', default: () => 'NOW()' })
   snapshotAt!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ name: 'window_start', type: 'timestamptz', nullable: true })
   windowStart?: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ name: 'window_end', type: 'timestamptz', nullable: true })
   windowEnd?: Date;
 
-  @Column({ length: 50, nullable: true })
+  @Column({ name: 'job_version', length: 50, nullable: true })
   jobVersion?: string;
 
-  @Column({ length: 128, nullable: true })
+  @Column({ name: 'cohort_hash', length: 128, nullable: true })
   cohortHash?: string;
+
 
   @OneToMany(() => GroupSnapshotMember, (gsm) => gsm.snapshot)
   members!: GroupSnapshotMember[];

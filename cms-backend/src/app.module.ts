@@ -1,37 +1,44 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
-import { ConfigAppModule } from './config/config.module';
+import { ConfigAppModule } from './modules/infrastructure/config/config.module';
 import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
-import { EmployeesModule } from './modules/employees/employees.module';
-import { RolesModule } from './modules/roles/roles.module';
-import { CountriesModule } from './modules/countries/countries.module';
-import { EnterprisesModule } from './modules/enterprises/enterprises.module';
+import { EmployeesModule } from './modules/core/employees/employees.module';
+import { RolesModule } from './modules/core/roles/roles.module';
+import { CountriesModule } from './modules/geodata/countries/countries.module';
+import { EnterprisesModule } from './modules/core/enterprises/enterprises.module';
 import { ActionsModule } from './modules/actions/actions.module';
 import { ServicesModule } from './modules/services/services.module';
-import { InterventionsModule } from './modules/interventions/interventions.module';
-import { GroupsModule } from './modules/groups/groups.module';
-import { EventsModule } from './modules/events/events.module';
-import { MetricsModule } from './modules/metrics/metrics.module';
-import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
-import { HealthModule } from './modules/health/health.module';
-import { AddressesModule } from './modules/addresses/addresses.module';
+import { InterventionsModule } from './modules/core/interventions/interventions.module';
+import { GroupsModule } from './modules/core/groups/groups.module';
+import { EventsModule } from './modules/core/events/events.module';
+import { MetricsModule } from './modules/core/metrics/metrics.module';
+import { AuditLogsModule } from './modules/infrastructure/audit-logs/audit-logs.module';
+import { HealthModule } from './modules/infrastructure/health/health.module';
+import { AddressesModule } from './modules/geodata/addresses/addresses.module';
 import { AdminSubdivisionsModule } from './modules/admin-subdivisions/admin-subdivisions.module';
-import { CitiesModule } from './modules/cities/cities.module';
-import { DailyEmployeeMetricsModule } from './modules/daily-employee-metrics/daily-employee-metrics.module';
-import { DailyGroupMetricsModule } from './modules/daily-group-metrics/daily-group-metrics.module';
+import { CitiesModule } from './modules/geodata/cities/cities.module';
+import { DailyEmployeeMetricsModule } from './modules/core/daily-employee-metrics/daily-employee-metrics.module';
+import { DailyGroupMetricsModule } from './modules/core/daily-group-metrics/daily-group-metrics.module';
 import { DevicesModule } from './modules/devices/devices.module';
-import { GroupEmployeesModule } from './modules/group-employees/group-employees.module';
-import { GroupSnapshotMembersModule } from './modules/group-snapshot-members/group-snapshot-members.module';
-import { GroupSnapshotsModule } from './modules/group-snapshots/group-snapshots.module';
-import { GroupSurveyScoresModule } from './modules/group-survey-scores/group-survey-scores.module';
-import { IndivSurveyScoresModule } from './modules/indiv-survey-scores/indiv-survey-scores.module';
-import { NeighborhoodsModule } from './modules/neighborhoods/neighborhoods.module';
-import { PostalCodesModule } from './modules/postal-codes/postal-codes.module';
-import { QuestionI18nModule } from './modules/question-i18n/question-i18n.module';
-import { QuestionsModule } from './modules/questions/questions.module';
-import { RolePermissionsModule } from './modules/role-permissions/role-permissions.module';
+import { GroupEmployeesModule } from './modules/core/group-employees/group-employees.module';
+import { GroupSnapshotMembersModule } from './modules/core/group-snapshot-members/group-snapshot-members.module';
+import { GroupSnapshotsModule } from './modules/core/group-snapshots/group-snapshots.module';
+import { GroupSurveyScoresModule } from './modules/core/group-survey-scores/group-survey-scores.module';
+import { IndivSurveyScoresModule } from './modules/core/indiv-survey-scores/indiv-survey-scores.module';
+import { NeighborhoodsModule } from './modules/geodata/neighborhoods/neighborhoods.module';
+import { PostalCodesModule } from './modules/geodata/postal-codes/postal-codes.module';
+import { QuestionI18nModule } from './modules/surveys/question-i18n/question-i18n.module';
+import { QuestionsModule } from './modules/surveys/questions/questions.module';
+import { RolePermissionsModule } from './modules/surveys/role-permissions/role-permissions.module';
+import { CacheModule } from './modules/infrastructure/cache/cache.module';
+import { FiltersModule } from './modules/infrastructure/filters/filters.module';
+import { PredictionModule } from './modules/core/prediction/prediction.module';
+import { NotificationModule } from './modules/infrastructure/notification/notification.module';
+import { AlertsModule } from './modules/core/alerts/alerts.module';
+import { DashboardModule } from './modules/core/dashboard/dashboard.module';
+import { ReportsModule } from './modules/core/reports/reports.module';
 
 @Module({
   imports: [
@@ -80,6 +87,13 @@ import { RolePermissionsModule } from './modules/role-permissions/role-permissio
     MetricsModule,
     AuditLogsModule,
     HealthModule,
+    DashboardModule,
+    AlertsModule,
+    NotificationModule,
+    PredictionModule, //Por integrar con la Ia de prediccion bunout
+    CacheModule,
+    FiltersModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [],

@@ -26,10 +26,10 @@ export class Employee {
   @JoinColumn({ name: 'id_role' })
   role!: Role;
 
-  @Column({ length: 100 })
+  @Column({ name: 'first_name', length: 100 })
   firstName!: string;
 
-  @Column({ length: 100 })
+  @Column({ name: 'last_name', length: 100 })
   lastName!: string;
 
   @Column({ length: 150, unique: true })
@@ -38,7 +38,7 @@ export class Employee {
   @Column({ length: 100, unique: true })
   username!: string;
 
-  @Column({ length: 255 })
+  @Column({ name: 'password_hash', length: 255 })
   passwordHash!: string;
 
   @Column({ length: 15, nullable: true })
@@ -47,10 +47,10 @@ export class Employee {
   @Column({ length: 20, default: 'active' })
   status!: string;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
   createdAt!: Date;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'NOW()' })
   updatedAt!: Date;
 
   @OneToMany(() => Group, (g) => g.manager)

@@ -29,7 +29,8 @@
     "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.27",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

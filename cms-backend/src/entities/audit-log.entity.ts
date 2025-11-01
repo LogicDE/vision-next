@@ -20,15 +20,15 @@ export class AuditLog {
   @JoinColumn({ name: 'id_service' })
   service?: Service;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ name: 'occurred_at', type: 'timestamptz', default: () => 'NOW()' })
   occurredAt!: Date;
 
-  @Column({ type: 'inet', nullable: true })
+  @Column({ name: 'ip_actor', type: 'inet', nullable: true })
   ipActor?: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ name: 'object_type', length: 100, nullable: true })
   objectType?: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ name: 'change_set', type: 'jsonb' })
   changeSet!: Record<string, any>;
 }

@@ -16,9 +16,9 @@ export class Intervention {
   @Column({ length: 255, nullable: true })
   description?: string;
 
-  @Column({ length: 100 })
+  @Column({ name: 'title_message', length: 100 })
   titleMessage!: string;
 
-  @Column({ length: 255 })
+  @Column({ name: 'body_message', length: 255 })
   bodyMessage!: string;
 }

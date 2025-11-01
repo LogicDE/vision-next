@@ -11,14 +11,14 @@ export class GroupSurveyScore {
   @JoinColumn({ name: 'id_group' })
   group!: Group;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  startAt?: Date;
+  @Column({ name: 'start_at', type: 'timestamptz' })
+  startAt!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ name: 'end_at', type: 'timestamptz', nullable: true })
   endAt?: Date;
 
-  @Column({ type: 'integer', nullable: true })
-  groupScore?: number;
+  @Column({ name: 'group_score', type: 'integer' })
+  groupScore!: number;
 
   @OneToMany(() => IndivSurveyScore, (iss) => iss.survey)
   individualScores!: IndivSurveyScore[];

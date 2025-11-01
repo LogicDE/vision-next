@@ -11,7 +11,7 @@ export class Question {
   @JoinColumn({ name: 'id_group' })
   group?: Group;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
   createdAt!: Date;
 
   @OneToMany(() => QuestionI18n, (qi18n) => qi18n.question)

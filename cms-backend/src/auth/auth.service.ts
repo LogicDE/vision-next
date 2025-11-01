@@ -15,7 +15,7 @@ export interface LoginResponse {
     id: number;
     nombre: string;
     email: string;
-    rol: string;
+    role: string;
   };
 }
 
@@ -36,7 +36,7 @@ export class AuthService {
 
     const employee = await this.employeesRepo.findOne({
       where: { email },
-      relations: ['rol'],
+      relations: ['role'],
     });
 
     if (employee && (await bcrypt.compare(password, employee.passwordHash))) {
@@ -54,8 +54,9 @@ export class AuthService {
     const jtiRefresh = uuidv4();
 
     // Payloads
-    const payloadAccess = { sub: employee.id, email: employee.email, role: employee.role.name, jti: jtiAccess };
-    const payloadRefresh = { sub: employee.id, email: employee.email, role: employee.role.name, jti: jtiRefresh };
+    const fullName = `${employee.firstName} ${employee.lastName}`;
+    const payloadAccess = { sub: employee.id, email: employee.email, role: employee.role.name, nombre: fullName, jti: jtiAccess };
+    const payloadRefresh = { sub: employee.id, email: employee.email, role: employee.role.name, nombre: fullName, jti: jtiRefresh };
 
     const access_token = this.jwtService.sign(payloadAccess, {
       secret: this.configService.get<string>('JWT_SECRET'),
@@ -87,7 +88,7 @@ export class AuthService {
         id: employee.id,
         nombre: `${employee.firstName} ${employee.lastName}`,
         email: employee.email,
-        rol: employee.role.name,
+        role: employee.role.name,
       },
     };
   }
@@ -102,7 +103,7 @@ export class AuthService {
 
       // Nuevo access token
       const jtiAccess = uuidv4();
-      const access_token = this.jwtService.sign({ sub: payload.sub, email: payload.email, role: payload.role, jti: jtiAccess }, {
+      const access_token = this.jwtService.sign({ sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiAccess }, {
         secret: this.configService.get<string>('JWT_SECRET'),
         expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '5m',
       });
@@ -110,7 +111,7 @@ export class AuthService {
       const accessTTL = 60 * 5;
       await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, accessTTL);
       await this.redisService.sadd(`jwt:active:${payload.sub}`, jtiAccess);
-      await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: payload.sub, type: 'access', exp: Date.now() + accessTTL * 1000 }, accessTTL);
+      await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: payload.sub, nombre: payload.nombre, email: payload.email, role: payload.role, type: 'access', exp: Date.now() + accessTTL * 1000 }, accessTTL);
 
       return { access_token };
     } catch {

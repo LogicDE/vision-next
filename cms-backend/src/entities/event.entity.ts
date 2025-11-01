@@ -10,18 +10,18 @@ export class Event {
   @JoinColumn({ name: 'id_manager' })
   manager?: Employee;
 
-  @Column({ length: 100 })
+  @Column({ name: 'title_message', length: 100 })
   titleMessage!: string;
 
-  @Column({ length: 255 })
+  @Column({ name: 'body_message', length: 255 })
   bodyMessage!: string;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ name: 'coordinator_name', length: 200, nullable: true })
   coordinatorName?: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ name: 'start_at', type: 'timestamptz', nullable: true })
   startAt?: Date;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ name: 'end_at', type: 'timestamptz' })
   endAt!: Date;
 }
