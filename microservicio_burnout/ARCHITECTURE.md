@@ -42,6 +42,7 @@
 ## 🔄 Flujo de Datos
 
 ### Flujo de Análisis (Runtime)
+
 1. **Obtención de Métricas**: MetricsClient obtiene datos del usuario desde cms-backend
 2. **Predicción ML**: BurnoutPredictor calcula probabilidad de burnout
 3. **Generación de Alerta**: AlertsService evalúa riesgo y genera alertas si probabilidad ≥ 0.5
@@ -52,12 +53,14 @@
 ## 🌐 Endpoints de la API
 
 ### Información y Salud
+
 ```
 GET  /                           # Información del microservicio
 GET  /api/burnout/health         # Estado de salud del servicio
 ```
 
 ### Gestión del Modelo ML
+
 ```
 POST /api/burnout/train          # Entrenar modelo (si hay datos disponibles)
 POST /api/burnout/load-model     # Cargar/recargar modelo manualmente
@@ -65,12 +68,14 @@ GET  /api/burnout/metrics        # Obtener métricas del modelo
 ```
 
 ### Predicción Básica
+
 ```
 GET  /api/burnout/predict/{id}   # Predicción simple de burnout
 POST /api/burnout/predict/{id}   # Predicción con datos personalizados
 ```
 
 ### Análisis Completo
+
 ```
 GET  /api/burnout/analyze/{id}          # Análisis completo integrado
 GET  /api/burnout/alerts/{id}           # Solo generación de alertas
@@ -121,9 +126,11 @@ microservicio_burnout/
 ## 🧩 Componentes Principales
 
 ### 1. AlertsService
+
 **Propósito**: Detectar y generar alertas de burnout
 
 **Funcionalidades**:
+
 - Evaluación de riesgo basada en probabilidad de burnout
 - Clasificación de severidad (low, medium, high, critical)
 - Identificación de factores contribuyentes
@@ -131,15 +138,19 @@ microservicio_burnout/
 - Determinación de notificación a supervisor
 
 **Umbrales**:
+
 - Critical: ≥ 0.85
 - High: 0.70 - 0.85
 - Medium: 0.50 - 0.70
 - Low: 0.30 - 0.50
 
 ### 2. DashboardService
+
+
 **Propósito**: Generar resumen completo del estado del empleado
 
 **Funcionalidades**:
+
 - Análisis de métricas clave (estrés, sueño, HRV, pulso, etc.)
 - Cálculo de scores por categoría:
   - Fisiológico (HRV, pulso, sueño, recuperación)
@@ -151,9 +162,12 @@ microservicio_burnout/
 - Resumen de alertas activas
 
 ### 3. InterventionService
+
+
 **Propósito**: Crear planes de intervención personalizados
 
 **Funcionalidades**:
+
 - Generación de intervenciones específicas por causa
 - Clasificación por categoría:
   - Manejo de estrés
@@ -174,9 +188,12 @@ microservicio_burnout/
 - Recomendaciones de seguimiento
 
 ### 4. MetricsClient
+
+
 **Propósito**: Integración con cms-backend
 
 **Funcionalidades**:
+
 - Obtención de métricas del usuario desde endpoints del cms-backend
 - Soporte de autenticación JWT
 - Transformación de datos al formato del modelo
@@ -258,8 +275,9 @@ microservicio-burnout:
 
 ### Variables de Entorno
 
-| Variable | Descripción | Default |
-|----------|-------------|---------|
+
+| Variable          | Descripción         | Default                   |
+| ----------------- | ------------------- | ------------------------- |
 | `CMS_BACKEND_URL` | URL del cms-backend | `http://cms-backend:3000` |
 
 ## 🔒 Seguridad
@@ -283,6 +301,7 @@ microservicio-burnout:
 El servicio expone las siguientes métricas:
 
 ### Health Check (`/api/burnout/health`)
+
 ```json
 {
   "status": "healthy",
@@ -292,6 +311,7 @@ El servicio expone las siguientes métricas:
 ```
 
 ### Model Metrics (`/api/burnout/metrics`)
+
 ```json
 {
   "cv_accuracy_mean": 0.85,
@@ -328,24 +348,28 @@ El servicio expone las siguientes métricas:
 ## 🎯 Casos de Uso
 
 ### 1. Dashboard de Salud del Empleado
+
 ```
 Frontend → GET /api/burnout/dashboard/{user_id}
         → Muestra panel completo con métricas y scores
 ```
 
 ### 2. Sistema de Alertas Temprano
+
 ```
 Scheduler → GET /api/burnout/alerts/{user_id}
          → Si hay alerta → Notificar a RRHH/Supervisor
 ```
 
 ### 3. Generación de Plan de Intervención
+
 ```
 Manager → GET /api/burnout/interventions/{user_id}
        → Plan detallado de acciones por prioridad
 ```
 
 ### 4. Análisis Completo para Evaluación
+
 ```
 RRHH → GET /api/burnout/analyze/{user_id}
     → Informe completo: predicción + alertas + dashboard + intervenciones
@@ -360,10 +384,12 @@ RRHH → GET /api/burnout/analyze/{user_id}
   burnout_prediction: 0 | 1;        // Binario
   burnout_level: string;            // none, low, moderate, high, severe
   risk_category: string;            // Descripción textual
+
 }
 ```
 
 ### Alert
+
 ```typescript
 {
   alert_id: string;                 // Identificador único
@@ -377,6 +403,7 @@ RRHH → GET /api/burnout/analyze/{user_id}
 ```
 
 ### DashboardSummary
+
 ```typescript
 {
   overview: {
@@ -398,6 +425,7 @@ RRHH → GET /api/burnout/analyze/{user_id}
 ```
 
 ### Interventions
+
 ```typescript
 {
   total_interventions: number;
@@ -438,6 +466,7 @@ RRHH → GET /api/burnout/analyze/{user_id}
 ## 🔍 Monitoreo y Logs
 
 El servicio genera logs para:
+
 - Inicio y carga del modelo
 - Requests a endpoints
 - Errores de conexión con cms-backend

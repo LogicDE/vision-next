@@ -1,723 +1,781 @@
-  'use client';
+'use client';
 
-  import { useState, useEffect } from 'react';
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-  import { Button } from '@/components/ui/button';
-  import { Input } from '@/components/ui/input';
-  import { Badge } from '@/components/ui/badge';
-  import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-  import { 
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-  } from '@/components/ui/table';
-  import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-  } from '@/components/ui/dialog';
-  import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-  } from '@/components/ui/dropdown-menu';
-  import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from '@/components/ui/select';
-  import { Label } from '@/components/ui/label';
-  import { 
-    Search, 
-    Filter, 
-    MoreHorizontal, 
-    UserPlus, 
-    Edit, 
-    Trash2, 
-    Shield, 
-    User,
-    Eye,
-    Loader2,
-    AlertCircle
-  } from 'lucide-react';
-  import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Users,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Loader2,
+  Mail,
+  Phone,
+  CheckCircle,
+  AlertCircle,
+  User,
+  Shield,
+  Building2,
+  UserCog,
+  Eye,
+  EyeOff
+} from 'lucide-react';
+import { fetchAPI } from '@/lib/apiClient';
+import { toast } from 'sonner';
 
-  interface Employee {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    telephone?: string;
-    rol: {
-      id: number;
-      name: string;
-    };
-    empresa: {
-      id: number;
-      name: string;
-    };
-    manager?: {
-      id: number;
-      first_name: string;
-      last_name: string;
-    };
-  }
+interface Employee {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string;
+  telephone?: string;
+  status: string;
+  enterprise?: { id: number; name: string };
+  role?: { id: number; name: string };
+  manager?: { id: number; firstName: string; lastName: string };
+  created_at?: string;
+  updated_at?: string;
+}
 
-  interface Role {
-    id: number;
-    name: string;
-  }
+interface Role {
+  id: number;
+  name: string;
+}
 
-  interface Enterprise {
-    id: number;
-    name: string;
-  }
+interface Enterprise {
+  id: number;
+  name: string;
+}
 
-  interface EmployeeFormData {
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    password?: string;
-    telephone?: string;
-    id_role: number | '';
-    id_enterprise: number | '';
-    manager_id?: number | null;
-  }
+interface EmployeeFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string;
+  passwordHash: string;
+  telephone: string;
+  idEnterprise: number | null;
+  idRole: number | null;
+  idManager: number | null;
+  status: string;
+}
 
-  export function UsersManagement() {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedRole, setSelectedRole] = useState('all');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    
-    // Modal states
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-    const [formData, setFormData] = useState<EmployeeFormData>({
-      first_name: '',
-      last_name: '',
-      email: '',
-      username: '',
-      password: '',
-      telephone: '',
-      id_role: '',
-      id_enterprise: '',
-      manager_id: null,
-    });
-    const [formLoading, setFormLoading] = useState(false);
+export function UsersManagement() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [managers, setManagers] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState<EmployeeFormData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    username: '',
+    passwordHash: '',
+    telephone: '',
+    idEnterprise: null,
+    idRole: null,
+    idManager: null,
+    status: 'active',
+  });
 
-    // Fetch data on mount
-    useEffect(() => {
-      fetchEmployees();
-      fetchRoles();
-      fetchEnterprises();
-    }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    // URL base del backend
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-  const fetchEmployees = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/employees`, {
-        method: 'GET',
-        credentials: 'include', // usa cookies HttpOnly
-      });
-      const data = await response.json();
-      if (data.success) setEmployees(data.data);
-    } catch (err) {
-      setError('Error al cargar empleados');
-      console.error(err);
+      const [employeesData, rolesData, enterprisesData] = await Promise.all([
+        fetchAPI('/employees'),
+        fetchAPI('/roles'),
+        fetchAPI('/enterprises'),
+      ]);
+      setEmployees(employeesData);
+      setRoles(rolesData);
+      setEnterprises(enterprisesData);
+      setManagers(employeesData.filter((emp: Employee) => emp.role?.name === 'Manager' || emp.role?.name === 'Admin'));
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cargar datos');
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRoles = async () => {
-    try {
-      const response = await fetch(`${API_URL}/roles`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-      const data = await response.json();
-      setRoles(Array.isArray(data) ? data : data.data || []);
-    } catch (err) {
-      console.error('Error al cargar roles:', err);
-    }
-  };
-
-  const fetchEnterprises = async () => {
-    try {
-      const response = await fetch(`${API_URL}/enterprises`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-      const data = await response.json();
-      setEnterprises(Array.isArray(data) ? data : data.data || []);
-    } catch (err) {
-      console.error('Error al cargar empresas:', err);
-    }
-  };
-
-  const handleCreateEmployee = async () => {
-    try {
-      setFormLoading(true);
-      setError(null);
-      const response = await fetch(`${API_URL}/employees`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setIsCreateModalOpen(false);
-        fetchEmployees();
-        resetForm();
-      } else {
-        setError(data.message || 'Error al crear empleado');
-      }
-    } catch (err) {
-      setError('Error al crear empleado');
-      console.error(err);
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleUpdateEmployee = async () => {
-    if (!selectedEmployee) return;
-
-    try {
-      setFormLoading(true);
-      setError(null);
-      const updateData = { ...formData };
-      if (!updateData.password) delete updateData.password;
-
-      const response = await fetch(`${API_URL}/employees/${selectedEmployee.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updateData),
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setIsEditModalOpen(false);
-        fetchEmployees();
-        resetForm();
-      } else {
-        setError(data.message || 'Error al actualizar empleado');
-      }
-    } catch (err) {
-      setError('Error al actualizar empleado');
-      console.error(err);
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleDeleteEmployee = async () => {
-    if (!selectedEmployee) return;
-
-    try {
-      setFormLoading(true);
-      setError(null);
-      const response = await fetch(`${API_URL}/employees/${selectedEmployee.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setIsDeleteModalOpen(false);
-        fetchEmployees();
-        setSelectedEmployee(null);
-      } else {
-        setError(data.message || 'Error al eliminar empleado');
-      }
-    } catch (err) {
-      setError('Error al eliminar empleado');
-      console.error(err);
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-
-    const openCreateModal = () => {
-      resetForm();
-      setIsCreateModalOpen(true);
-    };
-
-    const openEditModal = (employee: Employee) => {
-      setSelectedEmployee(employee);
+  const handleOpenDialog = (employee?: Employee) => {
+    if (employee) {
+      setEditingEmployee(employee);
       setFormData({
-        first_name: employee.first_name,
-        last_name: employee.last_name,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
         email: employee.email,
         username: employee.username,
+        passwordHash: '',
         telephone: employee.telephone || '',
-        id_role: employee.rol.id,
-        id_enterprise: employee.empresa.id,
-        manager_id: employee.manager?.id || null,
+        idEnterprise: employee.enterprise?.id || null,
+        idRole: employee.role?.id || null,
+        idManager: employee.manager?.id || null,
+        status: employee.status,
       });
-      setIsEditModalOpen(true);
-    };
-
-    const openDeleteModal = (employee: Employee) => {
-      setSelectedEmployee(employee);
-      setIsDeleteModalOpen(true);
-    };
-
-    const resetForm = () => {
+    } else {
+      setEditingEmployee(null);
       setFormData({
-        first_name: '',
-        last_name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         username: '',
-        password: '',
+        passwordHash: '',
         telephone: '',
-        id_role: '',
-        id_enterprise: '',
-        manager_id: null,
+        idEnterprise: null,
+        idRole: null,
+        idManager: null,
+        status: 'active',
       });
-      setSelectedEmployee(null);
-    };
+    }
+    setIsDialogOpen(true);
+  };
 
-    const filteredEmployees = employees.filter(emp => {
-      const matchesSearch = 
-        emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.empresa.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = selectedRole === 'all' || emp.rol.name === selectedRole;
-      return matchesSearch && matchesRole;
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingEmployee(null);
+    setShowPassword(false);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      username: '',
+      passwordHash: '',
+      telephone: '',
+      idEnterprise: null,
+      idRole: null,
+      idManager: null,
+      status: 'active',
     });
+  };
 
-    const getRoleBadge = (role: string) => {
-      return role === 'admin' ? (
-        <Badge className="bg-purple-100 text-purple-800 flex items-center space-x-1">
-          <Shield className="h-3 w-3" />
-          <span>{role}</span>
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="flex items-center space-x-1">
-          <User className="h-3 w-3" />
-          <span>{role}</span>
-        </Badge>
-      );
-    };
-
-    const getInitials = (firstName: string, lastName: string) => {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    };
-
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
-      );
+  const handleSubmit = async () => {
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.username.trim()) {
+      toast.error('Nombre, apellido, email y usuario son requeridos');
+      return;
     }
 
+    if (!editingEmployee && !formData.passwordHash.trim()) {
+      toast.error('La contraseña es requerida para nuevos usuarios');
+      return;
+    }
+
+    if (!formData.idEnterprise || !formData.idRole) {
+      toast.error('Empresa y rol son requeridos');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        username: formData.username,
+        telephone: formData.telephone || undefined,
+        idEnterprise: formData.idEnterprise,
+        idRole: formData.idRole,
+        idManager: formData.idManager || undefined,
+        status: formData.status,
+        ...(formData.passwordHash && { passwordHash: formData.passwordHash }),
+      };
+
+      if (editingEmployee) {
+        await fetchAPI(`/employees/${editingEmployee.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Usuario actualizado exitosamente');
+      } else {
+        await fetchAPI('/employees', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Usuario creado exitosamente');
+      }
+      handleCloseDialog();
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar usuario');
+      console.error('Error saving employee:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (employee: Employee) => {
+    setDeletingEmployee(employee);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingEmployee) return;
+
+    setSubmitting(true);
+    try {
+      await fetchAPI(`/employees/${deletingEmployee.id}`, {
+        method: 'DELETE',
+      });
+      toast.success('Usuario eliminado exitosamente');
+      setIsDeleteDialogOpen(false);
+      setDeletingEmployee(null);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar usuario');
+      console.error('Error deleting employee:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredEmployees = employees.filter((employee) => {
+    const matchesSearch = 
+      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.username.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || employee.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Header */}
-        <Card className="border-none shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-blue-600" />
-              <span>Gestión de Empleados</span>
-            </CardTitle>
-            <CardDescription>
-              Administra los empleados del sistema y sus roles
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-1 space-x-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar empleados..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center space-x-2">
-                  <Filter className="h-4 w-4" />
-                  <span>Filtro</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setSelectedRole('all')}>
-                  Todos los roles
-                </DropdownMenuItem>
-                {roles.map(role => (
-                  <DropdownMenuItem key={role.id} onClick={() => setSelectedRole(role.name)}>
-                    {role.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Users className="w-6 h-6 text-blue-400 animate-pulse" />
           </div>
-          <Button 
-            onClick={openCreateModal}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Agregar Empleado
-          </Button>
         </div>
-
-        {/* Employees Table */}
-        <Card className="border-none shadow-lg">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empleado</TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
-                            {getInitials(employee.first_name, employee.last_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">
-                            {employee.first_name} {employee.last_name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {employee.email}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.empresa.name}</TableCell>
-                    <TableCell>{getRoleBadge(employee.rol.name)}</TableCell>
-                    <TableCell>
-                      {employee.manager ? (
-                        <span className="text-sm">
-                          {employee.manager.first_name} {employee.manager.last_name}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Sin manager</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {employee.telephone || (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            className="flex items-center space-x-2"
-                            onClick={() => openEditModal(employee)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span>Editar</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="flex items-center space-x-2 text-red-600"
-                            onClick={() => openDeleteModal(employee)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Eliminar</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Summary Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="border-none shadow-lg">
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {filteredEmployees.length}
-                </div>
-                <p className="text-sm text-muted-foreground">Empleados Totales</p>
-              </div>
-            </CardContent>
-          </Card>
-          {roles.slice(0, 3).map(role => (
-            <Card key={role.id} className="border-none shadow-lg">
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {filteredEmployees.filter(e => e.rol.name === role.name).length}
-                  </div>
-                  <p className="text-sm text-muted-foreground capitalize">{role.name}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Create/Edit Modal */}
-        <Dialog open={isCreateModalOpen || isEditModalOpen} onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateModalOpen(false);
-            setIsEditModalOpen(false);
-            resetForm();
-          }
-        }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {isCreateModalOpen ? 'Crear Nuevo Empleado' : 'Editar Empleado'}
-              </DialogTitle>
-              <DialogDescription>
-                {isCreateModalOpen 
-                  ? 'Completa los datos del nuevo empleado' 
-                  : 'Modifica los datos del empleado'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Nombre *</Label>
-                  <Input
-                    id="first_name"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                    placeholder="Juan"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Apellido *</Label>
-                  <Input
-                    id="last_name"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                    placeholder="Pérez"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="juan@empresa.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username *</Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value})}
-                    placeholder="jperez"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">
-                    Contraseña {isEditModalOpen && '(dejar vacío para no cambiar)'}
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    placeholder="********"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telephone">Teléfono</Label>
-                  <Input
-                    id="telephone"
-                    value={formData.telephone}
-                    onChange={(e) => setFormData({...formData, telephone: e.target.value})}
-                    placeholder="+52 123 456 7890"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="id_role">Rol *</Label>
-                  <Select
-                    value={formData.id_role.toString()}
-                    onValueChange={(value) => setFormData({...formData, id_role: parseInt(value)})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar rol" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map(role => (
-                        <SelectItem key={role.id} value={role.id.toString()}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="id_enterprise">Empresa *</Label>
-                  <Select
-                    value={formData.id_enterprise.toString()}
-                    onValueChange={(value) => setFormData({...formData, id_enterprise: parseInt(value)})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {enterprises.map(enterprise => (
-                        <SelectItem key={enterprise.id} value={enterprise.id.toString()}>
-                          {enterprise.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="manager_id">Manager (Opcional)</Label>
-                <Select
-                  value={formData.manager_id?.toString() || 'none'}
-                  onValueChange={(value) => setFormData({
-                    ...formData, 
-                    manager_id: value === 'none' ? null : parseInt(value)
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin manager" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin manager</SelectItem>
-                    {employees
-                      .filter(e => e.id !== selectedEmployee?.id)
-                      .map(emp => (
-                        <SelectItem key={emp.id} value={emp.id.toString()}>
-                          {emp.first_name} {emp.last_name} - {emp.rol.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  setIsEditModalOpen(false);
-                  resetForm();
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={isCreateModalOpen ? handleCreateEmployee : handleUpdateEmployee}
-                disabled={formLoading}
-                className="bg-gradient-to-r from-blue-600 to-purple-600"
-              >
-                {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isCreateModalOpen ? 'Crear Empleado' : 'Guardar Cambios'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Modal */}
-        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmar Eliminación</DialogTitle>
-              <DialogDescription>
-                ¿Estás seguro de que deseas eliminar a{' '}
-                <span className="font-semibold">
-                  {selectedEmployee?.first_name} {selectedEmployee?.last_name}
-                </span>
-                ? Esta acción no se puede deshacer.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setSelectedEmployee(null);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteEmployee}
-                disabled={formLoading}
-              >
-                {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Eliminar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <p className="text-gray-400 animate-pulse">Cargando usuarios...</p>
       </div>
     );
   }
+
+  const activeUsers = employees.filter(emp => emp.status === 'active').length;
+  const inactiveUsers = employees.filter(emp => emp.status === 'inactive').length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h3 className="text-2xl font-bold text-white flex items-center space-x-2">
+            <Users className="w-6 h-6 text-blue-400" />
+            <span>Gestión de Usuarios</span>
+          </h3>
+          <p className="text-gray-400 text-sm mt-1">
+            Administra empleados y sus permisos
+          </p>
+        </div>
+        <Button
+          onClick={() => handleOpenDialog()}
+          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-blue-500/50"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nuevo Usuario
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Total Usuarios</p>
+                <p className="text-3xl font-bold text-white">{employees.length}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Activos</p>
+                <p className="text-3xl font-bold text-white">{activeUsers}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Inactivos</p>
+                <p className="text-3xl font-bold text-white">{inactiveUsers}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Roles Asignados</p>
+                <p className="text-3xl font-bold text-white">{roles.length}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por nombre, email o username..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-48 bg-slate-900/50 border-white/10 text-white">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/10">
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Users List */}
+      <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center justify-between">
+            <span>Usuarios Registrados</span>
+            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+              {filteredEmployees.length} usuarios
+            </Badge>
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Lista completa de empleados y su información
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredEmployees.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <Users className="w-12 h-12 text-gray-600" />
+                <p className="text-gray-400">No se encontraron usuarios</p>
+              </div>
+            ) : (
+              filteredEmployees.map((employee) => (
+                <div
+                  key={employee.id}
+                  className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-white/10 hover:border-white/20 transition-all space-y-3 md:space-y-0"
+                >
+                  <div className="flex items-start space-x-4 flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-semibold text-white text-lg">
+                          {employee.firstName} {employee.lastName}
+                        </h4>
+                        <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                          @{employee.username}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                        <div className="flex items-center space-x-2 text-sm">
+                          <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-gray-300 truncate">{employee.email}</span>
+                        </div>
+                        {employee.telephone && (
+                          <div className="flex items-center space-x-2 text-sm">
+                            <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <span className="text-gray-300">{employee.telephone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {employee.role && (
+                          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                            <Shield className="w-3 h-3 mr-1" />
+                            {employee.role.name}
+                          </Badge>
+                        )}
+                        {employee.enterprise && (
+                          <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                            <Building2 className="w-3 h-3 mr-1" />
+                            {employee.enterprise.name}
+                          </Badge>
+                        )}
+                        {employee.manager && (
+                          <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
+                            <UserCog className="w-3 h-3 mr-1" />
+                            Manager: {employee.manager.firstName}
+                          </Badge>
+                        )}
+                        <Badge className={`text-xs ${
+                          employee.status === 'active' 
+                            ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                            : 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+                        }`}>
+                          {employee.status === 'active' ? (
+                            <><CheckCircle className="w-3 h-3 mr-1" /> Activo</>
+                          ) : (
+                            <><AlertCircle className="w-3 h-3 mr-1" /> Inactivo</>
+                          )}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 md:ml-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDialog(employee)}
+                      className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteClick(employee)}
+                      className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-2xl bg-slate-900 border-white/10 text-white max-h-[90vh] overflow-y-auto">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500"></div>
+          
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-xl">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <span>{editingEmployee ? 'Editar Usuario' : 'Nuevo Usuario'}</span>
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {editingEmployee
+                ? 'Actualiza la información del usuario'
+                : 'Completa los datos para crear un nuevo usuario'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName" className="text-gray-300">
+                Nombre *
+              </Label>
+              <Input
+                id="firstName"
+                placeholder="Juan"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="text-gray-300">
+                Apellido *
+              </Label>
+              <Input
+                id="lastName"
+                placeholder="Pérez"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-gray-300">
+                Email *
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="juan.perez@empresa.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-gray-300">
+                Username *
+              </Label>
+              <Input
+                id="username"
+                placeholder="juanperez"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-gray-300">
+                Contraseña {!editingEmployee && '*'}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={editingEmployee ? 'Dejar vacío para no cambiar' : '••••••••'}
+                  value={formData.passwordHash}
+                  onChange={(e) => setFormData({ ...formData, passwordHash: e.target.value })}
+                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telephone" className="text-gray-300">
+                Teléfono
+              </Label>
+              <Input
+                id="telephone"
+                placeholder="+52 123 456 7890"
+                value={formData.telephone}
+                onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
+                className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="enterprise" className="text-gray-300">
+                Empresa *
+              </Label>
+              <Select
+                value={formData.idEnterprise?.toString() || ''}
+                onValueChange={(value) => setFormData({ ...formData, idEnterprise: parseInt(value) })}
+              >
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                  <SelectValue placeholder="Seleccionar empresa" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  {enterprises.map((enterprise) => (
+                    <SelectItem key={enterprise.id} value={enterprise.id.toString()}>
+                      {enterprise.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-gray-300">
+                Rol *
+              </Label>
+              <Select
+                value={formData.idRole?.toString() || ''}
+                onValueChange={(value) => setFormData({ ...formData, idRole: parseInt(value) })}
+              >
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                  <SelectValue placeholder="Seleccionar rol" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="manager" className="text-gray-300">
+                Manager (Opcional)
+              </Label>
+              <Select
+                value={formData.idManager?.toString() || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, idManager: value === 'none' ? null : parseInt(value) })}
+              >
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                  <SelectValue placeholder="Sin manager" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  <SelectItem value="none">Sin manager</SelectItem>
+                  {managers.map((manager) => (
+                    <SelectItem key={manager.id} value={manager.id.toString()}>
+                      {manager.firstName} {manager.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status" className="text-gray-300">
+                Estado
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  <SelectItem value="active">Activo</SelectItem>
+                  <SelectItem value="inactive">Inactivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCloseDialog}
+              disabled={submitting}
+              className="border-white/10 hover:bg-white/10 text-gray-300"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {editingEmployee ? 'Actualizar' : 'Crear Usuario'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
+
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-xl text-red-500">
+              <Trash2 className="w-6 h-6" />
+              <span>Eliminar Usuario</span>
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              ¿Estás seguro que deseas eliminar al usuario <strong>{deletingEmployee?.firstName} {deletingEmployee?.lastName}</strong>? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={submitting}
+              className="border-white/10 hover:bg-white/10 text-gray-300"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              disabled={submitting}
+              className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-lg"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

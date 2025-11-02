@@ -8,7 +8,7 @@ import { ActionsController } from './actions.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Action]),
-    AuthModule, // Para JWT y Roles
+    AuthModule,
   ],
   controllers: [ActionsController],
   providers: [ActionsService],

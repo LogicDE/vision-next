@@ -1,17 +1,36 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { Rol } from './rol.entity';
-import { Empresa } from './empresa.entity';
+import { Enterprise } from './enterprise.entity';
+import { Role } from './role.entity';
+import { Group } from './group.entity';
+import { GroupEmployee } from './group-employee.entity';
+import { GroupSnapshotMember } from './group-snapshot-member.entity';
+import { IndivSurveyScore } from './indiv-survey-score.entity';
+import { Intervention } from './intervention.entity';
+import { Event } from './event.entity';
+import { AuditLog } from './audit-log.entity';
 
 @Entity('employees')
 export class Employee {
   @PrimaryGeneratedColumn({ name: 'id_employee' })
   id!: number;
 
-  @Column()
-  first_name!: string;
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_manager' })
+  manager?: Employee;
 
-  @Column()
-  last_name!: string;
+  @ManyToOne(() => Enterprise, (e) => e.employees, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_enterprise' })
+  enterprise!: Enterprise;
+
+  @ManyToOne(() => Role, (r) => r.employees, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'id_role' })
+  role!: Role;
+
+  @Column({ name: 'first_name', length: 100 })
+  firstName!: string;
+
+  @Column({ name: 'last_name', length: 100 })
+  lastName!: string;
 
   @Column({ length: 150, unique: true })
   email!: string;
@@ -19,24 +38,39 @@ export class Employee {
   @Column({ length: 100, unique: true })
   username!: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'password_hash', length: 255 })
   passwordHash!: string;
 
   @Column({ length: 15, nullable: true })
   telephone?: string;
 
-  @ManyToOne(() => Rol, rol => rol.empleados)
-  @JoinColumn({ name: 'id_role' })
-  rol!: Rol;
+  @Column({ length: 20, default: 'active' })
+  status!: string;
 
-  @ManyToOne(() => Empresa, empresa => empresa.employees)
-  @JoinColumn({ name: 'id_enterprise' })
-  empresa!: Empresa;
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
+  createdAt!: Date;
 
-  @ManyToOne(() => Employee, emp => emp.subordinates, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'id_manager' })
-  manager?: Employee;
+  @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'NOW()' })
+  updatedAt!: Date;
 
-  @OneToMany(() => Employee, emp => emp.manager)
-  subordinates!: Employee[];
+  @OneToMany(() => Group, (g) => g.manager)
+  managedGroups!: Group[];
+
+  @OneToMany(() => GroupEmployee, (ge) => ge.employee)
+  groupMemberships!: GroupEmployee[];
+
+  @OneToMany(() => GroupSnapshotMember, (gsm) => gsm.employee)
+  snapshots!: GroupSnapshotMember[];
+
+  @OneToMany(() => IndivSurveyScore, (iss) => iss.employee)
+  surveyScores!: IndivSurveyScore[];
+
+  @OneToMany(() => Event, (e) => e.manager)
+  managedEvents!: Event[];
+
+  @OneToMany(() => Intervention, (i) => i.manager)
+  managedInterventions!: Intervention[];
+
+  @OneToMany(() => AuditLog, (log) => log.actor)
+  auditLogs!: AuditLog[];
 }

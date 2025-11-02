@@ -1,15 +1,21 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { State } from './state.entity';
+import { AdminSubdivision } from './admin-subdivision.entity';
+import { PostalCode } from './postal-code.entity';
 
 @Entity('countries')
 export class Country {
   @PrimaryGeneratedColumn({ name: 'id_country' })
   id!: number;
 
-  @Column({ length: 56, unique: true })
+  @Column({ name: 'iso_code', length: 5, unique: true })
+  isoCode!: string;
+
+  @Column({ length: 100 })
   name!: string;
 
-  // Relación con states
-  @OneToMany(() => State, (state) => state.country)
-  states!: State[];
+  @OneToMany(() => AdminSubdivision, (a: AdminSubdivision) => a.country)
+  adminSubdivisions!: AdminSubdivision[];
+
+  @OneToMany(() => PostalCode, (p: PostalCode) => p.country)
+  postalCodes!: PostalCode[];
 }

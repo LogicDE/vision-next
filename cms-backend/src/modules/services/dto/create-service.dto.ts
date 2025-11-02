@@ -1,11 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsOptional, MaxLength } from 'class-validator';
 
 export class CreateServiceDto {
   @IsString()
-  @IsNotEmpty()
-  service_name!: string;
+  @MaxLength(100)
+  serviceName!: string;
 
-  @IsOptional()
   @IsString()
-  service_desc?: string;
+  @IsOptional()
+  @MaxLength(255)
+  serviceDesc?: string;
 }

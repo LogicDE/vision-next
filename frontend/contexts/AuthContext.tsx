@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 export enum UserRole {
-  ADMIN = 'admin',
-  USER = 'user',
+  ADMIN = 'Admin',
+  USER = 'User',
 }
 
 export interface User {
@@ -39,31 +39,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   // Obtener usuario actual
-  const fetchUser = useCallback(async (): Promise<User | null> => {
-    try {
-      const res = await api.get('/auth/me');
-      const data = res.data;
-      
-      // ✅ Validate response data structure
-      if (!data || typeof data !== 'object') {
-        console.warn('Invalid user data received:', data);
-        return null;
-      }
-      
-      return {
-        id: data.id,
-        name: data.nombre,
-        email: data.email,
-        role: data.rol as UserRole,
-        avatar: '/api/placeholder/40/40',
-        organization: data.organizacion || 'Vision Next',
-      };
-    } catch (e) {
-      console.log('fetchUser failed:', e);
-      // ✅ No marcar sesión expirada si nunca hubo sesión
-      return null;
-    }
-  }, []);
+ const fetchUser = useCallback(async (): Promise<User | null> => {
+  try {
+    const res = await api.get('/auth/me'); // cookies enviadas automáticamente
+    const data = res.data;
+
+    if (!data || !data.id) return null;
+
+    return {
+      id: String(data.id),
+      name: data.nombre,
+      email: data.email,
+      role: data.rol as UserRole,
+      avatar: '/api/placeholder/40/40',
+      organization: data.organizacion || 'Vision Next',
+    };
+  } catch (e) {
+    console.log('fetchUser failed:', e);
+    return null;
+  }
+}, []);
+
 
   // Login
   const login = async (email: string, password: string) => {

@@ -627,4 +627,3 @@ class InterventionService:
             "work_environment": [],
             "recovery_strategies": []
         }
-

@@ -13,14 +13,17 @@ import {
   TrendingUp, 
   AlertCircle, 
   LogOut,
-  Heart,
-  Brain,
+  BarChart3,
   Shield,
   Bell,
   FileText,
   ChevronDown,
   Loader2,
-  User
+  User,
+  Sparkles,
+  Search,
+  Settings,
+  Brain
 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,26 +35,51 @@ import { AlertsManagement } from '@/components/admin/AlertsManagement';
 import { GroupsManagement } from '@/components/admin/GroupsManagement';
 import { AuditLogsManagement } from '@/components/admin/AuditLogsManagement'; 
 import { SessionTimeout } from '@/components/SessionTimeoutModal';
+import { SurveysDashboard } from '@/components/admin/SurveysDashboard';
+import { InterventionsManagement } from '@/components/admin/InterventionsManagement';
+import { ReportsDashboard } from '@/components/admin/ReportsDashboard';
+import { PredictionDashboard } from '@/components/admin/PredictionDashboard';
+import { DailyEmployeeMetrics } from '@/components/admin/DailyEmployeeMetrics';
+import { DailyGroupMetrics } from '@/components/admin/DailyGroupMetrics';
+import { EventsDashboard } from '@/components/admin/EventsDashboard';
+import { RolesManagement } from '@/components/admin/RolesManagement';
+import HealthReport from '@/components/admin/HealthReport';
+
 
 const TABS = [
-  { value: 'overview', label: 'Overview', icon: TrendingUp, component: AdminStats, color: 'text-blue-600' },
-  { value: 'users', label: 'Usuarios', icon: Users, component: UsersManagement, color: 'text-purple-600' },
-  { value: 'enterprises', label: 'Empresas', icon: Building2, component: EnterprisesManagement, color: 'text-green-600' },
-  { value: 'groups', label: 'Grupos', icon: Activity, component: GroupsManagement, color: 'text-orange-600' },
-  { value: 'kpis', label: 'KPIs', icon: TrendingUp, component: KPIDashboard, color: 'text-indigo-600' },
-  { value: 'alerts', label: 'Alertas', icon: AlertCircle, component: AlertsManagement, color: 'text-red-600' },
-  { value: 'auditlogs', label: 'Audit Logs', icon: FileText, component: AuditLogsManagement, color: 'text-gray-600' },
+  { value: 'overview', label: 'Overview', icon: TrendingUp, component: AdminStats, color: 'from-blue-500 to-cyan-500' },
+  { value: 'users', label: 'Usuarios', icon: Users, component: UsersManagement, color: 'from-purple-500 to-pink-500' },
+  { value: 'roles', label: 'Roles', icon: Shield, component: RolesManagement, color: 'from-cyan-500 to-teal-500' },
+  { value: 'enterprises', label: 'Empresas', icon: Building2, component: EnterprisesManagement, color: 'from-green-500 to-emerald-500' },
+  { value: 'groups', label: 'Grupos', icon: Activity, component: GroupsManagement, color: 'from-orange-500 to-amber-500' },
+  
+  { value: 'events', label: 'Eventos', icon: BarChart3, component: EventsDashboard, color: 'from-yellow-500 to-orange-500' },
+
+  { value: 'kpis', label: 'KPIs', icon: TrendingUp, component: KPIDashboard, color: 'from-indigo-500 to-purple-500' },
+  { value: 'report', label: 'Reporte', icon: Brain, component: HealthReport, color: 'from-indigo-500 to-purple-500' },
+  { value: 'daily-emp-metrics', label: 'Daily M Empleados', icon: User, component: DailyEmployeeMetrics, color: 'from-blue-400 to-indigo-500' },
+  { value: 'daily-group-metrics', label: 'Daily M Grupos', icon: Users, component: DailyGroupMetrics, color: 'from-pink-500 to-rose-500' },
+
+  { value: 'alerts', label: 'Alertas', icon: AlertCircle, component: AlertsManagement, color: 'from-red-500 to-pink-500' },
+  { value: 'auditlogs', label: 'Audit Logs', icon: FileText, component: AuditLogsManagement, color: 'from-gray-500 to-slate-500' },
+
+  { value: 'surveys', label: 'Encuestas', icon: FileText, component: SurveysDashboard, color: 'from-purple-400 to-fuchsia-500' },
+  { value: 'interventions', label: 'Intervenciones', icon: Bell, component: InterventionsManagement, color: 'from-emerald-500 to-teal-500' },
+
+  { value: 'reports', label: 'Reportes', icon: FileText, component: ReportsDashboard, color: 'from-yellow-400 to-green-400' },
+  { value: 'prediction', label: 'Predicción IA', icon: Sparkles, component: PredictionDashboard, color: 'from-fuchsia-500 to-purple-600' },
 ];
+
 
 export function AdminDashboard() {
   const { user, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notificationCount] = useState(3);
 
   const activeTabData = TABS.find(tab => tab.value === activeTab);
 
-  // Función de logout mejorada con feedback visual
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -63,7 +91,6 @@ export function AdminDashboard() {
     }
   };
 
-  // Obtener iniciales del usuario
   const getUserInitials = () => {
     if (!user?.name) return 'U';
     const names = user.name.split(' ');
@@ -73,80 +100,107 @@ export function AdminDashboard() {
     return user.name.charAt(0).toUpperCase();
   };
 
-  // Badge de rol con color dinámico
-  const getRoleBadgeColor = () => {
-    switch (user?.role) {
-      case 'admin':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'user':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
       <SessionTimeout />
 
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950"></div>
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.02)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
+      </div>
+
       {/* Header */}
-      <header className="border-b bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl shadow-lg">
         <div className="flex h-16 items-center px-4 lg:px-6 max-w-[1920px] mx-auto">
           {/* Logo */}
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <Heart className="h-8 w-8 text-red-500 animate-pulse" />
-              <Brain className="h-4 w-4 text-blue-500 absolute -bottom-1 -right-1" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-md opacity-75"></div>
+              <div className="relative w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 VisionNext
               </h1>
-              <p className="text-[10px] text-gray-500 font-medium tracking-wide">ADMIN PORTAL</p>
+              <p className="text-[9px] text-gray-500 font-medium tracking-wider">ADMIN PORTAL</p>
+            </div>
+          </div>
+
+          {/* Search Bar - Desktop */}
+          <div className="hidden lg:flex flex-1 max-w-md mx-8">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar usuarios, empresas..."
+                className="w-full h-9 pl-10 pr-4 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder:text-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
             </div>
           </div>
 
           {/* Right Section */}
-          <div className="ml-auto flex items-center space-x-3">
+          <div className="ml-auto flex items-center space-x-2 lg:space-x-3">
             {/* Secured Badge */}
-            <Badge variant="secondary" className="hidden lg:flex items-center space-x-1 bg-emerald-50 text-emerald-700 border-emerald-200">
+            <Badge className="hidden lg:flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">
               <Shield className="h-3 w-3" />
               <span className="text-xs font-medium">Secured</span>
             </Badge>
             
             {/* Notifications */}
-            <Button variant="ghost" size="sm" className="relative hover:bg-blue-50">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative hover:bg-white/10 text-gray-300 hover:text-white h-9 w-9 p-0"
+            >
               <Bell className="h-4 w-4" />
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold animate-pulse">
+                  {notificationCount}
+                </span>
+              )}
+            </Button>
+
+            {/* Settings */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hidden md:flex hover:bg-white/10 text-gray-300 hover:text-white h-9 w-9 p-0"
+            >
+              <Settings className="h-4 w-4" />
             </Button>
             
-            {/* User Info */}
-            <div className="hidden md:flex items-center space-x-3 pl-3 border-l">
+            {/* User Info - Desktop */}
+            <div className="hidden md:flex items-center space-x-3 pl-3 ml-3 border-l border-white/10">
               {loading ? (
                 <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="text-sm text-gray-500">Cargando...</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                  <span className="text-sm text-gray-400">Cargando...</span>
                 </div>
               ) : user ? (
                 <>
-                  <Avatar className="h-9 w-9 ring-2 ring-blue-100">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-sm">
-                    <p className="font-semibold text-gray-900">{user.name}</p>
-                    <div className="flex items-center space-x-1">
-                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${getRoleBadgeColor()}`}>
+                  <div className="text-sm text-right">
+                    <p className="font-semibold text-white">{user.name}</p>
+                    <div className="flex items-center justify-end space-x-1.5">
+                      <Badge className="text-[10px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
                         {user.role.toUpperCase()}
                       </Badge>
                       <span className="text-xs text-gray-500">• {user.organization}</span>
                     </div>
                   </div>
+                  <Avatar className="h-9 w-9 ring-2 ring-blue-500/30">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
                 </>
               ) : (
-                <div className="flex items-center space-x-2 text-amber-600">
+                <div className="flex items-center space-x-2 text-amber-400">
                   <AlertCircle className="h-4 w-4" />
                   <span className="text-sm">No autenticado</span>
                 </div>
@@ -155,7 +209,7 @@ export function AdminDashboard() {
 
             {/* Mobile User Avatar */}
             <div className="md:hidden">
-              <Avatar className="h-8 w-8 ring-2 ring-blue-100">
+              <Avatar className="h-8 w-8 ring-2 ring-blue-500/30">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-semibold">
                   {loading ? '...' : getUserInitials()}
@@ -169,7 +223,7 @@ export function AdminDashboard() {
               size="sm" 
               onClick={handleLogout}
               disabled={isLoggingOut || loading}
-              className="hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50"
+              className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all disabled:opacity-50 h-9"
             >
               {isLoggingOut ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -188,58 +242,71 @@ export function AdminDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+              <h2 className="text-3xl font-bold tracking-tight text-white">
                 Panel de Control
               </h2>
               {user && (
-                <Badge variant="secondary" className="hidden sm:inline-flex text-xs">
+                <Badge className="hidden sm:inline-flex text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
                   ID: {user.id}
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-400 mt-1.5">
               {user ? (
                 <>
-                  Bienvenido, <span className="font-semibold text-gray-900">{user.name}</span> 
-                  {' '}- Gestiona empresas, usuarios, grupos y monitorea datos bicognitivos
+                  Bienvenido, <span className="font-semibold text-blue-400">{user.name}</span> 
+                  {' '}- Gestiona empresas, usuarios, grupos y monitorea datos en tiempo real
                 </>
               ) : (
-                'Gestiona empresas, usuarios, grupos y monitorea datos bicognitivos'
+                'Gestiona empresas, usuarios, grupos y monitorea datos en tiempo real'
               )}
             </p>
           </div>
           
           {/* Mobile Tab Selector */}
-          <div className="sm:hidden">
-            <Button 
-              variant="outline" 
-              className="w-full justify-between"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <span className="flex items-center space-x-2">
-                {activeTabData && <activeTabData.icon className="h-4 w-4" />}
-                <span>{activeTabData?.label}</span>
-              </span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            className="sm:hidden w-full justify-between border-white/10 bg-slate-900/50 hover:bg-slate-800/50 text-white"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <span className="flex items-center space-x-2">
+              {activeTabData && <activeTabData.icon className="h-4 w-4" />}
+              <span>{activeTabData?.label}</span>
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Desktop Tabs - Scrollable */}
-          <div className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          {/* Desktop Tabs */}
+          <div className="hidden sm:block overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
             <div className="relative">
-              <TabsList className="inline-flex w-auto bg-white/80 backdrop-blur-sm p-1 rounded-lg shadow-sm border">
+              <TabsList className="inline-flex w-auto bg-slate-900/50 backdrop-blur-sm p-1.5 rounded-xl border border-white/10">
                 {TABS.map(tab => {
                   const Icon = tab.icon;
+                  const isActive = activeTab === tab.value;
                   return (
                     <TabsTrigger 
                       key={tab.value} 
                       value={tab.value}
-                      className="flex items-center space-x-2 px-4 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all whitespace-nowrap"
+                      className={`
+                        relative flex items-center space-x-2 px-4 py-2.5 rounded-lg
+                        transition-all whitespace-nowrap
+                        ${isActive 
+                          ? 'text-white' 
+                          : 'text-gray-400 hover:text-gray-300'
+                        }
+                        data-[state=active]:shadow-lg
+                      `}
                     >
-                      <Icon className={`h-4 w-4 ${activeTab === tab.value ? tab.color : 'text-gray-500'}`} />
-                      <span className="text-sm font-medium">{tab.label}</span>
+                      {isActive && (
+                        <div className={`absolute inset-0 bg-gradient-to-r ${tab.color} rounded-lg opacity-20`}></div>
+                      )}
+                      <Icon className={`h-4 w-4 relative z-10 ${isActive ? 'text-white' : ''}`} />
+                      <span className="text-sm font-medium relative z-10">{tab.label}</span>
+                      {isActive && (
+                        <Sparkles className="h-3 w-3 text-white/60 relative z-10 animate-pulse" />
+                      )}
                     </TabsTrigger>
                   );
                 })}
@@ -249,9 +316,10 @@ export function AdminDashboard() {
 
           {/* Mobile Dropdown Menu */}
           {mobileMenuOpen && (
-            <div className="sm:hidden bg-white rounded-lg shadow-lg border p-2 space-y-1 animate-in slide-in-from-top duration-200">
+            <div className="sm:hidden bg-slate-900/80 backdrop-blur-xl rounded-xl border border-white/10 p-2 space-y-1 animate-in slide-in-from-top duration-200">
               {TABS.map(tab => {
                 const Icon = tab.icon;
+                const isActive = activeTab === tab.value;
                 return (
                   <button
                     key={tab.value}
@@ -259,13 +327,15 @@ export function AdminDashboard() {
                       setActiveTab(tab.value);
                       setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
-                      activeTab === tab.value 
-                        ? 'bg-blue-50 text-blue-700' 
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
+                    className={`
+                      w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all
+                      ${isActive 
+                        ? 'bg-white/10 text-white' 
+                        : 'hover:bg-white/5 text-gray-400'
+                      }
+                    `}
                   >
-                    <Icon className={`h-5 w-5 ${activeTab === tab.value ? tab.color : 'text-gray-400'}`} />
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-blue-400' : ''}`} />
                     <span className="font-medium">{tab.label}</span>
                   </button>
                 );
@@ -280,7 +350,7 @@ export function AdminDashboard() {
               value={tab.value}
               className="animate-in fade-in-50 duration-300"
             >
-              <div className="bg-white/50 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="bg-slate-900/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10 shadow-xl">
                 <tab.component />
               </div>
             </TabsContent>
@@ -289,20 +359,20 @@ export function AdminDashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-white/80 backdrop-blur-sm mt-12">
+      <footer className="border-t border-white/10 bg-slate-900/50 backdrop-blur-sm mt-12">
         <div className="px-4 lg:px-6 py-4 max-w-[1920px] mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-400">
             <div className="flex items-center space-x-2">
               <p>© 2025 VisionNext. Todos los derechos reservados.</p>
               {user && (
-                <span className="hidden lg:inline text-xs text-gray-400">
+                <span className="hidden lg:inline text-xs text-gray-500">
                   • Sesión activa: {user.email}
                 </span>
               )}
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="text-xs">v2.1.0</Badge>
-              <span className="text-xs">Sistema de Salud Bicognitiva</span>
+              <Badge variant="outline" className="text-xs border-white/10 text-gray-400">v2.1.0</Badge>
+              <span className="text-xs">Sistema de Analytics Empresarial</span>
             </div>
           </div>
         </div>

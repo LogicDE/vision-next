@@ -82,7 +82,7 @@ export class AuthController {
 
     try {
       const payload: any = this.jwtService.verify(token);
-      return { id: payload.sub, nombre: payload.name, email: payload.email, rol: payload.role };
+      return { id: payload.sub, nombre: payload.nombre, email: payload.email, rol: payload.role };
     } catch {
       throw new HttpException('No autorizado', HttpStatus.UNAUTHORIZED);
     }

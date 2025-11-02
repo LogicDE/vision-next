@@ -1,11 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsOptional, MaxLength } from 'class-validator';
 
 export class CreateActionDto {
   @IsString()
-  @IsNotEmpty()
-  action_name!: string;
+  @MaxLength(100)
+  actionName!: string;
 
-  @IsOptional()
   @IsString()
-  action_desc?: string;
+  @IsOptional()
+  @MaxLength(255)
+  actionDesc?: string;
 }

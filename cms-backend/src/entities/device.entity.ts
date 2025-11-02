@@ -1,28 +1,21 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  CreateDateColumn,
-  JoinColumn,
-} from 'typeorm';
-import { Empresa } from './empresa.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { EnterpriseLocation } from './enterprise-location.entity';
 
 @Entity('devices')
 export class Device {
   @PrimaryGeneratedColumn({ name: 'id_device' })
   id!: number;
 
-  @ManyToOne(() => Empresa, (empresa) => empresa.devices, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'id_enterprise' })
-  empresa!: Empresa;
+  @ManyToOne(() => EnterpriseLocation, (l: EnterpriseLocation) => l.devices, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_location' })
+  location!: EnterpriseLocation;
 
-  @Column({ name: 'device_type', type: 'varchar', length: 50 })
+  @Column({ length: 100, nullable: true })
+  name?: string;
+
+  @Column({ name: 'device_type', length: 50 })
   deviceType!: string;
 
-  @CreateDateColumn({ name: 'registration_date', type: 'timestamptz' })
-  registrationDate!: Date;
+  @Column({ name: 'registered_at', type: 'timestamptz', default: () => 'NOW()' })
+  registeredAt!: Date;
 }

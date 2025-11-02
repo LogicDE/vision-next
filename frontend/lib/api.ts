@@ -32,7 +32,7 @@ export const WEBSOCKET_URL = (() => {
 
 // 🌟 Instancia Axios
 const api = axios.create({
-  baseURL: API_URL || 'http://localhost:8000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   withCredentials: true,
 });
 

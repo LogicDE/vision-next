@@ -20,10 +20,11 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.burnout_model import BurnoutPredictor
-from app.AlertsService import AlertsService
-from app.DashboardService import DashboardService
-from app.InterventionService import InterventionService
-from app.clients import MetricsClient
+
+from app.AlertsService.alerts_service import AlertsService
+from app.DashboardService.dashboard_service import DashboardService
+from app.InterventionService.intervention_service import InterventionService
+from app.clients.metrics_client import MetricsClient
 
 # Crear instancia de FastAPI
 app = FastAPI(
@@ -640,4 +641,5 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8001)

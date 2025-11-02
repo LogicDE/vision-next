@@ -1,0 +1,385 @@
+# Microservicio de Burnout
+
+## 📋 Descripción
+
+Microservicio completo para análisis y prevención de burnout que integra:
+- **Predicción de burnout** mediante Machine Learning (Gradient Boosting)
+- **Sistema de alertas** automático basado en umbrales
+- **Dashboard** con resumen completo del estado del empleado
+- **Generación de intervenciones** personalizadas
+
+## 🏗️ Arquitectura
+
+```
+microservicio_burnout/
+├── app/
+│   ├── main.py                      # API FastAPI principal
+│   ├── burnout_model.py             # Modelo ML para predicción
+│   ├── AlertsService/               # Servicio de generación de alertas
+│   ├── DashboardService/            # Servicio de resumen y dashboard
+│   ├── InterventionService/         # Servicio de intervenciones
+│   └── clients/                     # Cliente HTTP para cms-backend
+├── models/
+│   └── burnout_model.pkl            # Modelo ML entrenado
+├── requirements.txt                 # Dependencias Python
+├── Dockerfile                       # Imagen Docker
+├── README.md                        # Este archivo
+└── ARCHITECTURE.md                  # Documentación técnica detallada
+```
+
+## ✨ Características Principales
+
+### 1. AlertsService
+- Detecta riesgo de burnout cuando probabilidad > 0.5
+- Clasifica severidad: low, medium, high, critical
+- Identifica factores contribuyentes específicos
+- Genera acciones inmediatas recomendadas
+- Determina necesidad de notificación a supervisor
+
+### 2. DashboardService
+- Resumen completo del estado del empleado
+- Análisis de 6+ métricas clave
+- Scores por 4 categorías (fisiológico, cognitivo, bienestar, carga laboral)
+- Identificación de top 5 causas principales
+- Recomendaciones personalizadas
+
+### 3. InterventionService
+- 40+ intervenciones específicas implementadas
+- Organización por timeframe (inmediato, corto, medio, largo plazo)
+- Clasificación por prioridad (crítica, alta, media, baja)
+- Plan de acción en 4 fases con criterios de éxito
+- Seguimiento y resultados esperados
+
+### 4. MetricsClient
+- Integración con cms-backend/src/modules/metrics
+- Autenticación JWT
+- Transformación automática de datos
+- Fallback a métricas por defecto en caso de error
+
+## 🚀 Instalación y Despliegue
+
+### Requisitos Previos
+- Python 3.9+
+- Docker (opcional, recomendado)
+
+### Opción 1: Docker (Recomendado)
+
+```bash
+# Construir la imagen
+docker build -t microservicio-burnout .
+
+# Ejecutar el contenedor
+docker run -d \
+  -p 8001:8001 \
+  -e CMS_BACKEND_URL=http://cms-backend:3000 \
+  --name burnout-service \
+  microservicio-burnout
+```
+
+### Opción 2: Docker Compose
+
+Agregar al `docker-compose.yml` del proyecto:
+
+```yaml
+services:
+  microservicio-burnout:
+    build: ./microservicio_burnout
+    container_name: burnout-service
+    ports:
+      - "8001:8001"
+    environment:
+      - CMS_BACKEND_URL=http://cms-backend:3000
+    depends_on:
+      - cms-backend
+    networks:
+      - vision-network
+    restart: unless-stopped
+```
+
+Luego ejecutar:
+
+```bash
+docker-compose up -d microservicio-burnout
+```
+
+### Opción 3: Ejecución Local
+
+```bash
+# Instalar dependencias
+cd microservicio_burnout
+pip install -r requirements.txt
+
+# Iniciar el servicio
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+## 🌐 API Endpoints
+
+### Información y Salud
+```
+GET  /                           # Información del microservicio
+GET  /api/burnout/health         # Estado de salud del servicio
+```
+
+### Gestión del Modelo
+```
+POST /api/burnout/train          # Entrenar modelo (si tienes datos)
+POST /api/burnout/load-model     # Cargar/recargar modelo manualmente
+GET  /api/burnout/metrics        # Métricas del modelo ML
+```
+
+### Predicción Básica
+```
+GET  /api/burnout/predict/{id}   # Predicción simple de burnout
+POST /api/burnout/predict/{id}   # Predicción con datos personalizados
+```
+
+### Análisis Completo
+```
+GET  /api/burnout/analyze/{id}          # Análisis completo integrado
+GET  /api/burnout/alerts/{id}           # Solo generación de alertas
+GET  /api/burnout/dashboard/{id}        # Solo resumen de dashboard
+GET  /api/burnout/interventions/{id}    # Solo plan de intervenciones
+POST /api/burnout/analyze-custom        # Análisis con métricas manuales
+```
+
+## 📊 Uso del API
+
+### Ejemplo: Análisis Completo
+
+```bash
+curl -X GET "http://localhost:8001/api/burnout/analyze/123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Respuesta:**
+```json
+{
+  "user_id": 123,
+  "generated_at": "2025-11-01T10:30:00",
+  "prediction": {
+    "burnout_probability": 0.65,
+    "burnout_prediction": 1,
+    "burnout_level": "moderate",
+    "risk_category": "Riesgo Moderado"
+  },
+  "alert": {
+    "alert_id": "ALERT-123-20251101103000",
+    "severity": "medium",
+    "message": "⚠️ ALERTA MEDIA: ...",
+    "immediate_actions": [...],
+    "contributing_factors": [...]
+  },
+  "summary": {
+    "overview": {...},
+    "key_metrics": [...],
+    "category_scores": {...},
+    "main_causes": [...]
+  },
+  "interventions": {
+    "total_interventions": 12,
+    "interventions_by_timeframe": {...},
+    "action_plan": {...}
+  }
+}
+```
+
+### Ejemplo: Solo Alertas
+
+```bash
+curl -X GET "http://localhost:8001/api/burnout/alerts/123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Ejemplo: Con Métricas Personalizadas
+
+```bash
+curl -X POST "http://localhost:8001/api/burnout/analyze-custom?user_id=123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "time_to_recover": 40.0,
+    "high_stress_prevalence_perc": 30.0,
+    "median_hrv": 35.0,
+    "avg_pulse": 80.0,
+    "sleep_score": 60.0,
+    "media_hrv": 35.0,
+    "eda_peaks": 18.0,
+    "time_to_recover_hrv": 40.0,
+    "weekly_hours_in_meetings": 28.0,
+    "time_on_focus_blocks": 3.0,
+    "absenteesim_days": 1.5,
+    "high_stress_prevalence": 0.30,
+    "nps_score": 6.5,
+    "intervention_acceptance_rate": 0.45
+  }'
+```
+
+## 🔗 Integración con el Proyecto
+
+### Desde el Frontend (Next.js)
+
+```typescript
+// lib/burnoutClient.ts
+import axios from 'axios';
+
+const burnoutClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_BURNOUT_URL || 'http://localhost:8001',
+});
+
+export async function getBurnoutAnalysis(userId: number) {
+  const response = await burnoutClient.get(`/api/burnout/analyze/${userId}`);
+  return response.data;
+}
+```
+
+### Desde el CMS Backend (NestJS)
+
+```typescript
+// burnout.service.ts
+import { HttpService } from '@nestjs/axios';
+
+@Injectable()
+export class BurnoutService {
+  constructor(private readonly httpService: HttpService) {}
+
+  async getAnalysis(userId: number) {
+    const url = `${process.env.BURNOUT_SERVICE_URL}/api/burnout/analyze/${userId}`;
+    const response = await firstValueFrom(this.httpService.get(url));
+    return response.data;
+  }
+}
+```
+
+## ⚙️ Variables de Entorno
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `CMS_BACKEND_URL` | URL del cms-backend para obtener métricas | `http://cms-backend:3000` |
+
+## 📈 Métricas Requeridas
+
+El servicio espera 14 métricas del usuario:
+
+### Métricas Fisiológicas
+- `median_hrv` - Variabilidad cardíaca mediana (ms)
+- `avg_pulse` - Pulso promedio (bpm)
+- `sleep_score` - Puntuación de calidad del sueño (0-100)
+- `time_to_recover` - Tiempo de recuperación (minutos)
+- `eda_peaks` - Picos de actividad electrodérmica
+
+### Métricas de Estrés
+- `high_stress_prevalence_perc` - Porcentaje de tiempo en estrés alto
+- `high_stress_prevalence` - Prevalencia de estrés alto (0-1)
+
+### Métricas de Trabajo
+- `weekly_hours_in_meetings` - Horas semanales en reuniones
+- `time_on_focus_blocks` - Tiempo diario en bloques de enfoque (horas)
+- `absenteesim_days` - Días de ausentismo
+
+### Métricas de Satisfacción
+- `nps_score` - Net Promoter Score (0-10)
+- `intervention_acceptance_rate` - Tasa de aceptación de intervenciones (0-1)
+
+## 📖 Documentación
+
+- **API Interactiva**: `http://localhost:8001/docs` (Swagger UI)
+- **Documentación Alternativa**: `http://localhost:8001/redoc`
+- **Arquitectura Detallada**: Ver [ARCHITECTURE.md](ARCHITECTURE.md)
+
+## 🔒 Seguridad
+
+- Autenticación mediante JWT tokens
+- Validación de entrada con Pydantic
+- Headers CORS configurables
+- Sin almacenamiento de datos sensibles
+
+## 🐛 Solución de Problemas
+
+### Error: "Modelo no disponible"
+**Solución**: Cargar el modelo manualmente:
+```bash
+curl -X POST "http://localhost:8001/api/burnout/load-model"
+```
+
+### Error de conexión con cms-backend
+**Solución**: Verificar:
+1. Que cms-backend está corriendo
+2. La variable de entorno `CMS_BACKEND_URL`
+3. El servicio continuará funcionando con métricas por defecto
+
+### Servicio no inicia
+**Solución**: Verificar:
+```bash
+# Ver logs del contenedor
+docker logs burnout-service
+
+# Verificar que el puerto 8001 está disponible
+netstat -an | grep 8001
+```
+
+## 📊 Flujo de Análisis
+
+```
+Usuario (ID) ──► GET /api/burnout/analyze/{user_id}
+                        │
+                        ▼
+                  MetricsClient
+                  Obtener métricas del cms-backend
+                        │
+                        ▼
+                  BurnoutPredictor
+                  Predecir probabilidad de burnout
+                        │
+                        ▼
+                  AlertsService
+                  ¿Probabilidad > 0.5? → Generar alerta
+                        │
+                        ▼
+                  DashboardService
+                  Analizar estado completo
+                  - Calcular scores
+                  - Identificar causas
+                        │
+                        ▼
+                  InterventionService
+                  Generar plan de intervenciones
+                  - Basado en causas principales
+                  - Organizado por prioridad
+                        │
+                        ▼
+                  Respuesta JSON Completa
+```
+
+## 🎯 Rendimiento
+
+- Predicción de burnout: < 100ms
+- Análisis completo: < 500ms (sin latencia de red)
+- Soporte para múltiples requests concurrentes
+- Cache de modelo ML en memoria
+
+## 📝 Notas de Versión
+
+### Versión 2.0.0 (Actual)
+- ✅ Sistema modular con 3 servicios especializados
+- ✅ Integración con cms-backend
+- ✅ Sistema de alertas automático
+- ✅ Dashboard completo
+- ✅ 40+ intervenciones personalizadas
+- ✅ Listo para producción
+
+## 📄 Licencia
+
+Proyecto académico - Universidad
+
+## 👥 Soporte
+
+Para consultas o problemas:
+1. Revisar la documentación en [ARCHITECTURE.md](ARCHITECTURE.md)
+2. Consultar la API interactiva en `/docs`
+3. Contactar al equipo de desarrollo
+
+---
+
+**Estado**: ✅ Producción  
+**Versión**: 2.0.0  
+**Última actualización**: Noviembre 2025

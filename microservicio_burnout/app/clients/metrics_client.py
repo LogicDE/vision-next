@@ -25,7 +25,7 @@ class MetricsClient:
         """
         self.base_url = base_url or os.getenv(
             "CMS_BACKEND_URL", 
-            "http://cms-backend:3000"
+            "http://cms-backend:8000"
         )
         self.timeout = 30.0
         

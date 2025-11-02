@@ -22,7 +22,7 @@ export class ActionsService {
   }
 
   async findOne(id: number) {
-    const action = await this.actionRepo.findOne({ where: { id_action: id } });
+    const action = await this.actionRepo.findOne({ where: { id: id } });
     if (!action) throw new NotFoundException('Action no encontrada');
     return action;
   }
