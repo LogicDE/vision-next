@@ -131,7 +131,7 @@ Badge de rol dinámico en la interfaz.
 
 Sesión expirada y timeout controlado.
 
-4. KPIs y Métricas
+4. KPIs y Métricas Mejorado para implementacion con Modelo IA ademas de los presentes
 
 Panel de métricas integradas con vistas y funciones en PostgreSQL:
 
@@ -149,7 +149,7 @@ Líneas, barras, área, radar.
 
 Actualización en tiempo real desde Redis y PostgreSQL.
 
-5. Redis
+5. Redis mejoraro para persistencia de datos proximos a implementar
 
 Cache de métricas y coordinación de microservicios implementada en cms-backend/src/redis.
 
@@ -162,6 +162,15 @@ Validación de datos en formularios antes de persistir en DB.
 Conexión directa a la base de datos para métricas y administración.
 
 Sesiones y roles protegidos mediante middleware y contextos de autenticación.
+
+8. IA y Predicciones para generacion de Reportes
+
+Microservicio de predicción de burnout
+
+Integración con dashboard de predicciones (PredictionDashboard)
+
+Generación de reportes automáticos con Sugerencias IA + Ajustes Locales mediante cacheo en Redis para mejorar persistencia
+
 
 📖 Referencias
 
