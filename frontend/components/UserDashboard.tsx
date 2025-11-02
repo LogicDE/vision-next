@@ -14,6 +14,7 @@ import { AIAssistant } from '@/components/user/AIAssistant';
 import { UserSettings } from '@/components/user/UserSettings';
 import { NotificationsPanel } from '@/components/user/NotificationsPanel';
 import { SessionTimeout } from '@/components/SessionTimeoutModal';
+import { UserHealthReport }  from '@/components/user/UserHealthReport';
 
 const TABS = [
   { value: 'health', label: 'Salud', icon: Heart, component: HealthMetrics, color: 'from-red-500 to-pink-500' },
@@ -21,6 +22,7 @@ const TABS = [
   { value: 'ai', label: 'IA', icon: Zap, component: AIAssistant, color: 'from-purple-500 to-fuchsia-500' },
   { value: 'alerts', label: 'Alertas', icon: Bell, component: NotificationsPanel, color: 'from-yellow-500 to-orange-500' },
   { value: 'settings', label: 'Config', icon: Settings, component: UserSettings, color: 'from-gray-500 to-slate-500' },
+  { value: 'report', label: 'Reporte', icon: Brain, component: UserHealthReport, color: 'from-indigo-500 to-purple-500' },
 ];
 
 export function UserDashboard() {

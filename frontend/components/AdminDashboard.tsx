@@ -22,7 +22,8 @@ import {
   User,
   Sparkles,
   Search,
-  Settings
+  Settings,
+  Brain
 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +43,7 @@ import { DailyEmployeeMetrics } from '@/components/admin/DailyEmployeeMetrics';
 import { DailyGroupMetrics } from '@/components/admin/DailyGroupMetrics';
 import { EventsDashboard } from '@/components/admin/EventsDashboard';
 import { RolesManagement } from '@/components/admin/RolesManagement';
+import HealthReport from '@/components/admin/HealthReport';
 
 
 const TABS = [
@@ -54,6 +56,7 @@ const TABS = [
   { value: 'events', label: 'Eventos', icon: BarChart3, component: EventsDashboard, color: 'from-yellow-500 to-orange-500' },
 
   { value: 'kpis', label: 'KPIs', icon: TrendingUp, component: KPIDashboard, color: 'from-indigo-500 to-purple-500' },
+  { value: 'report', label: 'Reporte', icon: Brain, component: HealthReport, color: 'from-indigo-500 to-purple-500' },
   { value: 'daily-emp-metrics', label: 'Daily M Empleados', icon: User, component: DailyEmployeeMetrics, color: 'from-blue-400 to-indigo-500' },
   { value: 'daily-group-metrics', label: 'Daily M Grupos', icon: Users, component: DailyGroupMetrics, color: 'from-pink-500 to-rose-500' },
 
