@@ -17,6 +17,7 @@ export class MetricsService {
     return this.dataSource.query('SELECT * FROM sp_kpi_radar();');
   }
 
+  //Claaaro si metric esta capado a un userId y no esta tomando en cuenda algun stored procedure o realizar esa consulta de otra forma
   async getEmployeeMetrics(userId: string) {
     return this.dataSource.query(
       `SELECT * FROM daily_employee_metrics WHERE id_employee = $1 ORDER BY id_snapshot DESC LIMIT 100`,

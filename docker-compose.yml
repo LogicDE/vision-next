@@ -73,6 +73,8 @@ services:
   burnout-microservice:
     build: ./microservicio_burnout   # Microservicio de predicción de burnout
     restart: always
+    env_file:
+      - ./microservicio_burnout/.env
     ports:
       - "8001:8001"
     volumes:

@@ -15,9 +15,9 @@ export class IndivSurveyScore {
   @JoinColumn({ name: 'id_employee' })
   employee!: Employee;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ name: 'submitted_at', type: 'timestamptz', nullable: true })
   submittedAt?: Date;
 
-  @Column({ type: 'integer', nullable: true })
+  @Column({ name: 'indiv_score', type: 'integer', nullable: true })
   indivScore?: number;
 }

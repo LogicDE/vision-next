@@ -178,16 +178,16 @@ export function SessionTimeout() {
             <div className="bg-slate-800/50 border border-white/10 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-blue-400 mb-1">
                 <RefreshCw className="w-4 h-4" />
-                <span className="text-xs font-medium">Continuar</span>
+                <span className="text-xs font-medium">¿Continuar?</span>
               </div>
-              <p className="text-xs text-gray-400">Renovar sesión activa</p>
+              <p className="text-xs text-gray-400">Esto renovará tu sesión activa</p>
             </div>
             <div className="bg-slate-800/50 border border-white/10 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-red-400 mb-1">
                 <LogOut className="w-4 h-4" />
-                <span className="text-xs font-medium">Cerrar</span>
+                <span className="text-xs font-medium">¿Cerrar?</span>
               </div>
-              <p className="text-xs text-gray-400">Finalizar sesión</p>
+              <p className="text-xs text-gray-400">Esto finalizará tu sesión</p>
             </div>
           </div>
         </div>

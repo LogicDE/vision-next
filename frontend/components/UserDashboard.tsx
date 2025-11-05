@@ -170,12 +170,17 @@ export function UserDashboard() {
 
           {/* Tab Content */}
           {TABS.map(tab => (
-            <TabsContent key={tab.value} value={tab.value} className="animate-in fade-in-50 duration-300">
-              <div className="bg-slate-900/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10 shadow-xl">
-                <tab.component />
-              </div>
-            </TabsContent>
-          ))}
+  <TabsContent key={tab.value} value={tab.value} className="animate-in fade-in-50 duration-300">
+    <div className="bg-slate-900/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10 shadow-xl">
+      {user ? (
+        <tab.component userId={parseInt(user.id)} />
+      ) : (
+        <p className="text-gray-400">Cargando usuario...</p>
+      )}
+    </div>
+  </TabsContent>
+))}
+
         </Tabs>
       </main>
     </div>

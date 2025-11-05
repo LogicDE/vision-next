@@ -18,14 +18,14 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Get(':userId')
-  @Roles('Admin', 'Manager', 'Employee', 'User')
+  @Roles('Admin', 'Manager', 'Employee', 'User', 'System')
   async getReport(
     @Param('userId') userId: string,
     @Query('format') format: 'json' | 'xml' = 'json',
     @Req() req: any,
   ) {
     const loggedUser = req.user;
-    const allowedRoles = ['Admin', 'Manager'];
+    const allowedRoles = ['Admin', 'Manager', 'User'];
 
     // Si no es Admin/Manager y quiere ver otro usuario → bloquear
     if (

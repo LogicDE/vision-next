@@ -1,250 +1,182 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Zap, 
-  MessageCircle, 
-  Send, 
-  Lightbulb, 
-  Heart, 
-  Brain, 
-  Target,
-  Sparkles,
-  Clock,
-  TrendingUp,
-  RefreshCw
-} from 'lucide-react';
+import { Lightbulb, Heart, Brain, Clock, Target, RefreshCw } from 'lucide-react';
 
-// Datos estáticos
-const mockRecommendations = [
-  {
-    id: '1',
-    type: 'health',
-    title: 'Optimización Cardiovascular',
-    content: 'Basándome en tus datos, te sugiero realizar ejercicio aeróbico moderado durante 20-25 minutos. Tu ritmo cardíaco actual es óptimo para actividad física.',
-    confidence: 95,
-    timestamp: 'Hace 5 minutos',
-    gradient: 'from-red-500 to-pink-500',
-    icon: Heart
-  },
-  {
-    id: '2',
-    type: 'mental',
-    title: 'Gestión del Estrés',
-    content: 'He detectado un patrón de estrés elevado entre las 14:00-16:00. Te recomiendo técnicas de respiración consciente o una pausa de 5 minutos cada hora.',
-    confidence: 88,
-    timestamp: 'Hace 15 minutos',
-    gradient: 'from-blue-500 to-cyan-500',
-    icon: Brain
-  },
-  {
-    id: '3',
-    type: 'sleep',
-    title: 'Mejora del Sueño',
-    content: 'Tu calidad de sueño ha mejorado un 15% esta semana. Mantén tu rutina actual y considera reducir la exposición a pantallas 1 hora antes de dormir.',
-    confidence: 92,
-    timestamp: 'Hace 25 minutos',
-    gradient: 'from-purple-500 to-violet-500',
-    icon: Clock
-  }
-];
+// Tipos de datos
+interface Recommendation {
+  id: string;
+  type: 'health' | 'mental' | 'sleep' | 'other';
+  title: string;
+  content: string;
+  confidence: number;
+  timestamp: string;
+  gradient: string;
+  icon: typeof Heart;
+}
 
-const mockInsights = [
-  {
-    metric: 'Ritmo Cardíaco',
-    insight: 'Estable con tendencia ligeramente descendente',
-    improvement: '+3% esta semana',
-    icon: Heart,
-    gradient: 'from-red-500 to-pink-500'
-  },
-  {
-    metric: 'Estado Mental',
-    insight: 'Mejora consistente en concentración',
-    improvement: '+8% este mes',
-    icon: Brain,
-    gradient: 'from-blue-500 to-cyan-500'
-  },
-  {
-    metric: 'Nivel de Actividad',
-    insight: 'Superaste tu meta diaria 5 de 7 días',
-    improvement: '+12% vs mes anterior',
-    icon: Target,
-    gradient: 'from-green-500 to-emerald-500'
-  }
-];
+interface Metric {
+  insight: string;
+  improvement: string;
+}
 
-const quickQuestions = [
-  { text: '¿Cómo está mi ritmo cardíaco hoy?', icon: Heart },
-  { text: '¿Qué ejercicios me recomiendas?', icon: Target },
-  { text: '¿Cómo puedo mejorar mi sueño?', icon: Clock }
-];
+interface Insight {
+  metric: string;
+  insight: string;
+  improvement: string;
+  icon: typeof Heart | typeof Brain | typeof Clock | typeof Target;
+  gradient: string;
+}
 
-export function AIAssistant() {
-  const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    {
-      type: 'ai',
-      content: '¡Hola! Soy tu asistente de IA bicognitiva. Estoy aquí para ayudarte a optimizar tu salud mental y física. ¿En qué puedo asistirte hoy?',
-      timestamp: new Date(Date.now() - 300000)
+interface BurnoutAnalysis {
+  interventions?: any; // Puede ser array, objeto o null
+  summary?: {
+    metrics?: Record<string, Metric>;
+  };
+}
+
+export function AIAssistant({ userId }: { userId: number }) {
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchRecommendations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`http://localhost:8001/api/burnout/analyze/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+      const data: BurnoutAnalysis = await res.json();
+
+      console.log('🔥 Datos recibidos del backend:', data);
+
+      // Asegurar que interventions sea un array
+      let interventionsArray: any[] = [];
+      if (Array.isArray(data.interventions)) {
+        interventionsArray = data.interventions;
+      } else if (data.interventions && typeof data.interventions === 'object') {
+        interventionsArray = [data.interventions];
+      }
+
+      const recs: Recommendation[] = interventionsArray.map((item, index) => ({
+        id: index.toString(),
+        type: item.type,
+        title: item.title,
+        content: item.description,
+        confidence: item.confidence ?? 90,
+        timestamp: item.timestamp ?? 'Reciente',
+        gradient: item.gradient ?? 'from-blue-500 to-cyan-500',
+        icon:
+          item.type === 'health'
+            ? Heart
+            : item.type === 'mental'
+            ? Brain
+            : item.type === 'sleep'
+            ? Clock
+            : Target,
+      }));
+      setRecommendations(recs);
+
+      const metrics = data.summary?.metrics || {};
+      const ins: Insight[] = Object.entries(metrics).map(([metric, value]) => ({
+        metric,
+        insight: value.insight,
+        improvement: value.improvement,
+        icon:
+          metric.toLowerCase().includes('cardiaco')
+            ? Heart
+            : metric.toLowerCase().includes('mental')
+            ? Brain
+            : metric.toLowerCase().includes('actividad')
+            ? Target
+            : Clock,
+        gradient: 'from-purple-500 to-pink-500',
+      }));
+      setInsights(ins);
+
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      setRecommendations([]);
+      setInsights([]);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  }, [userId]);
 
-  // Auto-scroll al final del chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory]);
-
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setIsRefreshing(false);
-  }, []);
-
-  const sendMessage = useCallback(() => {
-    if (!message.trim()) return;
-
-    const newMessage = {
-      type: 'user',
-      content: message,
-      timestamp: new Date()
-    };
-
-    // Simular respuesta de IA
-    const aiResponse = {
-      type: 'ai',
-      content: 'Basándome en tus datos bicognitivos actuales, puedo ver que tu ritmo cardíaco está en 72 BPM y tu estado mental al 85%. Te sugiero mantener tu nivel de actividad actual y considerar técnicas de relajación si sientes estrés.',
-      timestamp: new Date(Date.now() + 1000)
-    };
-
-    setChatHistory(prev => [...prev, newMessage, aiResponse]);
-    setMessage('');
-  }, [message]);
-
-  const handleQuickQuestion = useCallback((text: string) => {
-    setMessage(text);
-  }, []);
-
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }, [sendMessage]);
+    fetchRecommendations();
+  }, [fetchRecommendations]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
-            <div className="relative">
-              <Zap className="h-6 w-6 text-yellow-400 animate-pulse" />
-              <Sparkles className="h-3 w-3 text-purple-400 absolute -top-1 -right-1" />
-            </div>
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Asistente IA Bicognitivo
-            </span>
-          </h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Análisis inteligente y recomendaciones personalizadas en tiempo real
-          </p>
-        </div>
-        <Button 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+          <Lightbulb className="h-6 w-6 text-yellow-400" />
+          <span>Recomendaciones IA</span>
+        </h2>
+        <Button onClick={fetchRecommendations} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </div>
 
       {/* Quick Insights */}
       <div className="grid gap-4">
-        {mockInsights.map((insight, index) => {
-          const Icon = insight.icon;
+        {insights.length === 0 && <p className="text-gray-400">No hay insights disponibles.</p>}
+        {insights.map((ins, idx) => {
+          const Icon = ins.icon;
           return (
-            <Card 
-              key={index}
-              className="relative overflow-hidden border-white/10 bg-slate-900/50 backdrop-blur-sm group hover:border-white/20 transition-all duration-200"
-            >
-              <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${insight.gradient} rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-all`}></div>
-              <CardContent className="p-4 relative">
+            <Card key={idx} className="bg-slate-900/50 border-white/10">
+              <CardContent className="p-4 flex justify-between items-center">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${insight.gradient} flex items-center justify-center flex-shrink-0`}>
+                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${ins.gradient} flex items-center justify-center`}>
                     <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white truncate">{insight.metric}</p>
-                    <p className="text-sm text-gray-400 truncate">{insight.insight}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold text-green-400">{insight.improvement}</p>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      <span>Mejorando</span>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-white">{ins.metric}</p>
+                    <p className="text-sm text-gray-400">{ins.insight}</p>
                   </div>
                 </div>
+                <p className="text-sm font-semibold text-green-400">{ins.improvement}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* AI Recommendations */}
-      <Card className="relative overflow-hidden border-white/10 bg-slate-900/50 backdrop-blur-sm">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-white">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 flex items-center justify-center">
-              <Lightbulb className="h-5 w-5 text-white" />
-            </div>
-            <span>Recomendaciones Inteligentes</span>
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Sugerencias personalizadas basadas en IA
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 relative">
-          {mockRecommendations.map((rec) => {
-            const Icon = rec.icon;
-            return (
-              <div 
-                key={rec.id} 
-                className="relative p-4 bg-slate-800/50 rounded-lg border border-white/10 hover:border-white/20 transition-all group"
-              >
-                <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${rec.gradient} rounded-full blur-xl opacity-10 group-hover:opacity-20 transition-all`}></div>
-                <div className="flex items-start justify-between mb-2 relative">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${rec.gradient} flex items-center justify-center`}>
-                      <Icon className="h-4 w-4 text-white" />
-                    </div>
-                    <h4 className="font-semibold text-white">{rec.title}</h4>
+      {/* Recommendations */}
+      <div className="grid gap-4">
+        {recommendations.length === 0 && <p className="text-gray-400">No hay recomendaciones disponibles.</p>}
+        {recommendations.map((rec) => {
+          const Icon = rec.icon;
+          return (
+            <Card key={rec.id} className="bg-slate-900/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-white">
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${rec.gradient} flex items-center justify-center`}>
+                    <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                    {rec.confidence}% confianza
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-300 mb-3 relative">{rec.content}</p>
-                <div className="flex items-center justify-between text-xs text-gray-500 relative">
-                  <span>{rec.timestamp}</span>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs border-white/10 bg-slate-700/50 hover:bg-slate-600/50 text-white">
-                    Aplicar
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+                  <span>{rec.title}</span>
+                </CardTitle>
+                <CardDescription className="text-gray-400">{rec.content}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-between items-center">
+                <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                  {rec.confidence}% confianza
+                </Badge>
+                <span className="text-xs text-gray-400">{rec.timestamp}</span>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

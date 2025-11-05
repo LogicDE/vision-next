@@ -79,7 +79,7 @@ async getRealtimeMetrics(@Param('userId') userId: string) {
 
   // 🔹 Predicción de burnout
   @Get('predict/:userId')
-  @Roles('Admin', 'Manager', 'Employee')
+  @Roles('Admin', 'Manager', 'Employee', 'System')
   async predictBurnout(@Param('userId') userId: string) {
     const metrics = await this.metricsService.getEmployeeMetrics(userId);
     const score = await this.predictionService.predictBurnout(userId);

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Heart, Brain, Shield, Sparkles, LogIn, ArrowLeft } from 'lucide-react';
+import { Heart, Brain, Shield, LogIn, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function LoginForm() {
@@ -15,76 +15,132 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isMounted, setIsMounted] = useState(false);
+  
   const router = useRouter();
   const { login, user } = useAuth();
 
-  // Si ya está logueado, redirigir automáticamente
+  // Marcar componente como montado (cliente)
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Redirigir si ya está logueado
   useEffect(() => {
     if (user) {
       router.push(user.role === 'Admin' ? '/admin' : '/user');
     }
   }, [user, router]);
 
-  // Parallax para fondo animado
+  // Parallax optimizado con throttle
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) =>
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+    if (!isMounted) return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    let rafId: number;
+    let lastTime = 0;
+    const throttleMs = 16; // ~60fps
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastTime < throttleMs) return;
+      
+      lastTime = now;
+      
+      if (rafId) cancelAnimationFrame(rafId);
+      
+      rafId = requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isMounted]);
+
+  // Calcular offset parallax (memoizado y seguro)
+  const parallaxOffset = useMemo(() => {
+    if (!isMounted || typeof window === 'undefined') {
+      return { x: 0, y: 0 };
+    }
+    
+    return {
+      x: (mousePosition.x - window.innerWidth / 2) / 80,
+      y: (mousePosition.y - window.innerHeight / 2) / 80,
+    };
+  }, [mousePosition, isMounted]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    
     setLoading(true);
+    
     try {
       const currentUser = await login(email, password);
-      if (!currentUser) throw new Error('Usuario no encontrado');
+      
+      if (!currentUser) {
+        throw new Error('Usuario no encontrado');
+      }
 
       toast.success('Inicio de sesión exitoso');
       router.push(currentUser.role === 'Admin' ? '/admin' : '/user');
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Error al iniciar sesión');
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          'Error al iniciar sesión';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [email, password, loading, login, router]);
 
-  const demoLogin = (role: 'Admin' | 'User') => {
-    const demoEmail =
-      role === 'Admin'
-        ? 'carlos@vitanexo.com'
-        : 'juan.perez@demo.com';
+  const demoLogin = useCallback((role: 'Admin' | 'User') => {
+    const demoEmail = role === 'Admin' 
+      ? 'carlos@vitanexo.com' 
+      : 'juan.perez@demo.com';
+    
     setEmail(demoEmail);
     setPassword('123456');
-  };
+  }, []);
 
-  // Calcular offset parallax
-  const parallaxOffset = {
-    x: (mousePosition.x - window.innerWidth / 2) / 80,
-    y: (mousePosition.y - window.innerHeight / 2) / 80,
-  };
+  // Renderizado SSR-safe con loading state
+  if (!isMounted) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950">
+        <div className="text-white">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950 text-white">
       {/* Fondo animado */}
       <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950" />
+        
         <div
           className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"
           style={{
             transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px)`,
             transition: 'transform 0.3s ease-out',
+            willChange: 'transform',
           }}
-        ></div>
+        />
+        
         <div
           className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"
           style={{
             transform: `translate(${-parallaxOffset.x}px, ${-parallaxOffset.y}px)`,
             transition: 'transform 0.3s ease-out',
+            willChange: 'transform',
           }}
-        ></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.03)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
+        />
+        
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.03)_1px,transparent_1px)] bg-[size:72px_72px]" />
       </div>
 
       {/* Contenedor principal */}
@@ -107,7 +163,8 @@ export function LoginForm() {
 
         {/* Tarjeta de login */}
         <Card className="relative border border-white/10 bg-white/10 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden group transition-all duration-500 hover:shadow-purple-500/30 hover:scale-[1.02]">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 opacity-50 group-hover:opacity-70 transition-all"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 opacity-50 group-hover:opacity-70 transition-all" />
+          
           <CardHeader className="relative text-center space-y-2">
             <CardTitle className="text-2xl font-semibold text-white">
               Iniciar Sesión
@@ -131,8 +188,11 @@ export function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-12 bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500"
                   required
+                  autoComplete="email"
+                  disabled={loading}
                 />
               </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm text-gray-300">
                   Contraseña
@@ -145,6 +205,8 @@ export function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500"
                   required
+                  autoComplete="current-password"
+                  disabled={loading}
                 />
               </div>
 
@@ -157,7 +219,7 @@ export function LoginForm() {
                   {loading ? 'Cargando...' : 'Ingresar'}
                   {!loading && <LogIn className="ml-2 w-5 h-5" />}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
               </Button>
             </form>
 
@@ -168,16 +230,20 @@ export function LoginForm() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => demoLogin('Admin')}
+                  disabled={loading}
                   className="border-blue-400/40 text-blue-300 hover:bg-blue-500/20 hover:text-white transition-all"
                 >
                   <Shield className="h-4 w-4 mr-1" />
                   Admin
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => demoLogin('User')}
+                  disabled={loading}
                   className="border-purple-400/40 text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all"
                 >
                   <Heart className="h-4 w-4 mr-1" />
@@ -189,8 +255,10 @@ export function LoginForm() {
             {/* Botón volver a inicio */}
             <div className="pt-4 text-center">
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => router.push('/')}
+                disabled={loading}
                 className="text-gray-400 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center mx-auto"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" /> Volver al inicio

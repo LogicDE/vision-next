@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Activity, TrendingUp, AlertCircle, Menu, X, ChevronRight, BarChart3, Shield, Zap, CheckCircle, Star, ArrowRight, Sparkles, Globe, Lock, Rocket } from 'lucide-react';
@@ -11,66 +11,185 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [activeFeature, setActiveFeature] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+  
   const router = useRouter();
 
-
+  // Marcar componente como montado
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Scroll handler optimizado
+  useEffect(() => {
+    if (!isMounted) return;
+
+    let rafId: number;
+    let lastScrollY = 0;
+
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      if (rafId) cancelAnimationFrame(rafId);
+      
+      rafId = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        if (Math.abs(currentScrollY - lastScrollY) > 5) {
+          setScrolled(currentScrollY > 50);
+          lastScrollY = currentScrollY;
+        }
+      });
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [isMounted]);
 
+  // Mouse move optimizado con throttle
+  useEffect(() => {
+    if (!isMounted) return;
+
+    let rafId: number;
+    let lastTime = 0;
+    const throttleMs = 32; // ~30fps para mejor performance
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastTime < throttleMs) return;
+      
+      lastTime = now;
+      
+      if (rafId) cancelAnimationFrame(rafId);
+      
+      rafId = requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isMounted]);
+
+  // Auto-rotate features
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % 4);
     }, 3000);
+    
     return () => clearInterval(interval);
   }, []);
 
-  const handleNavigation = (path: string) => {
-  router.push(path);
-};
+  const handleNavigation = useCallback((path: string) => {
+    router.push(path);
+  }, [router]);
 
-  const parallaxOffset = {
-    x: (mousePosition.x - (typeof window !== 'undefined' ? window.innerWidth : 1920) / 2) / 50,
-    y: (mousePosition.y - (typeof window !== 'undefined' ? window.innerHeight : 1080) / 2) / 50,
-  };
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen(prev => !prev);
+  }, []);
+
+  // Parallax calculation (SSR-safe y memoizado)
+  const parallaxOffset = useMemo(() => {
+    if (!isMounted || typeof window === 'undefined') {
+      return { x: 0, y: 0 };
+    }
+    
+    return {
+      x: (mousePosition.x - window.innerWidth / 2) / 50,
+      y: (mousePosition.y - window.innerHeight / 2) / 50,
+    };
+  }, [mousePosition, isMounted]);
+
+  // Features data (memoizado para evitar re-creación)
+  const features = useMemo(() => [
+    {
+      icon: Users,
+      title: 'Gestión de Equipos',
+      description: 'Organiza equipos y grupos con flujos de datos para monitorear su salud',
+      gradient: 'from-purple-500 to-purple-600',
+      delay: '0s'
+    },
+    {
+      icon: Activity,
+      title: 'Monitoreo en Tiempo Real',
+      description: 'Seguimiento continuo de KPIs críticos con alertas inteligentes y dashboards únicos según el usuario u administrador.',
+      gradient: 'from-green-500 to-emerald-600',
+      delay: '0.1s'
+    },
+    {
+      icon: TrendingUp,
+      title: 'Analytics Avanzado',
+      description: 'IA y machine learning para predecir tendencias y optimizar decisiones estratégicas mediante recomendaciones.',
+      gradient: 'from-blue-500 to-cyan-600',
+      delay: '0.2s'
+    },
+    {
+      icon: AlertCircle,
+      title: 'Alertas Inteligentes',
+      description: 'Notificaciones contextuales que priorizan lo importante y reducen el ruido.',
+      gradient: 'from-red-500 to-pink-600',
+      delay: '0.3s'
+    }
+  ], []);
+
+  const statsData = useMemo(() => [
+    { icon: Activity, label: 'Engagement', value: '94%', color: 'from-blue-500 to-cyan-500', active: activeFeature === 0 },
+    { icon: TrendingUp, label: 'Productividad', value: '+28%', color: 'from-purple-500 to-pink-500', active: activeFeature === 1 },
+  ], [activeFeature]);
+
+  const activityFeed = useMemo(() => [
+    { text: 'Nuevo insight generado', time: '5m ago', color: 'bg-blue-500' },
+    { text: 'Alerta de bajo engagement', time: '10m ago', color: 'bg-red-500' },
+    { text: 'Reporte semanal listo', time: '30m ago', color: 'bg-green-500' },
+  ], []);
+
+  const benefitsChecklist = useMemo(() => [
+    'Aseguramiento y Control de acceso',
+    'Redis-Auth',
+    'Seguridad Integrada'
+  ], []);
+
+  // Loading state para SSR
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
       
       {/* Animated Background */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950" />
+        
         <div 
           className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"
           style={{ 
             transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px)`,
-            transition: 'transform 0.3s ease-out'
+            transition: 'transform 0.3s ease-out',
+            willChange: 'transform'
           }}
-        ></div>
+        />
+        
         <div 
           className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"
           style={{ 
             transform: `translate(${-parallaxOffset.x}px, ${-parallaxOffset.y}px)`,
             transition: 'transform 0.3s ease-out',
-            animationDelay: '1s'
+            animationDelay: '1s',
+            willChange: 'transform'
           }}
-        ></div>
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.03)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
+        />
+        
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.03)_1px,transparent_1px)] bg-[size:72px_72px]" />
       </div>
 
       {/* Navbar */}
@@ -81,9 +200,13 @@ export default function LandingPage() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => handleNavigation('/')}>
+            <button 
+              type="button"
+              className="flex items-center space-x-3 cursor-pointer group" 
+              onClick={() => handleNavigation('/')}
+            >
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity" />
                 <div className="relative w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform">
                   <BarChart3 className="w-7 h-7 text-white" />
                 </div>
@@ -91,19 +214,20 @@ export default function LandingPage() {
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 VisionNext
               </span>
-            </div>
+            </button>
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-300 hover:text-white transition-colors relative group">
                 Características
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full transition-all duration-300" />
               </a>
               <a href="#benefits" className="text-gray-300 hover:text-white transition-colors relative group">
                 Beneficios
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 group-hover:w-full transition-all duration-300" />
               </a>
               <Button 
+                type="button"
                 className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-purple-500/50 transition-all"
                 onClick={() => handleNavigation('/login')}
               >
@@ -111,14 +235,16 @@ export default function LandingPage() {
                   Iniciar Sesión
                   <Sparkles className="w-4 h-4 ml-2" />
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
               </Button>
             </div>
 
             {/* Mobile Menu Button */}
             <button 
+              type="button"
               className="md:hidden p-2 rounded-xl hover:bg-white/10 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={toggleMobileMenu}
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -129,15 +255,27 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-950/95 backdrop-blur-xl border-t border-white/10">
             <div className="px-4 py-6 space-y-4">
-              <a href="#features" className="block text-gray-300 hover:text-white py-3 px-4 rounded-lg hover:bg-white/10 transition-colors">
+              <a 
+                href="#features" 
+                className="block text-gray-300 hover:text-white py-3 px-4 rounded-lg hover:bg-white/10 transition-colors"
+                onClick={toggleMobileMenu}
+              >
                 Características
               </a>
-              <a href="#benefits" className="block text-gray-300 hover:text-white py-3 px-4 rounded-lg hover:bg-white/10 transition-colors">
+              <a 
+                href="#benefits" 
+                className="block text-gray-300 hover:text-white py-3 px-4 rounded-lg hover:bg-white/10 transition-colors"
+                onClick={toggleMobileMenu}
+              >
                 Beneficios
               </a>
               <Button 
+                type="button"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
-                onClick={() => handleNavigation('/login')}
+                onClick={() => {
+                  toggleMobileMenu();
+                  handleNavigation('/login');
+                }}
               >
                 Iniciar Sesión
               </Button>
@@ -165,7 +303,7 @@ export default function LandingPage() {
                 <span className="block text-white">y Productividad</span>
               </h1>
               
-              <p className="text-xl text-gray-400 leading-relaxed max-w-xl">
+              <p className="text-xl text-gray-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
                 Transforma datos en insights accionables. Monitorea el bienestar de tus equipos con 
                 <span className="text-blue-400 font-semibold"> IA en tiempo real</span> y toma decisiones 
                 estratégicas que impulsan resultados.
@@ -173,6 +311,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Button 
+                  type="button"
                   size="lg" 
                   className="relative overflow-hidden group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl shadow-blue-500/50 hover:shadow-purple-500/50 transition-all transform hover:scale-105 text-lg px-10 py-7"
                   onClick={() => handleNavigation('/login')}
@@ -181,7 +320,7 @@ export default function LandingPage() {
                     Iniciar Sesión Ahora
                     <Rocket className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                 </Button>
               </div>
             </div>
@@ -189,8 +328,8 @@ export default function LandingPage() {
             {/* Right Visual - Interactive Dashboard Mockup */}
             <div className="relative lg:scale-110">
               {/* Floating Elements */}
-              <div className="absolute -top-10 -left-10 w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl opacity-50 blur-xl animate-pulse"></div>
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl opacity-50 blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute -top-10 -left-10 w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl opacity-50 blur-xl animate-pulse" />
+              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl opacity-50 blur-xl animate-pulse" style={{ animationDelay: '1s' }} />
               
               <div className="relative">
                 {/* Main Dashboard Card */}
@@ -199,9 +338,9 @@ export default function LandingPage() {
                     {/* Header */}
                     <div className="p-6 border-b border-white/10 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
                       </div>
                       <div className="text-xs text-gray-400">Dashboard Overview</div>
                     </div>
@@ -210,15 +349,12 @@ export default function LandingPage() {
                     <div className="p-6 space-y-4">
                       {/* Stat Cards */}
                       <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { icon: Activity, label: 'Engagement', value: '94%', color: 'from-blue-500 to-cyan-500', active: activeFeature === 0 },
-                          { icon: TrendingUp, label: 'Productividad', value: '+28%', color: 'from-purple-500 to-pink-500', active: activeFeature === 1 },
-                        ].map((stat, i) => (
+                        {statsData.map((stat, i) => (
                           <div 
                             key={i}
                             className={`relative p-4 rounded-2xl bg-gradient-to-br ${stat.color} ${stat.active ? 'opacity-100 scale-105' : 'opacity-60 scale-100'} transition-all duration-500`}
                           >
-                            <div className="absolute inset-0 bg-slate-950/20 rounded-2xl"></div>
+                            <div className="absolute inset-0 bg-slate-950/20 rounded-2xl" />
                             <div className="relative">
                               <stat.icon className="w-6 h-6 text-white mb-2" />
                               <div className="text-2xl font-bold text-white">{stat.value}</div>
@@ -240,19 +376,16 @@ export default function LandingPage() {
                                 animationDelay: `${i * 0.1}s`,
                                 opacity: 0.8 + (i * 0.025)
                               }}
-                            ></div>
+                            />
                           ))}
                         </div>
                       </div>
 
                       {/* Activity Feed */}
                       <div className="space-y-2">
-                        {[
-                          { text: 'Grupo Alpha Sprint Completado', time: '2m ago', color: 'bg-green-500' },
-                          { text: 'Nuevo insight generado', time: '5m ago', color: 'bg-blue-500' },
-                        ].map((activity, i) => (
+                        {activityFeed.map((activity, i) => (
                           <div key={i} className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                            <div className={`w-2 h-2 rounded-full ${activity.color} animate-pulse`}></div>
+                            <div className={`w-2 h-2 rounded-full ${activity.color} animate-pulse`} />
                             <div className="flex-1 text-sm text-gray-300">{activity.text}</div>
                             <div className="text-xs text-gray-500">{activity.time}</div>
                           </div>
@@ -292,10 +425,6 @@ export default function LandingPage() {
       <section id="features" className="py-26 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-6 mb-20">
-            <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm font-medium text-blue-300">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Características Poderosas
-            </div>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold">
               <span className="text-white">Todo lo que necesitas en</span>
               <br />
@@ -309,43 +438,14 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: Users,
-                title: 'Gestión de Equipos',
-                description: 'Organiza equipos y grupos con flujos de datos para monitorear su salud',
-                gradient: 'from-purple-500 to-purple-600',
-                delay: '0s'
-              },
-              {
-                icon: Activity,
-                title: 'Monitoreo en Tiempo Real',
-                description: 'Seguimiento continuo de KPIs críticos con alertas inteligentes y dashboards unicos segun el usuario u administrador.',
-                gradient: 'from-green-500 to-emerald-600',
-                delay: '0.1s'
-              },
-              {
-                icon: TrendingUp,
-                title: 'Analytics Avanzado',
-                description: 'IA y machine learning para predecir tendencias y optimizar decisiones estratégicas mediante recomendaciones.',
-                gradient: 'from-blue-500 to-cyan-600',
-                delay: '0.2s'
-              },
-              {
-                icon: AlertCircle,
-                title: 'Alertas Inteligentes',
-                description: 'Notificaciones contextuales que priorizan lo importante y reducen el ruido.',
-                gradient: 'from-red-500 to-pink-600',
-                delay: '0.3s'
-              }
-            ].map((feature, index) => (
+            {features.map((feature, index) => (
               <div
                 key={index}
                 className="group relative"
                 style={{ animationDelay: feature.delay }}
               >
                 {/* Glow Effect */}
-                <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 rounded-3xl`}></div>
+                <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 rounded-3xl`} />
                 
                 <div className="relative h-full bg-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all duration-500 hover:transform hover:-translate-y-2">
                   <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
@@ -353,12 +453,6 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-4">{feature.title}</h3>
                   <p className="text-gray-400 leading-relaxed">{feature.description}</p>
-                  
-                  {/* Hover Arrow */}
-                  <div className="mt-6 flex items-center text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <span className="text-sm font-medium">Explorar</span>
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </div>
                 </div>
               </div>
             ))}
@@ -373,7 +467,7 @@ export default function LandingPage() {
             <h2 className="text-4xl sm:text-5xl font-bold text-white">
               Beneficios que{' '}
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                transforman
+                transforman el monitoreo
               </span>
             </h2>
           </div>
@@ -381,15 +475,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Large Card */}
             <div className="lg:col-span-2 lg:row-span-2 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 rounded-3xl p-8 relative overflow-hidden group hover:border-white/20 transition-all">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
               <div className="relative z-10">
                 <Shield className="w-12 h-12 text-blue-400 mb-6" />
-                <h3 className="text-3xl font-bold text-white mb-4">Seguridad Empresarial con Autenticacion Redis</h3>
+                <h3 className="text-3xl font-bold text-white mb-4">Seguridad Empresarial con Autenticación Redis</h3>
                 <p className="text-gray-400 text-lg leading-relaxed mb-6">
                   Encriptación de extremo a extremo, cumplimiento con la seguridad al Cliente. Tus datos están protegidos con los más altos estándares de la industria.
                 </p>
                 <div className="space-y-3">
-                  {['Encriptación y control de acceso', 'Redis Auth', 'Seguridad Integrada'].map((item, i) => (
+                  {benefitsChecklist.map((item, i) => (
                     <div key={i} className="flex items-center space-x-3">
                       <CheckCircle className="w-5 h-5 text-green-400" />
                       <span className="text-gray-300">{item}</span>
@@ -421,7 +515,7 @@ export default function LandingPage() {
             <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-8 hover:border-white/20 transition-all group">
               <BarChart3 className="w-10 h-10 text-green-400 mb-4 group-hover:scale-110 transition-transform" />
               <h3 className="text-xl font-bold text-white mb-3">Monitoreo Comprobado</h3>
-              <p className="text-gray-400">40% de incremento en monitoreo y deteccion de salud</p>
+              <p className="text-gray-400">40% de incremento en monitoreo y detección de salud</p>
             </div>
           </div>
         </div>

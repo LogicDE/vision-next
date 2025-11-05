@@ -18,6 +18,11 @@ export class RolesGuard implements CanActivate {
 
     if (!user) throw new ForbiddenException('No user found in request');
 
+    // 🔹 Si es una llamada interna entre microservicios → acceso directo
+    if (user.isInternal) {
+      return true;
+    }
+
     const has = requiredRoles.includes(user.role);
     if (!has) throw new ForbiddenException('Insufficient role');
     return true;
