@@ -82,7 +82,6 @@ services:
       - ./microservicio_burnout/models/burnout_model.pkl:/app/models/burnout_model.pkl
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
-
   frontend:
     build: 
       context: ./frontend
