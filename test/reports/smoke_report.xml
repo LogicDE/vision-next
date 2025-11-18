@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.944" timestamp="2025-11-13T03:29:47.425308+00:00" hostname="e758dde86480"><testcase classname="smoke.test_cms_smoke" name="test_health_check" time="0.112"><failure message="requests.exceptions.ConnectionError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))">self = &lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.375" timestamp="2025-11-17T17:46:44.388982+00:00" hostname="f9bb4f30a05a"><testcase classname="smoke.test_cms_smoke" name="test_health_check" time="0.006"><failure message="requests.exceptions.ConnectionError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))">self = &lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;
 
     def _new_conn(self) -&gt; socket.socket:
         """Establish a socket connection and set nodelay settings on it.
@@ -75,7 +75,7 @@ E               ConnectionRefusedError: [Errno 111] Connection refused
 
 The above exception was the direct cause of the following exception:
 
-self = &lt;urllib3.connectionpool.HTTPConnectionPool object at 0x7f18589a2390&gt;
+self = &lt;urllib3.connectionpool.HTTPConnectionPool object at 0x7be292415450&gt;
 method = 'GET', url = '/health', body = None
 headers = {'User-Agent': 'python-requests/2.32.4', 'Accept-Encoding': 'gzip, deflate, br', 'Accept': '*/*', 'Connection': 'keep-alive'}
 retries = Retry(total=0, connect=None, read=False, redirect=None, status=None)
@@ -314,7 +314,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
                 ^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = &lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;
+self = &lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;
 
     def _new_conn(self) -&gt; socket.socket:
         """Establish a socket connection and set nodelay settings on it.
@@ -340,13 +340,13 @@ self = &lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;
 &gt;           raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
             ) from e
-E           urllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;: Failed to establish a new connection: [Errno 111] Connection refused
+E           urllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;: Failed to establish a new connection: [Errno 111] Connection refused
 
 /usr/local/lib/python3.11/site-packages/urllib3/connection.py:213: NewConnectionError
 
 The above exception was the direct cause of the following exception:
 
-self = &lt;requests.adapters.HTTPAdapter object at 0x7f18599c82d0&gt;
+self = &lt;requests.adapters.HTTPAdapter object at 0x7be2913d1190&gt;
 request = &lt;PreparedRequest [GET]&gt;, stream = False
 timeout = Timeout(connect=None, read=None, total=None), verify = True
 cert = None, proxies = OrderedDict()
@@ -427,9 +427,9 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = Retry(total=0, connect=None, read=False, redirect=None, status=None)
 method = 'GET', url = '/health', response = None
-error = NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;: Failed to establish a new connection: [Errno 111] Connection refused')
-_pool = &lt;urllib3.connectionpool.HTTPConnectionPool object at 0x7f18589a2390&gt;
-_stacktrace = &lt;traceback object at 0x7f18597fe8c0&gt;
+error = NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;: Failed to establish a new connection: [Errno 111] Connection refused')
+_pool = &lt;urllib3.connectionpool.HTTPConnectionPool object at 0x7be292415450&gt;
+_stacktrace = &lt;traceback object at 0x7be292bcf8c0&gt;
 
     def increment(
         self,
@@ -524,7 +524,7 @@ _stacktrace = &lt;traceback object at 0x7f18597fe8c0&gt;
             reason = error or ResponseError(cause)
 &gt;           raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E           urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))
+E           urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))
 
 /usr/local/lib/python3.11/site-packages/urllib3/util/retry.py:519: MaxRetryError
 
@@ -550,7 +550,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = &lt;requests.adapters.HTTPAdapter object at 0x7f18599c82d0&gt;
+self = &lt;requests.adapters.HTTPAdapter object at 0x7be2913d1190&gt;
 request = &lt;PreparedRequest [GET]&gt;, stream = False
 timeout = Timeout(connect=None, read=None, total=None), verify = True
 cert = None, proxies = OrderedDict()
@@ -643,6 +643,6 @@ cert = None, proxies = OrderedDict()
                 raise SSLError(e, request=request)
     
 &gt;           raise ConnectionError(e, request=request)
-E           requests.exceptions.ConnectionError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7f18599840d0&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))
+E           requests.exceptions.ConnectionError: HTTPConnectionPool(host='cms-backend', port=8000): Max retries exceeded with url: /health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x7be2913d3710&gt;: Failed to establish a new connection: [Errno 111] Connection refused'))
 
 /usr/local/lib/python3.11/site-packages/requests/adapters.py:700: ConnectionError</failure></testcase></testsuite></testsuites>
