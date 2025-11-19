@@ -56,8 +56,8 @@ services:
       - /app/node_modules
     command: npm run start:dev
 
-  microservices-backend:
-    build: ./microservices-backend
+  biometric-microservice:
+    build: ./biometric-microservice
     restart: always
     depends_on:
       - influxdb
@@ -67,7 +67,7 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./microservices-backend:/app
+      - ./biometric-microservice:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
 
   burnout-microservice:

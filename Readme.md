@@ -36,7 +36,7 @@ Contenerización Docker & Docker Compose
 vision-next/
 │
 ├─ cms-backend/ # Node.js / NestJS backend con CRUD y Redis
-├─ microservices-backend/ # FastAPI backend
+├─ biometric-microservice/ # FastAPI backend (biometric data & IoT ingestion)
 ├─ frontend/ # Next.js frontend y dashboard admin
 ├─ config/ # Archivos de configuración (.env)
 ├─ initdb/ # Scripts SQL iniciales para VitAnexo
@@ -75,7 +75,7 @@ vision-next-redis-1
 
 vision-next-cms-backend-1
 
-vision-next-microservices-backend-1
+vision-next-biometric-microservice-1
 
 vision-next-frontend-1
 
