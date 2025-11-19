@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import {
   Users, Building2, Activity, Shield, Server, AlertTriangle, CheckCircle, TrendingUp, 
-  Zap, Database, Clock, RefreshCw, AlertCircle
+  Zap, Database, Clock, RefreshCw, AlertCircle, Heart, Brain, Activity as ActivityIcon
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line,
+  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { fetchAPI } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,45 @@ type Employee = {
 };
 type Enterprise = { id: number; name: string; email: string; telephone: string };
 
+// Tipos corregidos para las métricas reales
+type GroupMetricFromAPI = {
+  group_id: number;
+  group_name: string;
+  metric_name: string;
+  avg_value: number;
+  min_value: number;
+  max_value: number;
+};
+
+type GroupMetricChart = {
+  name: string;
+  'Frecuencia Cardiaca': number;
+  'Estado Mental': number;
+  'Estrés': number;
+};
+
+// Tipo CORREGIDO para EnterpriseWellbeing - basado en lo que realmente devuelve el backend
+type EnterpriseWellbeingFromAPI = {
+  enterprise_id: number;
+  enterprise_name: string;
+  wellbeing_avg: number | null;
+  stress_avg: number;
+  mental_state_avg: number;
+};
+
+type TrendAlert = {
+  group_name: string;
+  metric: string;
+  trend: string;
+  change_percentage: number;
+  severity: 'high' | 'medium' | 'low';
+};
+
 interface DataState {
   realtime: MetricItem[];
-  weekly: MetricItem[];
-  radar: RadarItem[];
+  groupMetrics: GroupMetricFromAPI[];
+  enterpriseWellbeing: EnterpriseWellbeingFromAPI | null;
+  trendAlerts: TrendAlert[];
   enterprises: Enterprise[];
   employees: Employee[];
   services: any[];
@@ -45,23 +81,14 @@ interface StatusState {
 // Default/Fallback data
 const DEFAULT_DATA: DataState = {
   realtime: [
-    { label: 'CPU', value: 35 },
-    { label: 'RAM', value: 70 },
+    { label: 'Grupos Activos', value: 8 },
+    { label: 'Empleados Monitoreados', value: 45 },
   ],
-  weekly: [
-    { label: 'Lunes', value: 5 },
-    { label: 'Martes', value: 7 },
-    { label: 'Miércoles', value: 9 },
-    { label: 'Jueves', value: 6 },
-    { label: 'Viernes', value: 10 },
-  ],
-  radar: [
-    { metric: 'CPU', score: 80 },
-    { metric: 'Memoria', score: 65 },
-    { metric: 'Red', score: 90 },
-  ],
-  enterprises: [{ id: 1, name: 'Acme Inc.', email: 'info@acme.com', telephone: '555-1234' }],
-  employees: [{ id: 1, first_name: 'Carlos', last_name: 'Rasgo', email: 'carlos@example.com', username: 'carlosr' }],
+  groupMetrics: [],
+  enterpriseWellbeing: null,
+  trendAlerts: [],
+  enterprises: [{ id: 1, name: 'VitaNexo Corporativo', email: 'corporate@vitanexo.com', telephone: '5512345678' }],
+  employees: [{ id: 1, first_name: 'Carlos', last_name: 'Lodic', email: 'carlos@vitanexo.com', username: 'carloslodic' }],
   services: [{ id: 1, name: 'API Gateway' }, { id: 2, name: 'Worker Queue' }],
 };
 
@@ -80,9 +107,11 @@ const CustomTooltip = memo(({ active, payload, label }: any) => {
   return (
     <div className="bg-slate-800/95 backdrop-blur-sm border border-white/10 rounded-lg p-3 shadow-xl">
       <p className="text-white font-semibold mb-1">{label}</p>
-      <p className="text-blue-400 text-sm">
-        Valor: <span className="font-bold">{payload[0].value}</span>
-      </p>
+      {payload.map((entry: any, index: number) => (
+        <p key={index} className="text-blue-400 text-sm">
+          {entry.name}: <span className="font-bold">{entry.value}</span>
+        </p>
+      ))}
     </div>
   );
 });
@@ -185,6 +214,16 @@ const ErrorState = memo(({ onRetry }: { onRetry: () => void }) => (
 
 ErrorState.displayName = 'ErrorState';
 
+// Helper function to get color by severity
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'high': return 'text-red-400 bg-red-500/20 border-red-500/30';
+    case 'medium': return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+    case 'low': return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
+    default: return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+  }
+};
+
 export function AdminStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -198,11 +237,101 @@ export function AdminStats() {
   const employeeCount = useMemo(() => data.employees.length, [data.employees]);
   const serviceCount = useMemo(() => data.services.length, [data.services]);
 
-  // Memoized system health percentage
+  // Memoized system health percentage based on real data - VERSIÓN CORREGIDA
   const systemHealth = useMemo(() => {
-    const healthScore = data.radar.reduce((sum, item) => sum + item.score, 0) / data.radar.length;
-    return Math.round(healthScore);
-  }, [data.radar]);
+    if (data.enterpriseWellbeing) {
+      // Calcular score general basado en las métricas disponibles
+      const mentalStateScore = data.enterpriseWellbeing.mental_state_avg;
+      const stressScore = 100 - data.enterpriseWellbeing.stress_avg; // Invertir: menor estrés = mejor
+      const wellbeingScore = data.enterpriseWellbeing.wellbeing_avg || mentalStateScore;
+      
+      return Math.round((mentalStateScore + stressScore + wellbeingScore) / 3);
+    }
+    return 85; // Fallback
+  }, [data.enterpriseWellbeing]);
+
+  // Transformar datos de groupMetrics para la gráfica - VERSIÓN CORREGIDA
+  const transformedGroupMetrics = useMemo(() => {
+    if (!data.groupMetrics || data.groupMetrics.length === 0) return [];
+
+    // Agrupar métricas por grupo
+    const groupedData = data.groupMetrics.reduce((acc: any, metric: GroupMetricFromAPI) => {
+      if (!acc[metric.group_name]) {
+        acc[metric.group_name] = {
+          name: metric.group_name,
+          'Frecuencia Cardiaca': 0,
+          'Estado Mental': 0,
+          'Estrés': 0
+        };
+      }
+
+      // Asignar valores según el tipo de métrica
+      switch (metric.metric_name) {
+        case 'heart_rate':
+          acc[metric.group_name]['Frecuencia Cardiaca'] = Math.round(metric.avg_value);
+          break;
+        case 'mental_state':
+          acc[metric.group_name]['Estado Mental'] = Math.round(metric.avg_value);
+          break;
+        case 'stress':
+          acc[metric.group_name]['Estrés'] = Math.round(metric.avg_value);
+          break;
+      }
+
+      return acc;
+    }, {});
+
+    return Object.values(groupedData);
+  }, [data.groupMetrics]);
+
+  // Contar grupos únicos para el badge - VERSIÓN CORREGIDA
+  const uniqueGroupsCount = useMemo(() => {
+    if (!data.groupMetrics || data.groupMetrics.length === 0) return 0;
+    const uniqueGroups = new Set(data.groupMetrics.map((metric: GroupMetricFromAPI) => metric.group_name));
+    return uniqueGroups.size;
+  }, [data.groupMetrics]);
+
+  // Radar data CORREGIDO - basado en los datos reales del backend
+  const wellbeingRadarData = useMemo(() => {
+    if (!data.enterpriseWellbeing) return [];
+    
+    const { mental_state_avg, stress_avg, wellbeing_avg } = data.enterpriseWellbeing;
+    
+    return [
+      {
+        metric: 'Estado Mental',
+        score: Math.round(mental_state_avg),
+        fullMark: 100,
+      },
+      {
+        metric: 'Manejo Estrés',
+        score: Math.round(100 - stress_avg), // Invertido: menor estrés = mejor
+        fullMark: 100,
+      },
+      {
+        metric: 'Bienestar General',
+        score: Math.round(wellbeing_avg || mental_state_avg), // Usar wellbeing o fallback a mental_state
+        fullMark: 100,
+      },
+      {
+        metric: 'Salud Emocional',
+        score: Math.round((mental_state_avg + (100 - stress_avg)) / 2), // Combinación de mental y estrés
+        fullMark: 100,
+      },
+      {
+        metric: 'Balance General',
+        score: Math.round((mental_state_avg + (100 - stress_avg) + (wellbeing_avg || mental_state_avg)) / 3),
+        fullMark: 100,
+      }
+    ];
+  }, [data.enterpriseWellbeing]);
+
+  const alertsData = useMemo(() => 
+    data.trendAlerts.map(alert => ({
+      name: alert.group_name,
+      'Cambio %': alert.change_percentage,
+      severity: alert.severity
+    })), [data.trendAlerts]);
 
   // Load data function
   const loadData = useCallback(async (isRefresh = false) => {
@@ -218,10 +347,11 @@ export function AdminStats() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-      const [realtime, weekly, radar, enterprises, employees, services] = await Promise.allSettled([
+      const [realtime, groupSummary, enterpriseSummary, trends, enterprises, employees, services] = await Promise.allSettled([
         fetchAPI('/metrics/realtime', { signal: controller.signal }),
-        fetchAPI('/metrics/weekly', { signal: controller.signal }),
-        fetchAPI('/metrics/radar', { signal: controller.signal }),
+        fetchAPI('/metrics/admin/group-summary', { signal: controller.signal }),
+        fetchAPI('/metrics/admin/enterprise-summary', { signal: controller.signal }),
+        fetchAPI('/metrics/admin/trends', { signal: controller.signal }),
         fetchAPI('/enterprises', { signal: controller.signal }),
         fetchAPI('/employees', { signal: controller.signal }),
         fetchAPI('/services', { signal: controller.signal }),
@@ -232,8 +362,11 @@ export function AdminStats() {
       // Process results with fallbacks
       setData({
         realtime: (realtime.status === 'fulfilled' && realtime.value?.length) ? realtime.value : DEFAULT_DATA.realtime,
-        weekly: (weekly.status === 'fulfilled' && weekly.value?.length) ? weekly.value : DEFAULT_DATA.weekly,
-        radar: (radar.status === 'fulfilled' && radar.value?.length) ? radar.value : DEFAULT_DATA.radar,
+        groupMetrics: (groupSummary.status === 'fulfilled' && Array.isArray(groupSummary.value)) ? groupSummary.value : [],
+        enterpriseWellbeing: (enterpriseSummary.status === 'fulfilled' && Array.isArray(enterpriseSummary.value) && enterpriseSummary.value.length > 0) 
+          ? enterpriseSummary.value[0]  // Tomar el primer elemento del array
+          : null,
+        trendAlerts: (trends.status === 'fulfilled' && Array.isArray(trends.value)) ? trends.value : [],
         enterprises: (enterprises.status === 'fulfilled' && Array.isArray(enterprises.value)) ? enterprises.value : DEFAULT_DATA.enterprises,
         employees: (employees.status === 'fulfilled' && Array.isArray(employees.value)) ? employees.value : DEFAULT_DATA.employees,
         services: (services.status === 'fulfilled' && Array.isArray(services.value)) ? services.value : DEFAULT_DATA.services,
@@ -324,10 +457,10 @@ export function AdminStats() {
         <div>
           <h3 className="text-2xl font-bold text-white flex items-center space-x-2">
             <TrendingUp className="w-6 h-6 text-blue-400" />
-            <span>Panel de Métricas</span>
+            <span>Panel de Métricas de Bienestar</span>
           </h3>
           <p className="text-gray-400 text-sm mt-1">
-            Estadísticas y rendimiento del sistema en tiempo real
+            Monitoreo en tiempo real de la salud organizacional
             {lastUpdate && (
               <span className="ml-2 text-gray-500">
                 • Actualizado {lastUpdate.toLocaleTimeString()}
@@ -356,9 +489,9 @@ export function AdminStats() {
       {/* Main Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Usuarios"
+          title="Empleados"
           value={employeeCount}
-          subtitle="Registrados en el sistema"
+          subtitle="Monitoreados activamente"
           icon={Users}
           gradient="from-blue-500 to-cyan-500"
           glowColor="bg-blue-500"
@@ -421,90 +554,140 @@ export function AdminStats() {
         </Card>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Weekly Metrics Chart */}
-        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
+      {/* Charts Section - TRES GRÁFICAS FUNCIONALES */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Gráfica 1: Métricas por Grupo - VERSIÓN CORREGIDA */}
+        <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-white flex items-center space-x-2">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-white" />
+                    <Users className="w-4 h-4 text-white" />
                   </div>
-                  <span>Métricas Semanales</span>
+                  <span>Métricas por Grupo</span>
                 </CardTitle>
                 <CardDescription className="text-gray-400 mt-1">
-                  Promedio de actividad por semana
+                  Comparación de métricas clave entre grupos
                 </CardDescription>
               </div>
               <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                Semanal
+                {uniqueGroupsCount} Grupos
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={data.weekly}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="label" stroke="#94A3B8" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#94A3B8" style={{ fontSize: '12px' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  fill="url(#colorValue)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {transformedGroupMetrics.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={transformedGroupMetrics}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#94A3B8" 
+                    style={{ fontSize: '12px' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis stroke="#94A3B8" style={{ fontSize: '12px' }} />
+                  <Tooltip 
+                    content={<CustomTooltip />}
+                    formatter={(value: number) => [`${value}`, 'Valor']}
+                  />
+                  <Bar 
+                    dataKey="Frecuencia Cardiaca" 
+                    fill="#3B82F6" 
+                    radius={[2, 2, 0, 0]}
+                    name="Frecuencia Cardiaca"
+                  />
+                  <Bar 
+                    dataKey="Estado Mental" 
+                    fill="#10B981" 
+                    radius={[2, 2, 0, 0]}
+                    name="Estado Mental"
+                  />
+                  <Bar 
+                    dataKey="Estrés" 
+                    fill="#EF4444" 
+                    radius={[2, 2, 0, 0]}
+                    name="Estrés"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <Activity className="w-12 h-12 mb-2 opacity-50" />
+                <p>No hay datos disponibles</p>
+                <p className="text-sm">Los grupos no tienen métricas registradas</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* System Health Chart */}
+        {/* Gráfica 2: Radar de Bienestar*/}
         <Card className="border-white/10 bg-slate-800/50 backdrop-blur-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-white flex items-center space-x-2">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-white" />
+                    <ActivityIcon className="w-4 h-4 text-white" />
                   </div>
-                  <span>Indicadores de Estado</span>
+                  <span>Bienestar General</span>
                 </CardTitle>
                 <CardDescription className="text-gray-400 mt-1">
-                  Rendimiento del sistema: <span className="font-semibold text-green-400">{systemHealth}%</span>
+                  {data.enterpriseWellbeing ? (
+                    <>
+                      Salud organizacional: <span className="font-semibold text-green-400">{systemHealth}%</span>
+                      <div className="text-xs mt-1">
+                        Estado Mental: {Math.round(data.enterpriseWellbeing.mental_state_avg)}% • 
+                        Estrés: {Math.round(data.enterpriseWellbeing.stress_avg)}%
+                      </div>
+                    </>
+                  ) : (
+                    "Cargando datos de bienestar..."
+                  )}
                 </CardDescription>
               </div>
               <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                Saludable
+                Empresa
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.radar}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="metric" stroke="#94A3B8" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#94A3B8" style={{ fontSize: '12px' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#10B981" 
-                  strokeWidth={3} 
-                  dot={{ fill: '#10B981', r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {wellbeingRadarData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <RadarChart data={wellbeingRadarData}>
+                  <PolarGrid stroke="#334155" />
+                  <PolarAngleAxis 
+                    dataKey="metric" 
+                    stroke="#94A3B8" 
+                    style={{ fontSize: '11px' }} 
+                  />
+                  <PolarRadiusAxis 
+                    stroke="#94A3B8" 
+                    domain={[0, 100]}
+                  />
+                  <Tooltip 
+                    content={<CustomTooltip />}
+                    formatter={(value: number) => [`${value}%`, 'Puntuación']}
+                  />
+                  <Radar
+                    name="Bienestar"
+                    dataKey="score"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.3}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <ActivityIcon className="w-12 h-12 mb-2 opacity-50" />
+                <p>No hay datos de bienestar</p>
+                <p className="text-sm">La empresa no tiene métricas registradas</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -518,7 +701,7 @@ export function AdminStats() {
                 <Server className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">Sistema Operativo</p>
+                <p className="text-sm font-semibold text-white">Sistema de Bienestar Operativo</p>
                 <p className="text-xs text-gray-400">
                   {status.cms && status.xml 
                     ? 'Todos los servicios funcionando correctamente' 
@@ -529,8 +712,8 @@ export function AdminStats() {
             </div>
             <div className="flex items-center space-x-6">
               <div className="text-center">
-                <p className="text-xs text-gray-400">Total Requests</p>
-                <p className="text-lg font-bold text-white">1,234</p>
+                <p className="text-xs text-gray-400">Empleados Activos</p>
+                <p className="text-lg font-bold text-white">{employeeCount}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-gray-400">Avg Response</p>
@@ -539,8 +722,8 @@ export function AdminStats() {
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-400">Success Rate</p>
-                <p className="text-lg font-bold text-green-400">99.8%</p>
+                <p className="text-xs text-gray-400">Bienestar General</p>
+                <p className="text-lg font-bold text-green-400">{systemHealth}%</p>
               </div>
             </div>
           </div>

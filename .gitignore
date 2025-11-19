@@ -69,7 +69,7 @@ redis_data/
 # *.pem
 # *.crt
 # *.key
-
+vitanexo-storage.json
 # ========================
 # IDE / Editor
 # ========================

@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+
                 } else {
                     MainScreen(
                         viewModel = viewModel,

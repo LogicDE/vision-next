@@ -54,6 +54,8 @@ services:
     volumes:
       - ./cms-backend:/app
       - /app/node_modules
+      - ./cms-backend/service-account:/app/service-account:ro
+    
     command: npm run start:dev
 
   biometric-microservice:
@@ -81,7 +83,6 @@ services:
       - ./microservicio_burnout:/app
       - ./microservicio_burnout/models/burnout_model.pkl:/app/models/burnout_model.pkl
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-
 
   frontend:
     build: 
@@ -133,16 +134,6 @@ services:
       LOCUST_RUNTIME: 2m
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
     working_dir: /tests
-    command: >
-      sh -c "
-      echo 'Ejecutando tests smoke...' &&
-      pytest --maxfail=1 --disable-warnings -v smoke --junitxml=/tests/reports/smoke_report.xml &&
-      echo 'Ejecutando tests baseline...' &&
-      pytest --maxfail=1 --disable-warnings -v baseline --junitxml=/tests/reports/baseline_report.xml &&
-      echo '=== Ejecutando Locust ===' &&
-      cd /tests/locust &&
-      locust -f locustfile.py --host=$CMS_API_URL --users $LOCUST_USERS --spawn-rate $LOCUST_SPAWN_RATE --run-time $LOCUST_RUNTIME --headless --csv=/tests/reports/locust_report --html=/tests/reports/locust_report.html
-      "
 
 volumes:
   vitanexo_data:

@@ -85,4 +85,46 @@ async getRealtimeMetrics(@Param('userId') userId: string) {
     const score = await this.predictionService.predictBurnout(userId);
     return { userId, burnoutRisk: score };
   }
+
+// ==========================================================
+// 📊 NUEVOS ENDPOINTS ADMINISTRATIVOS
+// ==========================================================
+
+@Get('admin/group-summary') //Implementado ya
+@Roles('Admin', 'Manager')
+async getGroupSummary() {
+  return this.metricsService.getGroupMetricsSummary();
+}
+
+@Get('admin/enterprise-summary') //  Implementado ya
+@Roles('Admin', 'Manager')
+async getEnterpriseSummary() {
+  return this.metricsService.getEnterpriseWellbeing();
+}
+
+@Get('admin/trends')
+@Roles('Admin', 'Manager')
+async getTrends() {
+  return this.metricsService.getGroupTrendAlerts();
+}
+
+@Get('admin/survey-participation')
+@Roles('Admin', 'Manager')
+async getParticipation() {
+  return this.metricsService.getSurveyParticipation();
+}
+
+@Get('admin/employee-activity')
+@Roles('Admin', 'Manager')
+async getActivity() {
+  return this.metricsService.getEmployeeActivity();
+}
+
+@Get('admin/overview')
+@Roles('Admin', 'Manager')
+async getOverview() {
+  return this.metricsService.getDailyOverview();
+}
+
+
 }

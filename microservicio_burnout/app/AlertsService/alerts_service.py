@@ -246,3 +246,4 @@ class AlertsService:
     def should_trigger_intervention(self, alert: Dict[str, Any]) -> bool:
         """Determina si se debe activar un proceso de intervención"""
         return alert.get("requires_intervention", False)
+

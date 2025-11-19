@@ -39,6 +39,10 @@ import { NotificationModule } from './modules/infrastructure/notification/notifi
 import { AlertsModule } from './modules/core/alerts/alerts.module';
 import { DashboardModule } from './modules/core/dashboard/dashboard.module';
 import { ReportsModule } from './modules/core/reports/reports.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { XmlResponseInterceptor } from './common/interceptors/xml-response.interceptor';
+
+
 
 @Module({
   imports: [
@@ -96,6 +100,11 @@ import { ReportsModule } from './modules/core/reports/reports.module';
     ReportsModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: XmlResponseInterceptor,
+    },
+  ],
 })
 export class AppModule {}

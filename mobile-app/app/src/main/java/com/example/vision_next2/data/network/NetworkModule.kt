@@ -8,7 +8,6 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-
     // Base URL of the CMS backend that the mobile app talks to.
     // When running the backend locally with docker-compose and using the Android emulator,
     // the host machine is reachable at 10.0.2.2.

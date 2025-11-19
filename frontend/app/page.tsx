@@ -19,7 +19,7 @@ export default function Home() {
       // Espera unos segundos para mostrar el landing
       const timer = setTimeout(() => {
         setShowLanding(false);
-        if (user.role === 'admin') router.push('/admin');
+        if (user.role === 'Admin') router.push('/admin');
         else router.push('/user');
       }, 2000); // 2 segundos
       return () => clearTimeout(timer);

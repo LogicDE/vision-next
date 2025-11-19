@@ -5,6 +5,9 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { JwtRedisGuard } from '../../../auth/jwt-redis.guard';
 import { RolesGuard } from '../../../auth/roles.guard';
 import { Roles } from '../../../auth/roles.decorator';
+import { uploadProfilePicture } from '../../../utils/gcpStorage';
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('employees')
 @UseGuards(JwtRedisGuard, RolesGuard)
@@ -40,4 +43,21 @@ export class EmployeesController {
   remove(@Param('id') id: number) {
     return this.employeesService.remove(+id);
   }
+
+  @Post(':id/upload-photo')
+@UseInterceptors(FileInterceptor('photo', {
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error('Formato no permitido'), false);
+    }
+    cb(null, true);
+  }
+}))
+async uploadPhoto(@Param('id') id: number, @UploadedFile() file: Express.Multer.File) {
+  const publicUrl = await uploadProfilePicture(file, id);
+  return { url: publicUrl };
+}
+  
 }

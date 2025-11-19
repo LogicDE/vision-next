@@ -7,7 +7,6 @@ plugins {
 android {
     namespace = "com.example.vision_next2"
     compileSdk = 35
-
     defaultConfig {
         applicationId = "com.example.vision_next2"
         minSdk = 27

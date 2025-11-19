@@ -76,6 +76,7 @@ const mockAlerts: AlertType[] = [
     priority: 'high',
     avatar: '/api/placeholder/40/40'
   },
+  
 ];
 
 export function AlertsManagement() {

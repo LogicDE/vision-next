@@ -16,6 +16,7 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onLoggedIn: (User?) -> Unit,
     onConfigureWearable: () -> Unit
+
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
@@ -64,4 +65,3 @@ fun LoginScreen(
             else -> {}
         }
     }
-}

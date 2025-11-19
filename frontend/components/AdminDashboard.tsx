@@ -201,9 +201,9 @@ const DashboardHeader = memo(({
               </div>
               <Avatar className="h-9 w-9 ring-2 ring-blue-500/30 hover:ring-blue-500/50 transition-all">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
-                  {getUserInitials()}
-                </AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                    {getUserInitials()}
+                  </AvatarFallback>
               </Avatar>
             </>
           ) : (
@@ -218,9 +218,9 @@ const DashboardHeader = memo(({
         <div className="md:hidden">
           <Avatar className="h-8 w-8 ring-2 ring-blue-500/30">
             <AvatarImage src={user?.avatar} alt={user?.name} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-semibold">
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-semibold">
               {loading ? '...' : getUserInitials()}
-            </AvatarFallback>
+              </AvatarFallback>
           </Avatar>
         </div>
         
