@@ -8,7 +8,7 @@ def test_health_check():
     assert r.status_code == 200
 
 def test_login():
-    payload = {"email": "carlos@demo.com", "password": "123456"}  # <-- email corregido
+    payload = {"email": "carlos@vitanexo.com", "password": "123456"}  # <-- email corregido
     r = requests.post(f"{BASE_URL}/auth/login", json=payload)
     assert r.status_code in [200, 201]
     # Leer token de cookies
@@ -18,7 +18,7 @@ def test_login():
 def test_employees_list():
     with requests.Session() as s:
         # Login
-        r = s.post(f"{BASE_URL}/auth/login", json={"email": "carlos@demo.com", "password": "123456"})
+        r = s.post(f"{BASE_URL}/auth/login", json={"email": "carlos@vitanexo.com", "password": "123456"})
         assert r.status_code in [200, 201]
 
         # Obtener empleados
@@ -26,6 +26,12 @@ def test_employees_list():
         assert r.status_code == 200
 
         json_resp = r.json()
-        assert "data" in json_resp, "La respuesta no contiene 'data'"
-        assert isinstance(json_resp["data"], list), "'data' no es una lista"
-        assert len(json_resp["data"]) > 0, "No hay empleados en la lista"
+
+        # Ahora la respuesta es directamente una lista
+        assert isinstance(json_resp, list), "La respuesta no es una lista"
+        assert len(json_resp) > 0, "No hay empleados en la lista"
+
+        # Validar campos de ejemplo en el primer empleado
+        first_emp = json_resp[0]
+        for key in ["email", "firstName", "enterprise"]:
+            assert key in first_emp, f"Falta '{key}' en el primer empleado"
