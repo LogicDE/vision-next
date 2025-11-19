@@ -146,6 +146,7 @@ microservicio_burnout/
 
 ### 2. DashboardService
 
+
 **Propósito**: Generar resumen completo del estado del empleado
 
 **Funcionalidades**:
@@ -161,6 +162,7 @@ microservicio_burnout/
 - Resumen de alertas activas
 
 ### 3. InterventionService
+
 
 **Propósito**: Crear planes de intervención personalizados
 
@@ -186,6 +188,7 @@ microservicio_burnout/
 - Recomendaciones de seguimiento
 
 ### 4. MetricsClient
+
 
 **Propósito**: Integración con cms-backend
 
@@ -271,6 +274,7 @@ microservicio-burnout:
 ```
 
 ### Variables de Entorno
+
 
 | Variable          | Descripción         | Default                   |
 | ----------------- | ------------------- | ------------------------- |
@@ -374,13 +378,13 @@ RRHH → GET /api/burnout/analyze/{user_id}
 ## 📊 Tipos de Datos
 
 ### BurnoutPrediction
-
 ```typescript
 {
-  burnout_probability: number; // 0-1
-  burnout_prediction: 0 | 1; // Binario
-  burnout_level: string; // none, low, moderate, high, severe
-  risk_category: string; // Descripción textual
+  burnout_probability: number;      // 0-1
+  burnout_prediction: 0 | 1;        // Binario
+  burnout_level: string;            // none, low, moderate, high, severe
+  risk_category: string;            // Descripción textual
+
 }
 ```
 
