@@ -14,7 +14,9 @@ import com.example.vision_next2.ui.viewmodel.LoginUiState
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
-    onLoggedIn: (User?) -> Unit
+    onLoggedIn: (User?) -> Unit,
+    onConfigureWearable: () -> Unit
+
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
@@ -46,6 +48,13 @@ fun LoginScreen(
             Text("Entrar")
         }
 
+        Spacer(Modifier.height(12.dp))
+
+        // Botón para configurar el simulador de wearable
+        TextButton(onClick = onConfigureWearable) {
+            Text("Configure wearable")
+        }
+
         Spacer(Modifier.height(8.dp))
         when (val state = uiState) {
             is LoginUiState.Loading -> CircularProgressIndicator()
@@ -56,4 +65,3 @@ fun LoginScreen(
             else -> {}
         }
     }
-}

@@ -58,8 +58,8 @@ services:
     
     command: npm run start:dev
 
-  microservices-backend:
-    build: ./microservices-backend
+  biometric-microservice:
+    build: ./biometric-microservice
     restart: always
     depends_on:
       - influxdb
@@ -69,7 +69,7 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./microservices-backend:/app
+      - ./biometric-microservice:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload
 
   burnout-microservice:
@@ -97,6 +97,22 @@ services:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
     command: npm run dev
+
+  iot-simulator:
+    build: ./sensor-simulators/IoT-device
+    restart: always
+    depends_on:
+      - cms-backend
+      - biometric-microservice
+    env_file:
+      - ./config/microservices.env
+    environment:
+      - CMS_API_URL=http://cms-backend:8000
+      - BIOMETRIC_API_URL=http://biometric-microservice:9000
+      - IOT_USER_EMAIL=${IOT_USER_EMAIL:-carlos@vitanexo.com}
+      - IOT_USER_PASSWORD=${IOT_USER_PASSWORD:-123456}
+    ports:
+      - "9100:8000"
 
   cms-tests:
     build:

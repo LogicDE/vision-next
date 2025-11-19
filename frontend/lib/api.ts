@@ -15,7 +15,7 @@ export const MICROSERVICES_URL = (() => {
     if (window.location.hostname === 'localhost') {
       return process.env.NEXT_PUBLIC_MICROSERVICES_URL || 'http://localhost:9000';
     }
-    return 'http://microservices-backend:9000';
+    return 'http://biometric-microservice:9000';
   }
   return process.env.NEXT_PUBLIC_MICROSERVICES_URL || 'http://localhost:9000';
 })();

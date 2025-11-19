@@ -24,7 +24,7 @@ class AuthRepository(
                 val request = LoginRequest(email = email, password = password)
                 val response = authApi.login(request) // suspend function
                 // Si llega aquí sin excepción, response es LoginResponse válido
-                tokenStorage.saveTokens(response.accessToken, response.refreshToken)
+                tokenStorage.saveTokens(response.accessToken, response.refreshToken, response.user.id)
                 Result.success(response)
             } catch (e: HttpException) {
                 Result.failure(Exception("Login failed: ${e.code()} ${e.message()}"))

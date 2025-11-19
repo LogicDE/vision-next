@@ -6,14 +6,11 @@ plugins {
 
 android {
     namespace = "com.example.vision_next2"
-    compileSdk {
-        version = release(36)
-    }
-
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.example.vision_next2"
         minSdk = 27
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -41,6 +38,16 @@ android {
     }
 }
 
+// Ensure all Kotlin stdlib variants stay on a version compatible with the Kotlin compiler (2.0.0)
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.0.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.0.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.0")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -56,10 +63,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
-    implementation("androidx.security:security-crypto:1.1.0-alpha03")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
-    implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("androidx.compose.ui:ui:1.5.0")
+    implementation("androidx.security:security-crypto:1.1.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

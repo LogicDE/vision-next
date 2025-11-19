@@ -8,8 +8,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-
-    private const val BASE_URL = "http://34.10.72.6:8000" // 🔧 ajusta según tu backend
+    // Base URL of the CMS backend that the mobile app talks to.
+    // When running the backend locally with docker-compose and using the Android emulator,
+    // the host machine is reachable at 10.0.2.2.
+    private const val BASE_URL = "http://10.0.2.2:8000/"  // was http://34.10.72.6:8000
 
     fun provideRetrofit(tokenStorage: TokenStorage): Retrofit {
         val authApi = provideAuthApi(BASE_URL)
