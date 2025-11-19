@@ -17,15 +17,20 @@ class TokenStorage(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun saveTokens(accessToken: String, refreshToken: String) {
+    fun saveTokens(accessToken: String, refreshToken: String, userId: Int? = null) {
         prefs.edit()
             .putString("access_token", accessToken)
             .putString("refresh_token", refreshToken)
+            .putInt("user_id", userId ?: -1)
             .apply()
     }
 
     fun getAccessToken(): String? = prefs.getString("access_token", null)
     fun getRefreshToken(): String? = prefs.getString("refresh_token", null)
+    fun getUserId(): Int? {
+        val stored = prefs.getInt("user_id", -1)
+        return if (stored == -1) null else stored
+    }
 
     fun clear() {
         prefs.edit().clear().apply()

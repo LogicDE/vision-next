@@ -5,3 +5,4 @@ asyncpg
 redis
 influxdb-client
 python-dotenv
+python-jose[cryptography]

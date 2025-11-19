@@ -59,15 +59,16 @@ async refresh(
 
   if (!refreshToken) throw new UnauthorizedException('No autorizado');
 
-  try {
+    try {
     const { access_token, refresh_token } = await this.authService.refreshToken(refreshToken);
 
     // Si quieres seguir manteniendo cookies para web:
     if (req.cookies['refresh_jwt']) {
       res.cookie('jwt', access_token, this.getCookieOptions(1000 * 60 * 5));
       res.cookie('refresh_jwt', refresh_token, this.getCookieOptions(1000 * 60 * 60 * 24 * 7));
-    }
-    return { success: true, accessToken: access_token };
+      }
+      // Para clientes móviles devolvemos también el refreshToken para que puedan rotarlo.
+      return { success: true, accessToken: access_token, refreshToken: refresh_token };
   } catch {
     res.clearCookie('jwt');
     res.clearCookie('refresh_jwt');
