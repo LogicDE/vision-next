@@ -515,3 +515,4 @@ class DashboardService:
             return "Riesgo Bajo"
         else:
             return "Sin Riesgo Significativo"
+
