@@ -3,7 +3,8 @@
   import { Response, Request } from 'express';
   import { JwtService } from '@nestjs/jwt';
   import { ConfigService } from '@nestjs/config';
-import { JwtRedisGuard } from './jwt-redis.guard';
+  import { JwtRedisGuard } from './jwt-redis.guard';
+  import { getProfilePictureSignedUrl } from '../utils/gcpStorage';
 
   @Controller('auth')
   export class AuthController {
@@ -109,14 +110,25 @@ async refresh(
     }
 
     @Get('me')
-@UseGuards(JwtRedisGuard)
-async me(@Req() req: any) {
-  return {
-    id: req.user.sub,
-    nombre: req.user.nombre,
-    email: req.user.email,
-    rol: req.user.role,
-  };
+  @UseGuards(JwtRedisGuard)
+  async me(@Req() req: any) {
+    const user = await this.authService.me(req.user.sub);
+
+    // Obtener signed URL dinámico
+    let avatarUrl = '/default-avatar.png';
+    try {
+      avatarUrl = await getProfilePictureSignedUrl(user.id);
+    } catch (err) {
+      console.warn('No se pudo generar signed URL para avatar:', err);
+    }
+
+    return {
+      id: user.id,
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      avatarUrl
+    };
+  }
 }
 
-}

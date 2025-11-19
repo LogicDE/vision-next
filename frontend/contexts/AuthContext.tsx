@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         name: data.nombre,
         email: data.email,
         role: data.rol as UserRole,
-        avatar: '/api/placeholder/40/40',
+        avatar: data.avatarUrl,
         organization: data.organizacion || 'Vision Next',
       };
     } catch {

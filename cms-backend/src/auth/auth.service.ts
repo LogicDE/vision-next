@@ -92,6 +92,25 @@ export class AuthService {
       },
     };
   }
+  // En AuthService
+async me(userId: number) {
+  const employee = await this.employeesRepo.findOne({
+    where: { id: userId },
+    relations: ['role'],
+  });
+
+  if (!employee) {
+    throw new UnauthorizedException('Usuario no encontrado');
+  }
+
+  return {
+    id: employee.id,
+    nombre: `${employee.firstName} ${employee.lastName}`,
+    email: employee.email,
+    rol: employee.role.name,
+  };
+}
+
 
   async refreshToken(token: string): Promise<{ access_token: string; refresh_token: string }> {
   try {

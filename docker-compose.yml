@@ -54,6 +54,8 @@ services:
     volumes:
       - ./cms-backend:/app
       - /app/node_modules
+      - ./cms-backend/service-account:/app/service-account:ro
+    
     command: npm run start:dev
 
   microservices-backend:
