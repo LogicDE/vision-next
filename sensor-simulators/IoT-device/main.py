@@ -68,7 +68,7 @@ async def refresh_tokens() -> bool:
         f"{CMS_BASE_URL}/auth/refresh",
         json={"refreshToken": auth_state.refresh_token},
     )
-    if resp.status_code != 200:
+    if resp.status_code not in (200, 201):
         logger.warning("Token refresh failed: %s %s", resp.status_code, resp.text)
         return False
     data = resp.json()
@@ -157,13 +157,12 @@ class EnvAmbientBaseline(BaseModel):
 
 
 class SensorConfig(BaseModel):
-    sensor_id: str = Field(..., description="Logical sensor identifier")
+    sensor_id: str = Field(..., description="Device primary key (id_device) as string")
+    display_name: str
     org_id: int
     enterprise_name: str
     location_id: int
     location_name: str
-    site: str
-    zone: str
     model: str = "IoT-Sim"
     active: bool = True
 
@@ -183,6 +182,8 @@ class SensorState(BaseModel):
 sensors: Dict[str, SensorConfig] = {}
 sensor_states: Dict[str, SensorState] = {}
 enterprise_cache: List["EnterpriseLocation"] = []
+
+DEFAULT_DEVICE_TYPE = "iot_env"
 
 
 async def load_enterprise_cache() -> None:
@@ -229,58 +230,55 @@ async def load_enterprise_cache() -> None:
     logger.info("Loaded %d enterprises / locations from DB", len(enterprise_cache))
 
 
-def init_default_sensors_from_cache() -> None:
+async def init_default_sensors_from_cache() -> None:
     """
-    Create two default sensors based strictly on DB data:
-    - Enterprise 1, location 1
-    - Enterprise 2, location 3
-    Only created if those enterprise/location pairs exist.
+    Load all existing IoT devices (device_type = 'iot_env') from the devices
+    table and register them as simulated sensors.
     """
-    global sensors, sensor_states
+    global sensors, sensor_states, db_pool
+
     if sensors:
         return
-    if not enterprise_cache:
-        logger.warning("Enterprise cache is empty; cannot create default sensors")
+    if db_pool is None:
+        logger.warning("DB pool not initialised; cannot load devices")
         return
 
-    def find_ent_loc(ent_id: int, loc_id: int):
-        for ent in enterprise_cache:
-            if ent.enterprise_id == ent_id:
-                for loc in ent.locations:
-                    if loc.location_id == loc_id:
-                        return ent, loc
-        return None, None
-
-    ent1, loc1 = find_ent_loc(1, 1)
-    ent2, loc3 = find_ent_loc(2, 3)
-
-    if ent1 and loc1:
-        sensors["vn_corp_loc1"] = SensorConfig(
-            sensor_id="vn_corp_loc1",
-            org_id=ent1.enterprise_id,
-            enterprise_name=ent1.enterprise_name,
-            location_id=loc1.location_id,
-            location_name=loc1.location_name,
-            site=ent1.enterprise_name,
-            zone=loc1.location_name,
-            model="Awair-Sim",
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT d.id_device,
+                   d.name,
+                   d.device_type,
+                   d.status,
+                   l.id_location,
+                   l.location_name,
+                   e.id_enterprise,
+                   e.name AS enterprise_name
+            FROM devices d
+            JOIN enterprise_locations l ON d.id_location = l.id_location
+            JOIN enterprises e ON l.id_enterprise = e.id_enterprise
+            WHERE d.device_type = $1
+              AND d.status != 'removed'
+            ORDER BY d.id_device;
+            """,
+            DEFAULT_DEVICE_TYPE,
         )
 
-    if ent2 and loc3:
-        sensors["vn_salud_loc3"] = SensorConfig(
-            sensor_id="vn_salud_loc3",
-            org_id=ent2.enterprise_id,
-            enterprise_name=ent2.enterprise_name,
-            location_id=loc3.location_id,
-            location_name=loc3.location_name,
-            site=ent2.enterprise_name,
-            zone=loc3.location_name,
-            model="PurpleAir-Sim",
+    for r in rows:
+        sid = str(r["id_device"])
+        status = r["status"]
+        sensors[sid] = SensorConfig(
+            sensor_id=sid,
+            display_name=r["name"] or f"Device {sid}",
+            org_id=r["id_enterprise"],
+            enterprise_name=r["enterprise_name"],
+            location_id=r["id_location"],
+            location_name=r["location_name"],
+            model="IoT-Sim",
+            active=(status == "active"),
         )
-
-    for sid in sensors:
-        sensor_states[sid] = SensorState()
-    logger.info("Initialized %d default sensors from DB", len(sensors))
+        sensor_states.setdefault(sid, SensorState())
+    logger.info("Initialized %d sensors from devices table", len(sensors))
 
 
 def in_work_hours(now: datetime, sensor: SensorConfig) -> bool:
@@ -378,8 +376,6 @@ async def sensor_loop() -> None:
                 "user_id": cfg.org_id,  # reusing user_id tag for org/worker id
                 "device_id": cfg.sensor_id,
                 "org_id": str(cfg.org_id),
-                "site": cfg.site,
-                "zone": cfg.zone,
                 "model": cfg.model,
                 # env_air
                 **env_air,
@@ -412,13 +408,12 @@ def start_background_loop() -> None:
 
 
 class SensorCreateRequest(BaseModel):
-    sensor_id: str
+    sensor_id: str  # numeric device_id string suggestion (for UI)
+    name: Optional[str] = None
     org_id: int
     enterprise_name: str
     location_id: int
     location_name: str
-    site: str
-    zone: str
     model: str = "IoT-Sim"
     active: bool = True
     work_start: time = time(9, 0)
@@ -468,7 +463,7 @@ async def on_startup():
     global db_pool
     db_pool = await asyncpg.create_pool(SIM_PG_DSN)
     await load_enterprise_cache()
-    init_default_sensors_from_cache()
+    await init_default_sensors_from_cache()
     start_background_loop()
 
 
@@ -510,15 +505,17 @@ async def index():
   <h1>IoT Sensor Simulator</h1>
   <p>Manage simulated ambient sensors (env_air / env_ambient) that send data to biometric-microservice every 5 seconds.</p>
 
+  <div id="toast" class="toast" style="display:none;"></div>
+
   <div class="card">
     <h2>Existing Sensors</h2>
     <table id="sensor-table">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>Device ID</th>
+          <th>Name</th>
           <th>Enterprise</th>
           <th>Location</th>
-          <th>Site / Zone</th>
           <th>Model</th>
           <th>Active</th>
           <th>Actions</th>
@@ -531,20 +528,17 @@ async def index():
   <div class="card">
     <h2>Create / Update Sensor</h2>
     <form id="sensor-form" onsubmit="return false;">
-      <label>Sensor ID
+      <label>Device ID
         <input id="sensor_id" required />
+      </label>
+      <label>Name
+        <input id="sensor_name" />
       </label>
       <label>Enterprise
         <select id="enterprise_select"></select>
       </label>
       <label>Location
         <select id="location_select"></select>
-      </label>
-      <label>Site
-        <input id="site" />
-      </label>
-      <label>Zone
-        <input id="zone" />
       </label>
       <label>Model
         <input id="model" value="IoT-Sim" />
@@ -627,18 +621,21 @@ async def index():
       });
     }
 
+    let sensorsCache = [];
+
     async function loadSensors() {
       const res = await fetch('/api/sensors');
       const data = await res.json();
+      sensorsCache = data;
       const tbody = document.querySelector('#sensor-table tbody');
       tbody.innerHTML = '';
       data.forEach(s => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${s.sensor_id}</td>
+          <td>${s.display_name}</td>
           <td>${s.enterprise_name}</td>
           <td>${s.location_name}</td>
-          <td>${s.site} / ${s.zone}</td>
           <td>${s.model}</td>
           <td><span class="badge ${s.active ? 'on' : 'off'}">${s.active ? 'ON' : 'OFF'}</span></td>
           <td>
@@ -650,20 +647,64 @@ async def index():
       });
     }
 
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.style.display = 'none';
+      }, 3000);
+    }
+
     async function toggleSensor(id) {
-      await fetch('/api/sensors/' + encodeURIComponent(id) + '/toggle', { method: 'POST' });
-      loadSensors();
+      const res = await fetch('/api/sensors/' + encodeURIComponent(id) + '/toggle', { method: 'POST' });
+      if (!res.ok) {
+        alert('Error toggling sensor ' + id);
+        return;
+      }
+      await loadSensors();
+      showToast('Sensor ' + id + ' toggled');
     }
 
     async function deleteSensor(id) {
       if (!confirm('Delete sensor ' + id + '?')) return;
-      await fetch('/api/sensors/' + encodeURIComponent(id), { method: 'DELETE' });
-      loadSensors();
+      const res = await fetch('/api/sensors/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!res.ok) {
+        alert('Error deleting sensor ' + id);
+        return;
+      }
+      await loadSensors();
+      showToast('Sensor ' + id + ' deleted');
+    }
+
+    async function suggestFreeId() {
+      try {
+        const res = await fetch('/api/next-device-id');
+        if (!res.ok) throw new Error('next-device-id failed');
+        const data = await res.json();
+        document.getElementById('sensor_id').value = String(data.next_id);
+      } catch (e) {
+        // Fallback: compute from existing numeric sensor IDs
+        let maxId = 0;
+        sensorsCache.forEach(s => {
+          const n = parseInt(s.sensor_id, 10);
+          if (!isNaN(n) && n > maxId) maxId = n;
+        });
+        document.getElementById('sensor_id').value = String(maxId + 1);
+      }
     }
 
     async function saveSensor() {
       const sid = document.getElementById('sensor_id').value.trim();
       if (!sid) return alert('Sensor ID required');
+      if (!/^[0-9]+$/.test(sid)) {
+        return alert('Sensor ID must be a numeric value (device_id).');
+      }
+      if (sensorsCache.some(s => String(s.sensor_id) === sid)) {
+        return alert('A sensor with this ID already exists. Please choose another ID.');
+      }
       const entId = parseInt(document.getElementById('enterprise_select').value);
       const ent = enterprises.find(e => e.enterprise_id === entId);
       const locId = parseInt(document.getElementById('location_select').value);
@@ -681,12 +722,11 @@ async def index():
 
       const payload = {
         sensor_id: sid,
+        name: document.getElementById('sensor_name').value.trim() || ('Device ' + sid),
         org_id: ent.enterprise_id,
         enterprise_name: ent.enterprise_name,
         location_id: loc.location_id,
         location_name: loc.location_name,
-        site: document.getElementById('site').value || ent.enterprise_name,
-        zone: document.getElementById('zone').value || loc.location_name,
         model: document.getElementById('model').value || 'IoT-Sim',
         active: document.getElementById('active').value === 'true',
         env_air: {
@@ -711,17 +751,26 @@ async def index():
         }
       };
 
-      await fetch('/api/sensors', {
+      const res = await fetch('/api/sensors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      loadSensors();
+      if (!res.ok) {
+        const txt = await res.text();
+        alert('Error saving sensor: ' + txt);
+        return;
+      }
+      await loadSensors();
+      showToast('Sensor ' + sid + ' saved');
     }
 
     document.getElementById('enterprise_select').addEventListener('change', updateLocationOptions);
 
-    loadEnterprises().then(loadSensors);
+    loadEnterprises().then(async () => {
+      await loadSensors();
+      suggestFreeId();
+    });
   </script>
 </body>
 </html>
@@ -745,21 +794,84 @@ async def list_sensors():
     return list(sensors.values())
 
 
+@app.get("/api/next-device-id")
+async def next_device_id():
+    """
+    Returns the next available numeric id_device from the devices table.
+    This is used by the UI to suggest a numeric Sensor ID.
+    """
+    global db_pool
+    if db_pool is None:
+        raise HTTPException(status_code=500, detail="DB pool not initialised")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT COALESCE(MAX(id_device), 0) + 1 AS next_id FROM devices;")
+        return {"next_id": int(row["next_id"])}
+
+
 @app.post("/api/sensors", response_model=SensorConfig)
 async def create_or_update_sensor(req: SensorCreateRequest):
     # Validate that location belongs to enterprise using DB-backed mapping
     enterprises = await get_enterprises()
     for ent in enterprises:
         if ent.enterprise_id == req.org_id:
-            if any(loc["location_id"] == req.location_id for loc in ent.locations):
+            if any(loc.location_id == req.location_id for loc in ent.locations):
                 break
             raise HTTPException(status_code=400, detail="Location does not belong to enterprise")
     else:
         raise HTTPException(status_code=400, detail="Unknown enterprise")
 
-    cfg = SensorConfig(**req.dict())
-    sensors[cfg.sensor_id] = cfg
-    sensor_states.setdefault(cfg.sensor_id, SensorState())
+    # Ensure we also have a backing row in the devices table so the simulator
+    # uses real id_device values as sensor identifiers.
+    if db_pool is None:
+        raise HTTPException(status_code=500, detail="DB pool not initialised")
+
+    async with db_pool.acquire() as conn:
+        display_name = req.name or req.sensor_id
+        row = await conn.fetchrow(
+            """
+            SELECT id_device
+            FROM devices
+            WHERE id_location = $1
+              AND name = $2
+              AND device_type = $3
+            """,
+            req.location_id,
+            display_name,
+            DEFAULT_DEVICE_TYPE,
+        )
+        if row:
+            device_id = row["id_device"]
+        else:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO devices (id_location, name, device_type, status)
+                VALUES ($1, $2, $3, 'active')
+                RETURNING id_device
+                """,
+                req.location_id,
+                display_name,
+                DEFAULT_DEVICE_TYPE,
+            )
+            device_id = row["id_device"]
+
+    sensor_id = str(device_id)
+    cfg = SensorConfig(
+        sensor_id=sensor_id,
+        display_name=display_name,
+        org_id=req.org_id,
+        enterprise_name=req.enterprise_name,
+        location_id=req.location_id,
+        location_name=req.location_name,
+        model=req.model,
+        active=req.active,
+        work_start=req.work_start,
+        work_end=req.work_end,
+        env_air=req.env_air,
+        env_ambient=req.env_ambient,
+    )
+    sensors[sensor_id] = cfg
+    sensor_states.setdefault(sensor_id, SensorState())
     return cfg
 
 
@@ -770,6 +882,17 @@ async def toggle_sensor(sensor_id: str):
     cfg = sensors[sensor_id]
     cfg.active = not cfg.active
     sensors[sensor_id] = cfg
+
+    # Persist status change in DB
+    if db_pool is not None:
+        async with db_pool.acquire() as conn:
+            new_status = "active" if cfg.active else "inactive"
+            await conn.execute(
+                "UPDATE devices SET status = $1 WHERE id_device = $2",
+                new_status,
+                int(sensor_id),
+            )
+
     return cfg
 
 
@@ -779,6 +902,15 @@ async def delete_sensor(sensor_id: str):
         raise HTTPException(status_code=404, detail="Sensor not found")
     sensors.pop(sensor_id, None)
     sensor_states.pop(sensor_id, None)
+
+    # Mark as removed in DB
+    if db_pool is not None:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE devices SET status = 'removed' WHERE id_device = $1",
+                int(sensor_id),
+            )
+
     return {"status": "deleted"}
 
 

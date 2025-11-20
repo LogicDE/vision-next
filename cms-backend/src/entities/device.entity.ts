@@ -16,6 +16,9 @@ export class Device {
   @Column({ name: 'device_type', length: 50 })
   deviceType!: string;
 
+  @Column({ name: 'status', length: 20, default: 'active' })
+  status!: string; // 'active' | 'inactive' | 'removed'
+
   @Column({ name: 'registered_at', type: 'timestamptz', default: () => 'NOW()' })
   registeredAt!: Date;
 }
