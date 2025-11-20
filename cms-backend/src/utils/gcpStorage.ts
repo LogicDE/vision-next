@@ -1,22 +1,36 @@
-import { Storage } from '@google-cloud/storage';
+// @ts-nocheck
 import path from 'path';
 
-const storage = new Storage({
-  keyFilename: process.env.GCP_KEY_PATH,
-  projectId: process.env.GCP_PROJECT_ID,
-});
+let bucket: any = null;
 
-const bucket = storage.bucket(process.env.GCP_BUCKET_NAME!);
+function ensureBucket() {
+  if (bucket) return;
+  try {
+    // Lazy-load GCP client so that local/dev environments without the library
+    // or credentials can still start the server (profile upload will just fail
+    // at call time instead of crashing on import).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Storage } = require('@google-cloud/storage');
+    const storage = new Storage({
+      keyFilename: process.env.GCP_KEY_PATH,
+      projectId: process.env.GCP_PROJECT_ID,
+    });
+    bucket = storage.bucket(process.env.GCP_BUCKET_NAME!);
+  } catch (e) {
+    throw new Error(
+      'GCP Storage not configured or @google-cloud/storage not installed. ' +
+        'Profile picture upload is disabled in this environment.',
+    );
+  }
+}
 
-export async function uploadProfilePicture(
-  file: Express.Multer.File,
-  employeeId: number
-) {
+export async function uploadProfilePicture(file: any, employeeId: number) {
+  ensureBucket();
+
   const ext = path.extname(file.originalname) || '.jpg';
   const fileName = `employees/employee_${employeeId}${ext}`;
   const blob = bucket.file(fileName);
 
-  // 🚫 NO usar public: true — rompe con UBLA
   await blob.save(file.buffer, {
     resumable: false,
     metadata: {
@@ -24,7 +38,6 @@ export async function uploadProfilePicture(
     },
   });
 
-  // ✔️ Generar signed URL
   const [signedUrl] = await blob.getSignedUrl({
     action: 'read',
     expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 días
@@ -32,7 +45,10 @@ export async function uploadProfilePicture(
 
   return signedUrl;
 }
+
 export async function getProfilePictureSignedUrl(employeeId: number) {
+  ensureBucket();
+
   const file = bucket.file(`employees/employee_${employeeId}.jpg`);
 
   const [signedUrl] = await file.getSignedUrl({

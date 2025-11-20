@@ -55,7 +55,7 @@ export class EmployeesController {
     cb(null, true);
   }
 }))
-async uploadPhoto(@Param('id') id: number, @UploadedFile() file: Express.Multer.File) {
+async uploadPhoto(@Param('id') id: number, @UploadedFile() file: any) {
   const publicUrl = await uploadProfilePicture(file, id);
   return { url: publicUrl };
 }

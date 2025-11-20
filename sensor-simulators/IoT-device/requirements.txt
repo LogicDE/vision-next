@@ -3,5 +3,6 @@ uvicorn[standard]
 httpx
 pydantic
 python-dotenv
+asyncpg
 
 

@@ -111,6 +111,7 @@ services:
       - BIOMETRIC_API_URL=http://biometric-microservice:9000
       - IOT_USER_EMAIL=${IOT_USER_EMAIL:-carlos@vitanexo.com}
       - IOT_USER_PASSWORD=${IOT_USER_PASSWORD:-123456}
+      - SIM_PG_DSN=postgres://admin:admin@vitanexo-db:5432/vitanexo_postgres_db
     ports:
       - "9100:8000"
 
