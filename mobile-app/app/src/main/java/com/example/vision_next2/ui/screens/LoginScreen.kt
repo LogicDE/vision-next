@@ -58,10 +58,16 @@ fun LoginScreen(
         Spacer(Modifier.height(8.dp))
         when (val state = uiState) {
             is LoginUiState.Loading -> CircularProgressIndicator()
-            is LoginUiState.Error -> Text("Error: ${state.message}", color = MaterialTheme.colorScheme.error)
+            is LoginUiState.Error -> Text(
+                "Error: ${state.message}",
+                color = MaterialTheme.colorScheme.error
+            )
+
             is LoginUiState.Success -> {
                 LaunchedEffect(Unit) { onLoggedIn(state.user) }
             }
+
             else -> {}
         }
     }
+}
