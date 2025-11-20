@@ -109,10 +109,6 @@ def _build_common_tags(data: BiometricData) -> Dict[str, str]:
 
     if data.org_id:
         tags["org_id"] = str(data.org_id)
-    if data.site:
-        tags["site"] = data.site
-    if data.zone:
-        tags["zone"] = data.zone
 
     # worker_id es el user_id de la plataforma
     if data.user_id is not None:

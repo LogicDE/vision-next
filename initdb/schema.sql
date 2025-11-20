@@ -112,10 +112,11 @@ CREATE TABLE IF NOT EXISTS enterprise_locations (
 CREATE INDEX IF NOT EXISTS idx_elocs_enterprise_active ON enterprise_locations(id_enterprise, active);
 
 CREATE TABLE IF NOT EXISTS devices (
-  id_device   SERIAL PRIMARY KEY,
-  id_location INTEGER NOT NULL REFERENCES enterprise_locations(id_location) ON DELETE CASCADE,
-  name        VARCHAR(100),
-  device_type VARCHAR(50) NOT NULL,
+  id_device     SERIAL PRIMARY KEY,
+  id_location   INTEGER NOT NULL REFERENCES enterprise_locations(id_location) ON DELETE CASCADE,
+  name          VARCHAR(100),
+  device_type   VARCHAR(50) NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'active',
   registered_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_devices_location ON devices(id_location);
