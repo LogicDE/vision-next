@@ -215,10 +215,11 @@ CREATE INDEX IF NOT EXISTS idx_dem_snapshot_metric ON daily_employee_metrics(id_
 -- SURVEYS
 -- =========================================================
 CREATE TABLE IF NOT EXISTS group_survey_scores (
-  id_survey  SERIAL PRIMARY KEY,
-  id_group   INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
-  start_at   TIMESTAMPTZ,
-  end_at     TIMESTAMPTZ,
+  id_survey   SERIAL PRIMARY KEY,
+  id_group    INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
+  name        VARCHAR(150) NOT NULL,
+  start_at    TIMESTAMPTZ,
+  end_at      TIMESTAMPTZ,
   group_score INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_gss_group_time ON group_survey_scores(id_group, start_at, end_at);
@@ -696,14 +697,15 @@ value = EXCLUDED.value;
 -- =========================================================
 
 -- Group Survey Scores
-INSERT INTO group_survey_scores (id_survey, id_group, start_at, end_at, group_score) VALUES
-(1, 1, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 85),
-(2, 2, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day', 92),
-(3, 1, NOW() - INTERVAL '1 day', NOW(), 88),
-(4, 5, NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', 82),
-(5, 6, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 87)
+INSERT INTO group_survey_scores (id_survey, id_group, name, start_at, end_at, group_score) VALUES
+(1, 1, 'Pulso Semanal Equipo Alfa', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 85),
+(2, 2, 'Encuesta Estrés Área Beta', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day', 92),
+(3, 1, 'Feedback Productividad Sprint', NOW() - INTERVAL '1 day', NOW(), 88),
+(4, 5, 'Clima Laboral Región Norte', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', 82),
+(5, 6, 'Seguimiento Bienestar Sede C', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 87)
 ON CONFLICT (id_survey) DO UPDATE SET
 id_group = EXCLUDED.id_group,
+name = EXCLUDED.name,
 start_at = EXCLUDED.start_at,
 end_at = EXCLUDED.end_at,
 group_score = EXCLUDED.group_score;
@@ -724,11 +726,16 @@ indiv_score = EXCLUDED.indiv_score;
 
 -- Questions
 INSERT INTO questions (id_question, id_group, created_at) VALUES
-(1, 1, NOW() - INTERVAL '10 days'),
-(2, 1, NOW() - INTERVAL '9 days'),
-(3, 2, NOW() - INTERVAL '8 days'),
-(4, 5, NOW() - INTERVAL '7 days'),
-(5, 6, NOW() - INTERVAL '6 days')
+(1, NULL, NOW() - INTERVAL '10 days'),
+(2, NULL, NOW() - INTERVAL '9 days'),
+(3, NULL, NOW() - INTERVAL '8 days'),
+(4, NULL, NOW() - INTERVAL '7 days'),
+(5, NULL, NOW() - INTERVAL '6 days'),
+(6, NULL, NOW() - INTERVAL '5 days'),
+(7, NULL, NOW() - INTERVAL '4 days'),
+(8, NULL, NOW() - INTERVAL '3 days'),
+(9, NULL, NOW() - INTERVAL '2 days'),
+(10, NULL, NOW() - INTERVAL '1 day')
 ON CONFLICT (id_question) DO UPDATE SET
 id_group = EXCLUDED.id_group,
 created_at = EXCLUDED.created_at;
@@ -744,9 +751,46 @@ INSERT INTO question_i18n (id_question, locale, text) VALUES
 (4, 'es', '¿Cómo calificarías tu nivel de energía hoy?'),
 (4, 'en', 'How would you rate your energy level today?'),
 (5, 'es', '¿Te sientes apoyado por tu equipo de trabajo?'),
-(5, 'en', 'Do you feel supported by your work team?')
+(5, 'en', 'Do you feel supported by your work team?'),
+(6, 'es', 'Me sentí bajo poco nivel de estrés'),
+(6, 'en', 'I felt a low level of stress'),
+(7, 'es', 'El ambiente laboral mejora mi ánimo'),
+(7, 'en', 'The work environment improves my mood'),
+(8, 'es', 'Sentí una carga laboral apropiada'),
+(8, 'en', 'I felt an appropriate workload'),
+(9, 'es', 'Me sentí con motivación para trabajar'),
+(9, 'en', 'I felt motivated to work'),
+(10, 'es', 'Conseguí alcanzar mis metas diarias'),
+(10, 'en', 'I managed to achieve my daily goals')
 ON CONFLICT (id_question, locale) DO UPDATE SET
 text = EXCLUDED.text;
+
+-- =========================================================
+-- RELACIÓN ENTRE ENCUESTAS Y PREGUNTAS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS survey_questions (
+  id_question INTEGER NOT NULL,
+  id_survey INTEGER NOT NULL,
+  PRIMARY KEY (id_question, id_survey),
+  CONSTRAINT fk_survey_questions_question
+    FOREIGN KEY (id_question) REFERENCES questions (id_question) ON DELETE CASCADE,
+  CONSTRAINT fk_survey_questions_survey
+    FOREIGN KEY (id_survey) REFERENCES group_survey_scores (id_survey) ON DELETE CASCADE
+);
+
+INSERT INTO survey_questions (id_question, id_survey) VALUES
+(1, 1),
+(2, 1),
+(3, 1),
+(4, 2),
+(5, 2),
+(6, 2),
+(7, 3),
+(8, 3),
+(9, 4),
+(10, 5)
+ON CONFLICT (id_question, id_survey) DO NOTHING;
 
 -- =========================================================
 -- EVENTOS E INTERVENCIONES

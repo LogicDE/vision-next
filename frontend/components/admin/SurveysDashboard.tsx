@@ -21,10 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   FileText,
   Plus,
-  Edit,
   Trash2,
   Search,
   Loader2,
@@ -33,9 +34,9 @@ import {
   AlertCircle,
   Calendar,
   TrendingUp,
-  BarChart3,
-  User,
-  RefreshCw
+  RefreshCw,
+  ListChecks,
+  X,
 } from 'lucide-react';
 import { fetchAPI } from '@/lib/apiClient';
 import { toast } from 'sonner';
@@ -58,26 +59,41 @@ interface Survey {
   indivScore: number;
 }
 
-interface Employee {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  username: string;
-}
-
-interface GroupSurvey {
+interface GroupOption {
   id: number;
   name: string;
   description?: string;
 }
 
-interface SurveyFormData {
-  surveyId: number | null;
-  employeeId: number | null;
-  indivScore: number;
-  submittedAt: string;
+interface QuestionI18n {
+  locale: string;
+  text: string;
 }
+
+interface QuestionOption {
+  id: number;
+  group?: {
+    id: number;
+    name: string;
+  };
+  groupId?: number | null;
+  i18nTexts?: QuestionI18n[];
+}
+
+interface SurveyFormData {
+  groupId: number | null;
+  questionIds: number[];
+  name: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+}
+
+const getQuestionGroupId = (question?: QuestionOption) => {
+  if (!question) return null;
+  return question.group?.id ?? question.groupId ?? null;
+};
 
 // Loading Component
 const LoadingState = memo(() => (
@@ -97,11 +113,9 @@ LoadingState.displayName = 'LoadingState';
 // Survey Card Component
 const SurveyCard = memo(({ 
   survey, 
-  onEdit, 
   onDelete 
 }: { 
   survey: Survey; 
-  onEdit: (survey: Survey) => void; 
   onDelete: (survey: Survey) => void;
 }) => {
   const getScoreColor = (score: number) => {
@@ -150,14 +164,6 @@ const SurveyCard = memo(({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => onEdit(survey)}
-          className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
           onClick={() => onDelete(survey)}
           className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
         >
@@ -172,22 +178,92 @@ SurveyCard.displayName = 'SurveyCard';
 
 export function SurveysDashboard() {
   const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [groupSurveys, setGroupSurveys] = useState<GroupSurvey[]>([]);
+  const [groups, setGroups] = useState<GroupOption[]>([]);
+  const [questions, setQuestions] = useState<QuestionOption[]>([]);
+  const [questionSearch, setQuestionSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
   const [deletingSurvey, setDeletingSurvey] = useState<Survey | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<SurveyFormData>({
-    surveyId: null,
-    employeeId: null,
-    indivScore: 0,
-    submittedAt: new Date().toISOString().split('T')[0],
+    groupId: null,
+    questionIds: [],
+    name: '',
+    startDate: new Date().toISOString().split('T')[0],
+    startTime: '09:00',
+    endDate: new Date().toISOString().split('T')[0],
+    endTime: '18:00',
   });
+  const [isQuestionPickerOpen, setIsQuestionPickerOpen] = useState(false);
+
+  const questionLookup = useMemo(() => {
+    const map = new Map<number, QuestionOption>();
+    questions.forEach((question) => {
+      map.set(question.id, question);
+    });
+    return map;
+  }, [questions]);
+
+  const defaultQuestions = useMemo(
+    () => questions.filter((question) => getQuestionGroupId(question) == null),
+    [questions]
+  );
+
+  const groupSpecificQuestions = useMemo(() => {
+    if (!formData.groupId) return [];
+    return questions.filter((question) => getQuestionGroupId(question) === formData.groupId);
+  }, [questions, formData.groupId]);
+
+  const visibleQuestions = useMemo(() => {
+    const map = new Map<number, QuestionOption>();
+    defaultQuestions.forEach((question) => map.set(question.id, question));
+    groupSpecificQuestions.forEach((question) => map.set(question.id, question));
+    return Array.from(map.values());
+  }, [defaultQuestions, groupSpecificQuestions]);
+
+  const getQuestionLabel = useCallback((question?: QuestionOption) => {
+    if (!question) return '';
+    return (
+      question.i18nTexts?.find((txt) => ['es-MX', 'es'].includes(txt.locale))?.text ||
+      question.i18nTexts?.[0]?.text ||
+      `Pregunta ${question.id}`
+    );
+  }, []);
+
+  const filteredQuestions = useMemo(() => {
+    const search = questionSearch.trim().toLowerCase();
+    if (!search) {
+      return visibleQuestions;
+    }
+
+    return visibleQuestions.filter((question) => {
+      const label = getQuestionLabel(question).toLowerCase();
+      return (
+        label.includes(search) ||
+        question.id.toString().includes(search)
+      );
+    });
+  }, [questionSearch, visibleQuestions, getQuestionLabel]);
+
+  const questionSummary = useMemo(() => {
+    if (formData.questionIds.length === 0) return 'Seleccionar preguntas';
+    return `${formData.questionIds.length} pregunta${formData.questionIds.length === 1 ? '' : 's'} seleccionadas`;
+  }, [formData.questionIds]);
+
+  const toggleQuestion = useCallback((questionId: number) => {
+    setFormData((prev) => {
+      const exists = prev.questionIds.includes(questionId);
+      return {
+        ...prev,
+        questionIds: exists
+          ? prev.questionIds.filter((id) => id !== questionId)
+          : [...prev.questionIds, questionId],
+      };
+    });
+  }, []);
 
   // Load data
   const loadData = useCallback(async (isRefresh = false) => {
@@ -198,16 +274,17 @@ export function SurveysDashboard() {
         setLoading(true);
       }
 
-      const [surveysData, employeesData, groupSurveysData] = await Promise.all([
+      const [surveysData, groupsData, questionsData, questionsI18nData] = await Promise.all([
         fetchAPI('/indiv-survey-scores'),
-        fetchAPI('/employees'),
-        fetchAPI('/group-survey-scores'), // Cambié esto de '/group-survey-scores' a '/group-surveys'
+        fetchAPI('/groups'),
+        fetchAPI('/questions'),
+        fetchAPI('/question-i18n'),
       ]);
 
       // Validar y limpiar datos de encuestas
       const validatedSurveys = surveysData.map((survey: any) => ({
         ...survey,
-        survey: survey.survey || { id: 0, name: 'Encuesta sin nombre' },
+        survey: survey.survey || { id: 0, name: survey.name || 'Encuesta sin nombre' },
         employee: survey.employee || { 
           id: 0, 
           firstName: 'Empleado', 
@@ -218,9 +295,53 @@ export function SurveysDashboard() {
         submittedAt: survey.submittedAt || new Date().toISOString(),
       }));
 
+      const questionMap = new Map<number, QuestionOption>();
+
+      questionsData.forEach((question: QuestionOption) => {
+        questionMap.set(question.id, {
+          ...question,
+          group: question.group
+            ? { id: question.group.id, name: question.group.name }
+            : question.groupId
+            ? { id: question.groupId, name: `Grupo ${question.groupId}` }
+            : undefined,
+          groupId: getQuestionGroupId(question),
+          i18nTexts: question.i18nTexts || [],
+        });
+      });
+
+      questionsI18nData.forEach((entry: any) => {
+        const targetLocale = entry.locale || entry.language || 'es';
+        const questionId = entry.questionId ?? entry.id_question ?? entry.question?.id;
+        if (!questionId) {
+          return;
+        }
+
+        const existing = questionMap.get(questionId);
+        const textEntry = { locale: targetLocale, text: entry.text };
+
+        if (existing) {
+          const existingLocales = new Set(existing.i18nTexts?.map((txt) => txt.locale));
+          if (!existingLocales.has(targetLocale)) {
+            existing.i18nTexts = [...(existing.i18nTexts || []), textEntry];
+          }
+        } else {
+          questionMap.set(questionId, {
+            id: questionId,
+            group: entry.question?.group
+              ? { id: entry.question.group.id, name: entry.question.group.name }
+              : undefined,
+            groupId: entry.question?.group?.id ?? null,
+            i18nTexts: [textEntry],
+          });
+        }
+      });
+
+      const mergedQuestions = Array.from(questionMap.values()).sort((a, b) => a.id - b.id);
+
       setSurveys(validatedSurveys);
-      setEmployees(employeesData.filter((emp: Employee) => emp.username));
-      setGroupSurveys(groupSurveysData);
+      setGroups(groupsData);
+      setQuestions(mergedQuestions);
     } catch (error: any) {
       toast.error(error.message || 'Error al cargar datos');
       console.error('Error loading data:', error);
@@ -267,71 +388,85 @@ export function SurveysDashboard() {
     };
   }, [surveys]);
 
-  const handleOpenDialog = useCallback((survey?: Survey) => {
-    if (survey) {
-      setEditingSurvey(survey);
-      setFormData({
-        surveyId: survey.survey?.id || null,
-        employeeId: survey.employee?.id || null,
-        indivScore: survey.indivScore,
-        submittedAt: new Date(survey.submittedAt).toISOString().split('T')[0],
-      });
-    } else {
-      setEditingSurvey(null);
-      setFormData({
-        surveyId: null,
-        employeeId: null,
-        indivScore: 0,
-        submittedAt: new Date().toISOString().split('T')[0],
-      });
-    }
-    setIsDialogOpen(true);
+  const resetForm = useCallback(() => {
+    setFormData({
+      groupId: null,
+      questionIds: [],
+      name: '',
+      startDate: new Date().toISOString().split('T')[0],
+      startTime: '09:00',
+      endDate: new Date().toISOString().split('T')[0],
+      endTime: '18:00',
+    });
+    setIsQuestionPickerOpen(false);
+    setQuestionSearch('');
   }, []);
+
+  const handleOpenDialog = useCallback(() => {
+    resetForm();
+    setIsDialogOpen(true);
+  }, [resetForm]);
 
   const handleCloseDialog = useCallback(() => {
     setIsDialogOpen(false);
-    setEditingSurvey(null);
-    setFormData({
-      surveyId: null,
-      employeeId: null,
-      indivScore: 0,
-      submittedAt: new Date().toISOString().split('T')[0],
-    });
-  }, []);
+    resetForm();
+  }, [resetForm]);
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.surveyId || !formData.employeeId) {
-      toast.error('Todos los campos son requeridos');
+    if (!formData.name.trim()) {
+      toast.error('Ingresa un nombre para la encuesta');
       return;
     }
 
-    if (formData.indivScore < 0 || formData.indivScore > 100) {
-      toast.error('El score debe estar entre 0 y 100');
+    if (!formData.groupId) {
+      toast.error('Selecciona un grupo');
+      return;
+    }
+
+    if (formData.questionIds.length === 0) {
+      toast.error('Selecciona al menos una pregunta');
+      return;
+    }
+
+    if (!formData.startDate || !formData.endDate) {
+      toast.error('Selecciona fechas de inicio y fin');
+      return;
+    }
+
+    if (!formData.startTime || !formData.endTime) {
+      toast.error('Selecciona horarios de inicio y fin');
+      return;
+    }
+
+    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
+    const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      toast.error('Fechas u horas inválidas');
+      return;
+    }
+
+    if (endDateTime <= startDateTime) {
+      toast.error('La fecha/hora de fin debe ser posterior a la de inicio');
       return;
     }
 
     setSubmitting(true);
     try {
       const payload = {
-        surveyId: formData.surveyId,
-        employeeId: formData.employeeId,
-        indivScore: formData.indivScore,
-        submittedAt: new Date(formData.submittedAt).toISOString(),
+        name: formData.name.trim(),
+        groupId: formData.groupId,
+        questionIds: formData.questionIds,
+        startAt: startDateTime.toISOString(),
+        endAt: endDateTime.toISOString(),
       };
 
-      if (editingSurvey) {
-        await fetchAPI(`/indiv-survey-scores/${editingSurvey.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        });
-        toast.success('Encuesta actualizada exitosamente');
-      } else {
-        await fetchAPI('/indiv-survey-scores', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        toast.success('Encuesta creada exitosamente');
-      }
+      await fetchAPI('/group-survey-scores', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      toast.success('Encuesta creada exitosamente');
       handleCloseDialog();
       loadData(true);
     } catch (error: any) {
@@ -340,7 +475,7 @@ export function SurveysDashboard() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, editingSurvey, handleCloseDialog, loadData]);
+  }, [formData.groupId, formData.questionIds, formData.startDate, handleCloseDialog, loadData]);
 
   const handleDeleteClick = useCallback((survey: Survey) => {
     setDeletingSurvey(survey);
@@ -491,7 +626,6 @@ export function SurveysDashboard() {
                 <SurveyCard
                   key={survey.id}
                   survey={survey}
-                  onEdit={handleOpenDialog}
                   onDelete={handleDeleteClick}
                 />
               ))
@@ -501,7 +635,16 @@ export function SurveysDashboard() {
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsDialogOpen(true);
+          } else {
+            handleCloseDialog();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500" />
           
@@ -510,85 +653,202 @@ export function SurveysDashboard() {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-white" />
               </div>
-              <span>{editingSurvey ? 'Editar Encuesta' : 'Nueva Encuesta'}</span>
+              <span>Nueva Encuesta</span>
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              {editingSurvey
-                ? 'Actualiza la información de la encuesta'
-                : 'Completa los datos para registrar una nueva encuesta'}
+              Completa los datos para registrar una nueva encuesta
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="surveyId" className="text-gray-300">
-                Encuesta Grupal *
-              </Label>
-              <Select
-                value={formData.surveyId?.toString() || ''}
-                onValueChange={(value) => setFormData({ ...formData, surveyId: parseInt(value) })}
-              >
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Seleccionar encuesta" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10">
-                  {groupSurveys.map((survey) => (
-                    <SelectItem key={survey.id} value={survey.id.toString()}>
-                      {survey.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="employeeId" className="text-gray-300">
-                Empleado *
-              </Label>
-              <Select
-                value={formData.employeeId?.toString() || ''}
-                onValueChange={(value) => setFormData({ ...formData, employeeId: parseInt(value) })}
-              >
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Seleccionar empleado" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 max-h-60">
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id.toString()}>
-                      {emp.firstName} {emp.lastName} - {emp.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="indivScore" className="text-gray-300">
-                Puntuación Individual (0-100) *
+              <Label htmlFor="surveyName" className="text-gray-300">
+                Nombre *
               </Label>
               <Input
-                id="indivScore"
-                type="number"
-                min="0"
-                max="100"
-                placeholder="Ej: 85"
-                value={formData.indivScore}
-                onChange={(e) => setFormData({ ...formData, indivScore: parseFloat(e.target.value) || 0 })}
+                id="surveyName"
+                placeholder="Ej: Evaluación semanal de bienestar"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="submittedAt" className="text-gray-300">
-                Fecha de Envío *
+              <Label htmlFor="groupId" className="text-gray-300">
+                ID de Grupo *
               </Label>
-              <Input
-                id="submittedAt"
-                type="date"
-                value={formData.submittedAt}
-                onChange={(e) => setFormData({ ...formData, submittedAt: e.target.value })}
-                className="bg-slate-800/50 border-white/10 text-white focus:border-purple-500/50"
-              />
+              <Select
+                value={formData.groupId?.toString() || ''}
+                onValueChange={(value) => {
+                  const groupId = parseInt(value, 10);
+                  const groupQuestionsForValue = questions.filter(
+                    (question) => getQuestionGroupId(question) === groupId
+                  );
+                  const allowedIds = new Set(
+                    [...defaultQuestions, ...groupQuestionsForValue].map((question) => question.id)
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    groupId,
+                    questionIds: prev.questionIds.filter((id) => allowedIds.has(id)),
+                  }));
+                }}
+              >
+                <SelectTrigger id="groupId" className="bg-slate-800/50 border-white/10 text-white">
+                  <SelectValue placeholder="Seleccionar grupo" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  {groups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()}>
+                      {group.name} (ID: {group.id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-300">
+                Preguntas Disponibles *
+              </Label>
+              <Popover open={isQuestionPickerOpen} onOpenChange={setIsQuestionPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between bg-slate-800/50 border-white/10 text-gray-200 hover:bg-slate-800/70"
+                  >
+                    <span>{questionSummary}</span>
+                    <ListChecks className="w-4 h-4 text-purple-400" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[340px] bg-slate-900 border-white/10 text-white" align="start">
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        autoFocus
+                        placeholder="Buscar pregunta..."
+                        value={questionSearch}
+                        onChange={(e) => setQuestionSearch(e.target.value)}
+                        className="pl-10 bg-slate-800/70 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/50"
+                      />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
+                      {filteredQuestions.length === 0 ? (
+                        <p className="text-center text-sm text-gray-400 py-6">
+                          No se encontraron preguntas
+                        </p>
+                      ) : (
+                        filteredQuestions.map((question) => {
+                          const label = getQuestionLabel(question);
+                          const selected = formData.questionIds.includes(question.id);
+                          return (
+                            <button
+                              key={question.id}
+                              type="button"
+                              onClick={() => toggleQuestion(question.id)}
+                              className="w-full text-left flex items-start gap-3 rounded-lg px-3 py-2 bg-slate-800/40 border border-white/5 hover:border-purple-500/40 transition-colors"
+                            >
+                              <Checkbox
+                                checked={selected}
+                                onCheckedChange={() => toggleQuestion(question.id)}
+                                className="mt-1 border-white/30 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-sm text-white">{label}</span>
+                                <span className="text-xs text-gray-400">
+                                  ID: {question.id}
+                                  {question.group?.name ? ` • Grupo: ${question.group.name}` : ''}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {formData.questionIds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.questionIds.map((questionId) => {
+                    const question = questionLookup.get(questionId);
+                    const label = getQuestionLabel(question) || `Pregunta ${questionId}`;
+                    return (
+                      <Badge
+                        key={questionId}
+                        variant="secondary"
+                        className="bg-purple-500/20 text-purple-200 border-purple-500/40 flex items-center gap-1"
+                      >
+                        {label}
+                        <button
+                          type="button"
+                          onClick={() => toggleQuestion(questionId)}
+                          className="hover:text-white transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="startDate" className="text-gray-300">
+                  Fecha de Inicio *
+                </Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="bg-slate-800/50 border-white/10 text-white focus:border-purple-500/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="startTime" className="text-gray-300">
+                  Hora de Inicio *
+                </Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="bg-slate-800/50 border-white/10 text-white focus:border-purple-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="endDate" className="text-gray-300">
+                  Fecha de Fin *
+                </Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  className="bg-slate-800/50 border-white/10 text-white focus:border-purple-500/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endTime" className="text-gray-300">
+                  Hora de Fin *
+                </Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="bg-slate-800/50 border-white/10 text-white focus:border-purple-500/50"
+                />
+              </div>
             </div>
           </div>
 
@@ -614,7 +874,7 @@ export function SurveysDashboard() {
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  {editingSurvey ? 'Actualizar' : 'Crear Encuesta'}
+                  Crear Encuesta
                 </>
               )}
             </Button>
