@@ -4,6 +4,7 @@ import os
 from datetime import datetime, time
 from typing import Dict, List, Optional
 
+import asyncpg
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,10 @@ BIOMETRIC_BASE_URL = os.getenv("BIOMETRIC_API_URL", "http://biometric-microservi
 IOT_USER_EMAIL = os.getenv("IOT_USER_EMAIL", "carlos@vitanexo.com")
 IOT_USER_PASSWORD = os.getenv("IOT_USER_PASSWORD", "123456")
 SEND_INTERVAL_SECONDS = int(os.getenv("IOT_SEND_INTERVAL_SECONDS", "5"))
+SIM_PG_DSN = os.getenv(
+    "SIM_PG_DSN",
+    "postgres://admin:admin@vitanexo-db:5432/vitanexo_postgres_db",
+)
 
 
 class AuthState(BaseModel):
@@ -33,6 +38,7 @@ class AuthState(BaseModel):
 
 auth_state = AuthState()
 http_client = httpx.AsyncClient(timeout=10)
+db_pool: Optional[asyncpg.Pool] = None
 
 
 async def login_if_needed() -> None:
@@ -176,42 +182,105 @@ class SensorState(BaseModel):
 
 sensors: Dict[str, SensorConfig] = {}
 sensor_states: Dict[str, SensorState] = {}
+enterprise_cache: List["EnterpriseLocation"] = []
 
 
-def init_default_sensors() -> None:
+async def load_enterprise_cache() -> None:
     """
-    Create two default sensors:
-    - Enterprise 1 (VitaNexo Corporativo), location 1
-    - Enterprise 2 (VitaNexo Salud), location 3
+    Load enterprises and locations from Postgres so we can both:
+    - Validate location ↔ enterprise relationships.
+    - Derive defaults for initial sensors.
+    """
+    global enterprise_cache
+    if db_pool is None:
+        return
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT e.id_enterprise,
+                   e.name AS enterprise_name,
+                   l.id_location,
+                   l.location_name
+            FROM enterprises e
+            JOIN enterprise_locations l
+              ON l.id_enterprise = e.id_enterprise
+            WHERE l.active = true
+            ORDER BY e.id_enterprise, l.id_location;
+            """
+        )
+    by_ent: Dict[int, Dict] = {}
+    for r in rows:
+        ent_id = int(r["id_enterprise"])
+        if ent_id not in by_ent:
+            by_ent[ent_id] = {
+                "enterprise_id": ent_id,
+                "enterprise_name": r["enterprise_name"],
+                "locations": [],
+            }
+        by_ent[ent_id]["locations"].append(
+            {
+                "location_id": int(r["id_location"]),
+                "location_name": r["location_name"],
+            }
+        )
+    enterprise_cache = [
+        EnterpriseLocation(**data) for data in sorted(by_ent.values(), key=lambda d: d["enterprise_id"])
+    ]
+    logger.info("Loaded %d enterprises / locations from DB", len(enterprise_cache))
+
+
+def init_default_sensors_from_cache() -> None:
+    """
+    Create two default sensors based strictly on DB data:
+    - Enterprise 1, location 1
+    - Enterprise 2, location 3
+    Only created if those enterprise/location pairs exist.
     """
     global sensors, sensor_states
     if sensors:
         return
+    if not enterprise_cache:
+        logger.warning("Enterprise cache is empty; cannot create default sensors")
+        return
 
-    sensors["vn_corp_loc1"] = SensorConfig(
-        sensor_id="vn_corp_loc1",
-        org_id=1,
-        enterprise_name="VitaNexo Corporativo",
-        location_id=1,
-        location_name="Sede Corporativa Polanco",
-        site="VitaNexo Corporativo",
-        zone="Polanco",
-        model="Awair-Sim",
-    )
+    def find_ent_loc(ent_id: int, loc_id: int):
+        for ent in enterprise_cache:
+            if ent.enterprise_id == ent_id:
+                for loc in ent.locations:
+                    if loc.location_id == loc_id:
+                        return ent, loc
+        return None, None
 
-    sensors["vn_salud_loc3"] = SensorConfig(
-        sensor_id="vn_salud_loc3",
-        org_id=2,
-        enterprise_name="VitaNexo Salud",
-        location_id=3,
-        location_name="Centro Internacional LA",
-        site="VitaNexo Salud",
-        zone="Downtown LA",
-        model="PurpleAir-Sim",
-    )
+    ent1, loc1 = find_ent_loc(1, 1)
+    ent2, loc3 = find_ent_loc(2, 3)
+
+    if ent1 and loc1:
+        sensors["vn_corp_loc1"] = SensorConfig(
+            sensor_id="vn_corp_loc1",
+            org_id=ent1.enterprise_id,
+            enterprise_name=ent1.enterprise_name,
+            location_id=loc1.location_id,
+            location_name=loc1.location_name,
+            site=ent1.enterprise_name,
+            zone=loc1.location_name,
+            model="Awair-Sim",
+        )
+
+    if ent2 and loc3:
+        sensors["vn_salud_loc3"] = SensorConfig(
+            sensor_id="vn_salud_loc3",
+            org_id=ent2.enterprise_id,
+            enterprise_name=ent2.enterprise_name,
+            location_id=loc3.location_id,
+            location_name=loc3.location_name,
+            site=ent2.enterprise_name,
+            zone=loc3.location_name,
+            model="PurpleAir-Sim",
+        )
 
     for sid in sensors:
         sensor_states[sid] = SensorState()
+    logger.info("Initialized %d default sensors from DB", len(sensors))
 
 
 def in_work_hours(now: datetime, sensor: SensorConfig) -> bool:
@@ -372,10 +441,15 @@ class SensorUpdateRequest(BaseModel):
     env_ambient: Optional[EnvAmbientBaseline] = None
 
 
+class LocationInfo(BaseModel):
+    location_id: int
+    location_name: str
+
+
 class EnterpriseLocation(BaseModel):
     enterprise_id: int
     enterprise_name: str
-    locations: List[Dict[str, str]]
+    locations: List[LocationInfo]
 
 
 app = FastAPI(title="IoT Sensor Simulator")
@@ -391,7 +465,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    init_default_sensors()
+    global db_pool
+    db_pool = await asyncpg.create_pool(SIM_PG_DSN)
+    await load_enterprise_cache()
+    init_default_sensors_from_cache()
     start_background_loop()
 
 
@@ -400,6 +477,8 @@ async def on_shutdown():
     if background_task:
         background_task.cancel()
     await http_client.aclose()
+    if db_pool:
+        await db_pool.close()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -653,26 +732,12 @@ async def index():
 @app.get("/api/enterprises", response_model=List[EnterpriseLocation])
 async def get_enterprises():
     """
-    Return a static list of enterprises and locations that match the seed data.
-    This is used by the UI to validate that locations belong to enterprises.
+    Fetch enterprises + locations from DB (or cached copy loaded at startup).
     """
-    return [
-        EnterpriseLocation(
-            enterprise_id=1,
-            enterprise_name="VitaNexo Corporativo",
-            locations=[
-                {"location_id": 1, "location_name": "Sede Corporativa Polanco"},
-                {"location_id": 2, "location_name": "Clínica Condesa"},
-            ],
-        ),
-        EnterpriseLocation(
-            enterprise_id=2,
-            enterprise_name="VitaNexo Salud",
-            locations=[
-                {"location_id": 3, "location_name": "Centro Internacional LA"},
-            ],
-        ),
-    ]
+    if db_pool is None:
+        return enterprise_cache
+    await load_enterprise_cache()
+    return enterprise_cache
 
 
 @app.get("/api/sensors", response_model=List[SensorConfig])
@@ -682,15 +747,15 @@ async def list_sensors():
 
 @app.post("/api/sensors", response_model=SensorConfig)
 async def create_or_update_sensor(req: SensorCreateRequest):
-    # Validate that location belongs to enterprise based on static mapping
-    valid = False
-    for ent in await get_enterprises():
+    # Validate that location belongs to enterprise using DB-backed mapping
+    enterprises = await get_enterprises()
+    for ent in enterprises:
         if ent.enterprise_id == req.org_id:
             if any(loc["location_id"] == req.location_id for loc in ent.locations):
-                valid = True
-            break
-    if not valid:
-        raise HTTPException(status_code=400, detail="Location does not belong to enterprise")
+                break
+            raise HTTPException(status_code=400, detail="Location does not belong to enterprise")
+    else:
+        raise HTTPException(status_code=400, detail="Unknown enterprise")
 
     cfg = SensorConfig(**req.dict())
     sensors[cfg.sensor_id] = cfg
