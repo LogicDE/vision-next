@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Intervention } from '../../../entities/intervention.entity';
-import { Employee } from '../../../entities/employee.entity';
+import { Group } from '../../../entities/group.entity';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { UpdateInterventionDto } from './dto/update-intervention.dto';
 
@@ -11,20 +11,16 @@ export class InterventionsService {
   constructor(
     @InjectRepository(Intervention)
     private repo: Repository<Intervention>,
-    @InjectRepository(Employee)
-    private employeeRepo: Repository<Employee>,
+    @InjectRepository(Group)
+    private groupRepo: Repository<Group>,
   ) {}
 
   async create(dto: CreateInterventionDto) {
-    let manager;
-    if (dto.managerId) {
-      manager = await this.employeeRepo.findOneBy({ id: dto.managerId });
-      if (!manager) throw new NotFoundException('Manager no encontrado');
-    }
+    const group = await this.groupRepo.findOneBy({ id: dto.groupId });
+    if (!group) throw new NotFoundException('Grupo no encontrado');
 
     const intervention = this.repo.create({
-      manager,
-      type: dto.type,
+      group,
       description: dto.description,
       titleMessage: dto.titleMessage,
       bodyMessage: dto.bodyMessage,
@@ -34,13 +30,13 @@ export class InterventionsService {
   }
 
   findAll() {
-    return this.repo.find({ relations: ['manager'] });
+    return this.repo.find({ relations: ['group', 'group.manager', 'group.manager.enterprise'] });
   }
 
   async findOne(id: number) {
     const intervention = await this.repo.findOne({
       where: { id },
-      relations: ['manager'],
+      relations: ['group', 'group.manager', 'group.manager.enterprise'],
     });
     if (!intervention) throw new NotFoundException('Intervention no encontrado');
     return intervention;
@@ -49,13 +45,12 @@ export class InterventionsService {
   async update(id: number, dto: UpdateInterventionDto) {
     const intervention = await this.findOne(id);
 
-    if (dto.managerId !== undefined) {
-      const manager = await this.employeeRepo.findOneBy({ id: dto.managerId });
-      if (!manager) throw new NotFoundException('Manager no encontrado');
-      intervention.manager = manager;
+    if (dto.groupId !== undefined) {
+      const group = await this.groupRepo.findOneBy({ id: dto.groupId });
+      if (!group) throw new NotFoundException('Grupo no encontrado');
+      intervention.group = group;
     }
 
-    if (dto.type !== undefined) intervention.type = dto.type;
     if (dto.description !== undefined) intervention.description = dto.description;
     if (dto.titleMessage !== undefined) intervention.titleMessage = dto.titleMessage;
     if (dto.bodyMessage !== undefined) intervention.bodyMessage = dto.bodyMessage;

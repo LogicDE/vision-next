@@ -11,6 +11,9 @@ export class GroupSurveyScore {
   @JoinColumn({ name: 'id_group' })
   group!: Group;
 
+@Column({ name: 'name', length: 150 })
+name!: string;
+
   @Column({ name: 'start_at', type: 'timestamptz' })
   startAt!: Date;
 

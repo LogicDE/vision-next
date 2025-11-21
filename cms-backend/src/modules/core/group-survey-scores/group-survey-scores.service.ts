@@ -21,22 +21,25 @@ export class GroupSurveyScoresService {
 
     const survey = this.repo.create({
       group,
+      name: dto.name.trim(),
       startAt: dto.startAt ? new Date(dto.startAt) : undefined,
       endAt: dto.endAt ? new Date(dto.endAt) : undefined,
-      groupScore: dto.groupScore,
+      groupScore: dto.groupScore ?? 0,
     });
 
     return this.repo.save(survey);
   }
 
   findAll() {
-    return this.repo.find({ relations: ['group', 'individualScores'] });
+    return this.repo.find({
+      relations: ['group', 'group.manager', 'group.manager.enterprise', 'individualScores'],
+    });
   }
 
   async findOne(id: number) {
     const survey = await this.repo.findOne({
       where: { id },
-      relations: ['group', 'individualScores'],
+      relations: ['group', 'group.manager', 'group.manager.enterprise', 'individualScores'],
     });
     if (!survey) throw new NotFoundException('GroupSurveyScore no encontrado');
     return survey;
@@ -51,6 +54,7 @@ export class GroupSurveyScoresService {
       survey.group = group;
     }
 
+    if (dto.name !== undefined) survey.name = dto.name.trim();
     if (dto.startAt !== undefined) survey.startAt = new Date(dto.startAt);
     if (dto.endAt !== undefined) survey.endAt = new Date(dto.endAt);
     if (dto.groupScore !== undefined) survey.groupScore = dto.groupScore;

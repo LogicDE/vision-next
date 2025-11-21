@@ -30,10 +30,76 @@ export const WEBSOCKET_URL = (() => {
   return process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000/ws';
 })();
 
+const ACCESS_TOKEN_KEY = 'vn_access_token';
+const REFRESH_TOKEN_KEY = 'vn_refresh_token';
+
+let accessToken: string | null = null;
+let refreshTokenValue: string | null = null;
+
+const loadStoredTokens = () => {
+  if (typeof window === 'undefined') return;
+  accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  refreshTokenValue = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
+loadStoredTokens();
+
 // 🌟 Instancia Axios
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   withCredentials: true,
+});
+
+if (accessToken) {
+  api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+}
+
+export const setAuthTokens = ({
+  accessToken: newAccessToken,
+  refreshToken: newRefreshToken,
+}: {
+  accessToken?: string | null;
+  refreshToken?: string | null;
+} = {}) => {
+  if (typeof newAccessToken !== 'undefined') {
+    accessToken = newAccessToken;
+    if (typeof window !== 'undefined') {
+      if (newAccessToken) window.localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+      else window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+    if (newAccessToken) {
+      api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+    } else {
+      delete api.defaults.headers.common.Authorization;
+    }
+  }
+
+  if (typeof newRefreshToken !== 'undefined') {
+    refreshTokenValue = newRefreshToken;
+    if (typeof window !== 'undefined') {
+      if (newRefreshToken) window.localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+      else window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+  }
+};
+
+export const clearAuthTokens = () => {
+  setAuthTokens({ accessToken: null, refreshToken: null });
+};
+
+export const getAccessToken = () => accessToken;
+export const getRefreshToken = () => refreshTokenValue;
+
+api.interceptors.request.use((config) => {
+  const isRefreshCall = config.url?.includes('/auth/refresh');
+  const tokenToUse = isRefreshCall ? refreshTokenValue : accessToken;
+  if (tokenToUse) {
+    config.headers = config.headers ?? {};
+    if (!config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${tokenToUse}`;
+    }
+  }
+  return config;
 });
 
 // 🔁 Interceptor para refresh token con cola
@@ -49,7 +115,16 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const url = response.config?.url ?? '';
+    if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
+      const data = response.data;
+      if (data?.accessToken || data?.refreshToken) {
+        setAuthTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+      }
+    }
+    return response;
+  },
   async (error) => {
     // ✅ Validate error structure before accessing properties
     if (!error || !error.config) {
@@ -83,7 +158,13 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh'); // backend renueva access token
+        const refreshResponse = await api.post('/auth/refresh'); // backend renueva access token
+        if (refreshResponse.data?.accessToken || refreshResponse.data?.refreshToken) {
+          setAuthTokens({
+            accessToken: refreshResponse.data.accessToken,
+            refreshToken: refreshResponse.data.refreshToken ?? refreshTokenValue,
+          });
+        }
         isRefreshing = false;
         processQueue(null); // resolvemos todas las promesas pendientes
         return api(originalRequest);

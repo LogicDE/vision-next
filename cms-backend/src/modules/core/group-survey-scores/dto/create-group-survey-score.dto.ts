@@ -1,8 +1,12 @@
-import { IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsNumber, IsOptional, IsDateString, IsString, Length } from 'class-validator';
 
 export class CreateGroupSurveyScoreDto {
   @IsNumber()
   groupId!: number;
+
+  @IsString()
+  @Length(1, 150)
+  name!: string;
 
   @IsOptional()
   @IsDateString()

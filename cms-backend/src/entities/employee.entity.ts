@@ -5,8 +5,6 @@ import { Group } from './group.entity';
 import { GroupEmployee } from './group-employee.entity';
 import { GroupSnapshotMember } from './group-snapshot-member.entity';
 import { IndivSurveyScore } from './indiv-survey-score.entity';
-import { Intervention } from './intervention.entity';
-import { Event } from './event.entity';
 import { AuditLog } from './audit-log.entity';
 
 @Entity('employees')
@@ -64,12 +62,6 @@ export class Employee {
 
   @OneToMany(() => IndivSurveyScore, (iss) => iss.employee)
   surveyScores!: IndivSurveyScore[];
-
-  @OneToMany(() => Event, (e) => e.manager)
-  managedEvents!: Event[];
-
-  @OneToMany(() => Intervention, (i) => i.manager)
-  managedInterventions!: Intervention[];
 
   @OneToMany(() => AuditLog, (log) => log.actor)
   auditLogs!: AuditLog[];

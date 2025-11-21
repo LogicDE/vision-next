@@ -2,8 +2,7 @@ import { IsString, IsOptional, IsDateString, IsNumber, Length } from 'class-vali
 
 export class CreateEventDto {
   @IsNumber()
-  @IsOptional()
-  managerId?: number;
+  groupId!: number;
 
   @IsString()
   @Length(1, 100)

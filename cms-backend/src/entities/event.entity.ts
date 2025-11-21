@@ -1,14 +1,14 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Employee } from './employee.entity';
+import { Group } from './group.entity';
 
 @Entity('events')
 export class Event {
   @PrimaryGeneratedColumn({ name: 'id_event' })
   id!: number;
 
-  @ManyToOne(() => Employee, (e) => e.managedEvents, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'id_manager' })
-  manager?: Employee;
+  @ManyToOne(() => Group, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_group' })
+  group!: Group;
 
   @Column({ name: 'title_message', length: 100 })
   titleMessage!: string;
