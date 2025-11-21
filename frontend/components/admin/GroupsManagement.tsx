@@ -34,9 +34,12 @@ import {
   Activity,
   BarChart3,
   BrainCircuit,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAccessToken } from '@/lib/api';
 
 interface Group {
   id: number;
@@ -75,6 +78,7 @@ interface GroupFormData {
 }
 
 export function GroupsManagement() {
+  const PAGE_SIZE = 10;
   const [groups, setGroups] = useState<Group[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +88,7 @@ export function GroupsManagement() {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState<GroupFormData>({
     name: '',
     managerId: null,
@@ -93,12 +98,14 @@ export function GroupsManagement() {
 
   // Fetch helper function mejorada
   const fetchAPI = async (endpoint: string, options?: RequestInit) => {
+    const token = getAccessToken();
     try {
       const response = await fetch(`${API_URL}${endpoint}`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...options?.headers,
+          ...(options?.headers || {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         ...options,
       });
@@ -244,12 +251,22 @@ export function GroupsManagement() {
     }
   };
 
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.manager.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.manager.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.manager.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGroups = groups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.manager.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.manager.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.manager.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filteredGroups.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE));
+  const pageStart = filteredGroups.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = filteredGroups.length === 0 ? 0 : Math.min(filteredGroups.length, currentPage * PAGE_SIZE);
+  const paginatedGroups = filteredGroups.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (loading) {
     return (
@@ -382,7 +399,7 @@ export function GroupsManagement() {
                 </p>
               </div>
             ) : (
-              filteredGroups.map((group) => (
+              paginatedGroups.map((group) => (
                 <div
                   key={group.id}
                   className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-800/50 rounded-xl border border-white/10 hover:border-white/20 transition-all space-y-4 md:space-y-0"
@@ -460,6 +477,46 @@ export function GroupsManagement() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6">
+              <p className="text-sm text-gray-400">
+                Mostrando{' '}
+                {filteredGroups.length === 0 ? (
+                  '0'
+                ) : (
+                  <>
+                    {pageStart}-{pageEnd}
+                  </>
+                )}{' '}
+                de {filteredGroups.length} grupos
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-300">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  Siguiente
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

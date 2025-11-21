@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from '../../../entities/event.entity';
-import { Employee } from '../../../entities/employee.entity';
+import { Group } from '../../../entities/group.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
@@ -11,20 +11,17 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
-    @InjectRepository(Employee)
-    private readonly employeeRepo: Repository<Employee>,
+    @InjectRepository(Group)
+    private readonly groupRepo: Repository<Group>,
   ) {}
 
   async create(dto: CreateEventDto) {
-    // Buscar manager solo si managerId está definido
-    const manager =
-      dto.managerId
-        ? (await this.employeeRepo.findOne({ where: { id: dto.managerId } })) ?? undefined
-        : undefined;
+    const group = await this.groupRepo.findOne({ where: { id: dto.groupId } });
+    if (!group) throw new NotFoundException('Grupo no encontrado');
 
     const event = this.eventRepo.create({
       ...dto,
-      manager,
+      group,
       startAt: dto.startAt ? new Date(dto.startAt) : undefined,
       endAt: new Date(dto.endAt),
     });
@@ -33,13 +30,15 @@ export class EventsService {
   }
 
   findAll() {
-    return this.eventRepo.find({ relations: ['manager'] });
+    return this.eventRepo.find({
+      relations: ['group', 'group.manager', 'group.manager.enterprise'],
+    });
   }
 
   async findOne(id: number) {
     const event = await this.eventRepo.findOne({
       where: { id },
-      relations: ['manager'],
+      relations: ['group', 'group.manager', 'group.manager.enterprise'],
     });
 
     if (!event) throw new NotFoundException('Event no encontrado');
@@ -49,13 +48,10 @@ export class EventsService {
   async update(id: number, dto: UpdateEventDto) {
     const event = await this.findOne(id);
 
-    // Actualizar manager solo si managerId fue proporcionado
-    if (dto.managerId !== undefined) {
-      const manager =
-        dto.managerId
-          ? (await this.employeeRepo.findOne({ where: { id: dto.managerId } })) ?? undefined
-          : undefined;
-      event.manager = manager;
+    if (dto.groupId !== undefined) {
+      const group = await this.groupRepo.findOne({ where: { id: dto.groupId } });
+      if (!group) throw new NotFoundException('Grupo no encontrado');
+      event.group = group;
     }
 
     // Actualizar fechas opcionales correctamente

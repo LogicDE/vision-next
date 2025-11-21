@@ -4,6 +4,8 @@ import { GroupEmployee } from './group-employee.entity';
 import { GroupSnapshot } from './group-snapshot.entity';
 import { GroupSurveyScore } from './group-survey-score.entity';
 import { Question } from './question.entity';
+import { Event } from './event.entity';
+import { Intervention } from './intervention.entity';
 
 @Entity('groups')
 export class Group {
@@ -28,4 +30,10 @@ export class Group {
 
   @OneToMany(() => Question, (q) => q.group)
   questions!: Question[];
+
+  @OneToMany(() => Event, (event) => event.group)
+  events!: Event[];
+
+  @OneToMany(() => Intervention, (intervention) => intervention.group)
+  interventions!: Intervention[];
 }

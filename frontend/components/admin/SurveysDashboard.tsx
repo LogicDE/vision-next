@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import { KeyboardEvent, useEffect, useState, useMemo, useCallback, memo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,14 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FileText,
@@ -37,32 +38,48 @@ import {
   RefreshCw,
   ListChecks,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  Layers,
+  ChevronDown,
+  ChevronsUpDown,
+  Edit,
 } from 'lucide-react';
 import { fetchAPI } from '@/lib/apiClient';
 import { toast } from 'sonner';
 
 // Types
-interface Survey {
+interface Enterprise {
   id: number;
-  survey: {
-    id: number;
-    name: string;
-    description?: string;
-  };
-  employee: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  submittedAt: string;
-  indivScore: number;
+  name: string;
+}
+
+interface GroupManagerEnterprise {
+  id: number;
+  name: string;
+}
+
+interface GroupManager {
+  id: number;
+  firstName: string;
+  lastName: string;
+  enterprise?: GroupManagerEnterprise;
 }
 
 interface GroupOption {
   id: number;
   name: string;
-  description?: string;
+  manager?: GroupManager;
+}
+
+interface GroupSurvey {
+  id: number;
+  name: string;
+  startAt?: string;
+  endAt?: string;
+  groupScore?: number;
+  group?: GroupOption;
 }
 
 interface QuestionI18n {
@@ -81,13 +98,15 @@ interface QuestionOption {
 }
 
 interface SurveyFormData {
+  enterpriseId: number | null;
   groupId: number | null;
-  questionIds: number[];
   name: string;
   startDate: string;
   startTime: string;
   endDate: string;
   endTime: string;
+  groupScore: number | '';
+  questionIds: number[];
 }
 
 const getQuestionGroupId = (question?: QuestionOption) => {
@@ -110,74 +129,10 @@ const LoadingState = memo(() => (
 
 LoadingState.displayName = 'LoadingState';
 
-// Survey Card Component
-const SurveyCard = memo(({ 
-  survey, 
-  onDelete 
-}: { 
-  survey: Survey; 
-  onDelete: (survey: Survey) => void;
-}) => {
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'from-green-500 to-emerald-500';
-    if (score >= 60) return 'from-blue-500 to-cyan-500';
-    if (score >= 40) return 'from-yellow-500 to-amber-500';
-    return 'from-red-500 to-pink-500';
-  };
-
-  const getScoreBadge = (score: number) => {
-    if (score >= 80) return 'bg-green-500/20 text-green-300 border-green-500/30';
-    if (score >= 60) return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-    if (score >= 40) return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
-    return 'bg-red-500/20 text-red-300 border-red-500/30';
-  };
-
-  return (
-    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-white/10 hover:border-white/20 transition-all group">
-      <div className="flex items-center space-x-4 flex-1">
-        <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getScoreColor(survey.indivScore)} flex items-center justify-center flex-shrink-0 transform group-hover:scale-110 transition-transform`}>
-          <FileText className="w-6 h-6 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-1">
-            <h4 className="font-semibold text-white">{survey.survey?.name || 'Encuesta sin nombre'}</h4>
-            <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-              ID: {survey.id}
-            </Badge>
-          </div>
-          <p className="text-sm text-gray-400 truncate mb-2">
-            {survey.employee?.firstName || 'Nombre'} {survey.employee?.lastName || 'No disponible'}
-          </p>
-          <div className="flex items-center space-x-3 flex-wrap gap-2">
-            <Badge className={`${getScoreBadge(survey.indivScore)} text-xs`}>
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Score: {survey.indivScore}
-            </Badge>
-            <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 text-xs">
-              <Calendar className="w-3 h-3 mr-1" />
-              {new Date(survey.submittedAt).toLocaleDateString('es-MX')}
-            </Badge>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center space-x-2 ml-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(survey)}
-          className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  );
-});
-
-SurveyCard.displayName = 'SurveyCard';
-
 export function SurveysDashboard() {
-  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const PAGE_SIZE = 10;
+  const [surveys, setSurveys] = useState<GroupSurvey[]>([]);
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [questions, setQuestions] = useState<QuestionOption[]>([]);
   const [questionSearch, setQuestionSearch] = useState('');
@@ -186,9 +141,22 @@ export function SurveysDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingSurvey, setDeletingSurvey] = useState<Survey | null>(null);
+  const [deletingSurvey, setDeletingSurvey] = useState<GroupSurvey | null>(null);
+  const [editingSurvey, setEditingSurvey] = useState<GroupSurvey | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedEnterprise, setExpandedEnterprise] = useState<number | null>(null);
+  const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
+  const [enterprisePopoverOpen, setEnterprisePopoverOpen] = useState(false);
+  const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
+  const [enterpriseSearch, setEnterpriseSearch] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [enterpriseInvalid, setEnterpriseInvalid] = useState(false);
+  const [groupInvalid, setGroupInvalid] = useState(false);
+  const enterpriseInputRef = useRef<HTMLInputElement>(null);
+  const groupInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<SurveyFormData>({
+    enterpriseId: null,
     groupId: null,
     questionIds: [],
     name: '',
@@ -196,6 +164,7 @@ export function SurveysDashboard() {
     startTime: '09:00',
     endDate: new Date().toISOString().split('T')[0],
     endTime: '18:00',
+    groupScore: '',
   });
   const [isQuestionPickerOpen, setIsQuestionPickerOpen] = useState(false);
 
@@ -265,6 +234,149 @@ export function SurveysDashboard() {
     });
   }, []);
 
+  const enterpriseNameMap = useMemo(
+    () => new Map(enterprises.map((enterprise) => [enterprise.id, enterprise.name])),
+    [enterprises]
+  );
+
+  const groupMap = useMemo(
+    () => new Map(groups.map((group) => [group.id, group])),
+    [groups]
+  );
+
+  const getEnterpriseMetaForGroup = useCallback(
+    (group?: GroupOption) => {
+      const enterpriseId = group?.manager?.enterprise?.id ?? UNASSIGNED_ENTERPRISE_ID;
+      const enterpriseName =
+        enterpriseNameMap.get(enterpriseId) ??
+        group?.manager?.enterprise?.name ??
+        (enterpriseId === UNASSIGNED_ENTERPRISE_ID ? 'Sin empresa asignada' : 'Empresa sin nombre');
+      return { id: enterpriseId, name: enterpriseName };
+    },
+    [enterpriseNameMap]
+  );
+
+  const getGroupFromSurvey = useCallback(
+    (survey: GroupSurvey) => {
+      if (survey.group?.id && groupMap.has(survey.group.id)) {
+        return groupMap.get(survey.group.id);
+      }
+      return survey.group;
+    },
+    [groupMap]
+  );
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const groupMatchesSearch = useCallback(
+    (group: GroupOption) => {
+      if (!normalizedSearch) return true;
+      const meta = getEnterpriseMetaForGroup(group);
+      return (
+        group.name.toLowerCase().includes(normalizedSearch) ||
+        meta.name.toLowerCase().includes(normalizedSearch)
+      );
+    },
+    [normalizedSearch, getEnterpriseMetaForGroup]
+  );
+
+  const filteredSurveys = useMemo(() => {
+    if (!normalizedSearch) return surveys;
+    return surveys.filter((survey) => {
+      const group = getGroupFromSurvey(survey);
+      const enterpriseMeta = getEnterpriseMetaForGroup(group);
+      return (
+        survey.name.toLowerCase().includes(normalizedSearch) ||
+        group?.name?.toLowerCase().includes(normalizedSearch) ||
+        enterpriseMeta.name.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [surveys, normalizedSearch, getEnterpriseMetaForGroup, getGroupFromSurvey]);
+
+  const enterpriseOptions = useMemo(() => {
+    const optionMap = new Map<number, string>();
+    enterprises.forEach((enterprise) => optionMap.set(enterprise.id, enterprise.name));
+    groups.forEach((group) => {
+      const meta = getEnterpriseMetaForGroup(group);
+      if (!optionMap.has(meta.id)) {
+        optionMap.set(meta.id, meta.name);
+      }
+    });
+    return Array.from(optionMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [enterprises, groups, getEnterpriseMetaForGroup]);
+
+  const getGroupsForEnterprise = useCallback(
+    (enterpriseId: number | null) =>
+      groups.filter((group) => getEnterpriseMetaForGroup(group).id === (enterpriseId ?? UNASSIGNED_ENTERPRISE_ID)),
+    [groups, getEnterpriseMetaForGroup]
+  );
+
+  const getFirstGroupIdForEnterprise = useCallback(
+    (enterpriseId: number | null) => {
+      const available = getGroupsForEnterprise(enterpriseId);
+      return available.length ? available[0].id : null;
+    },
+    [getGroupsForEnterprise]
+  );
+
+  const hierarchy = useMemo(() => {
+    const enterpriseBuckets = new Map<
+      number,
+      {
+        enterprise: { id: number; name: string };
+        groups: Map<number, { group: GroupOption; surveys: GroupSurvey[] }>;
+      }
+    >();
+
+    const ensureEnterprise = (id: number, name: string) => {
+      if (!enterpriseBuckets.has(id)) {
+        enterpriseBuckets.set(id, {
+          enterprise: { id, name },
+          groups: new Map(),
+        });
+      }
+      return enterpriseBuckets.get(id)!;
+    };
+
+    const ensureGroup = (
+      bucket: { groups: Map<number, { group: GroupOption; surveys: GroupSurvey[] }> },
+      group: GroupOption,
+    ) => {
+      if (!bucket.groups.has(group.id)) {
+        bucket.groups.set(group.id, { group, surveys: [] });
+      }
+      return bucket.groups.get(group.id)!;
+    };
+
+    groups.forEach((group) => {
+      if (!groupMatchesSearch(group)) return;
+      const meta = getEnterpriseMetaForGroup(group);
+      const bucket = ensureEnterprise(meta.id, meta.name);
+      ensureGroup(bucket, group);
+    });
+
+    filteredSurveys.forEach((survey) => {
+      const groupData = getGroupFromSurvey(survey);
+      if (!groupData) return;
+      const meta = getEnterpriseMetaForGroup(groupData);
+      const bucket = ensureEnterprise(meta.id, meta.name);
+      const node = ensureGroup(bucket, groupData);
+      node.surveys.push(survey);
+    });
+
+    return Array.from(enterpriseBuckets.values())
+      .map((bucket) => ({
+        enterprise: bucket.enterprise,
+        groups: Array.from(bucket.groups.values()),
+      }))
+      .filter((entry) => entry.groups.length > 0)
+      .sort((a, b) => a.enterprise.name.localeCompare(b.enterprise.name));
+  }, [filteredSurveys, groups, groupMatchesSearch, getEnterpriseMetaForGroup, getGroupFromSurvey]);
+
+  const UNASSIGNED_ENTERPRISE_ID = -1;
+
   // Load data
   const loadData = useCallback(async (isRefresh = false) => {
     try {
@@ -274,25 +386,21 @@ export function SurveysDashboard() {
         setLoading(true);
       }
 
-      const [surveysData, groupsData, questionsData, questionsI18nData] = await Promise.all([
-        fetchAPI('/indiv-survey-scores'),
+      const [surveysData, groupsData, enterprisesData, questionsData, questionsI18nData] = await Promise.all([
+        fetchAPI('/group-survey-scores'),
         fetchAPI('/groups'),
+        fetchAPI('/enterprises'),
         fetchAPI('/questions'),
         fetchAPI('/question-i18n'),
       ]);
 
-      // Validar y limpiar datos de encuestas
-      const validatedSurveys = surveysData.map((survey: any) => ({
-        ...survey,
-        survey: survey.survey || { id: 0, name: survey.name || 'Encuesta sin nombre' },
-        employee: survey.employee || { 
-          id: 0, 
-          firstName: 'Empleado', 
-          lastName: 'No disponible', 
-          email: 'no-email@example.com' 
-        },
-        indivScore: survey.indivScore || 0,
-        submittedAt: survey.submittedAt || new Date().toISOString(),
+      const normalizedSurveys: GroupSurvey[] = surveysData.map((survey: any) => ({
+        id: survey.id,
+        name: survey.name || `Encuesta ${survey.id}`,
+        startAt: survey.startAt || survey.start_at || null,
+        endAt: survey.endAt || survey.end_at || null,
+        groupScore: survey.groupScore ?? survey.group_score ?? null,
+        group: survey.group,
       }));
 
       const questionMap = new Map<number, QuestionOption>();
@@ -339,8 +447,9 @@ export function SurveysDashboard() {
 
       const mergedQuestions = Array.from(questionMap.values()).sort((a, b) => a.id - b.id);
 
-      setSurveys(validatedSurveys);
+      setSurveys(normalizedSurveys);
       setGroups(groupsData);
+      setEnterprises(enterprisesData);
       setQuestions(mergedQuestions);
     } catch (error: any) {
       toast.error(error.message || 'Error al cargar datos');
@@ -360,55 +469,232 @@ export function SurveysDashboard() {
   }, [loadData]);
 
   // Memoized filtered surveys - CORREGIDO con optional chaining
-  const filteredSurveys = useMemo(() => 
-    surveys.filter((survey) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        survey.survey?.name?.toLowerCase().includes(searchLower) ||
-        survey.employee?.firstName?.toLowerCase().includes(searchLower) ||
-        survey.employee?.lastName?.toLowerCase().includes(searchLower) ||
-        survey.employee?.email?.toLowerCase().includes(searchLower)
-      );
-    }),
-    [surveys, searchTerm]
-  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
-  // Memoized stats
+  const paginatedHierarchy = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return hierarchy.slice(start, start + PAGE_SIZE);
+  }, [hierarchy, currentPage]);
+
+  useEffect(() => {
+    const totalPagesForData = Math.max(1, Math.ceil(Math.max(hierarchy.length, 1) / PAGE_SIZE));
+    setCurrentPage((prev) => Math.min(prev, totalPagesForData));
+  }, [hierarchy.length]);
+
+  useEffect(() => {
+    if (expandedEnterprise === null) return;
+    const visibleIds = new Set(paginatedHierarchy.map((entry) => entry.enterprise.id));
+    if (!visibleIds.has(expandedEnterprise)) {
+      setExpandedEnterprise(null);
+      setExpandedGroup(null);
+    }
+  }, [paginatedHierarchy, expandedEnterprise]);
+
+  const totalPages = Math.max(1, Math.ceil(Math.max(hierarchy.length, 1) / PAGE_SIZE));
+  const pageStart = hierarchy.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = hierarchy.length === 0 ? 0 : Math.min(hierarchy.length, currentPage * PAGE_SIZE);
+
   const stats = useMemo(() => {
-    const avgScore = surveys.length > 0
-      ? surveys.reduce((acc, s) => acc + s.indivScore, 0) / surveys.length
-      : 0;
-
-    const uniqueEmployees = new Set(surveys.map(s => s.employee?.id).filter(Boolean)).size;
-
+    const avgScore =
+      surveys.length > 0
+        ? surveys.reduce((acc, s) => acc + (s.groupScore ?? 0), 0) / surveys.length
+        : 0;
+    const coveredGroups = new Set(surveys.map((s) => s.group?.id).filter(Boolean)).size;
     return {
       total: surveys.length,
       avgScore: avgScore.toFixed(1),
-      uniqueEmployees,
+      coveredGroups,
     };
   }, [surveys]);
 
+  const selectedEnterpriseId = formData.enterpriseId ?? enterpriseOptions[0]?.id ?? null;
+  const availableGroups = getGroupsForEnterprise(selectedEnterpriseId);
+  const selectedEnterpriseLabel =
+    enterpriseOptions.find((option) => option.id === selectedEnterpriseId)?.name ??
+    (selectedEnterpriseId === UNASSIGNED_ENTERPRISE_ID
+      ? 'Sin empresa asignada'
+      : 'Seleccionar empresa');
+  const selectedGroupLabel =
+    availableGroups.find((group) => group.id === formData.groupId)?.name ??
+    (availableGroups.length ? 'Seleccionar grupo' : 'Sin grupos disponibles');
+
+  const filteredEnterpriseOptions = useMemo(() => {
+    const term = enterpriseSearch.trim().toLowerCase();
+    if (!term) return enterpriseOptions;
+    return enterpriseOptions.filter((option) => option.name.toLowerCase().includes(term));
+  }, [enterpriseOptions, enterpriseSearch]);
+
+  const filteredGroupOptions = useMemo(() => {
+    const term = groupSearch.trim().toLowerCase();
+    if (!term) return availableGroups;
+    return availableGroups.filter((group) => group.name.toLowerCase().includes(term));
+  }, [availableGroups, groupSearch]);
+
+  const canCreateSurvey = enterpriseOptions.length > 0 && availableGroups.length > 0;
+
+  useEffect(() => {
+    if (!enterprisePopoverOpen) {
+      setEnterpriseSearch('');
+      setEnterpriseInvalid(false);
+      return;
+    }
+    if (enterpriseSearch.trim() === '') {
+      setEnterpriseInvalid(false);
+    } else {
+      setEnterpriseInvalid(filteredEnterpriseOptions.length === 0);
+    }
+    requestAnimationFrame(() => enterpriseInputRef.current?.focus());
+  }, [enterprisePopoverOpen, enterpriseSearch, filteredEnterpriseOptions.length]);
+
+  useEffect(() => {
+    if (!groupPopoverOpen) {
+      setGroupSearch('');
+      setGroupInvalid(false);
+      return;
+    }
+    if (groupSearch.trim() === '') {
+      setGroupInvalid(false);
+    } else {
+      setGroupInvalid(filteredGroupOptions.length === 0);
+    }
+    requestAnimationFrame(() => groupInputRef.current?.focus());
+  }, [groupPopoverOpen, groupSearch, filteredGroupOptions.length]);
+
+  useEffect(() => {
+    setGroupSearch('');
+    setGroupInvalid(false);
+  }, [selectedEnterpriseId]);
+
+  useEffect(() => {
+    setFormData((prev) => {
+      let nextEnterpriseId: number | null = prev.enterpriseId ?? enterpriseOptions[0]?.id ?? null;
+      if (enterpriseOptions.length === 0) {
+        nextEnterpriseId = null;
+      }
+      const currentGroupList = getGroupsForEnterprise(nextEnterpriseId);
+      const hasGroup = prev.groupId != null && currentGroupList.some((group) => group.id === prev.groupId);
+      if (nextEnterpriseId === prev.enterpriseId && hasGroup) {
+        return prev;
+      }
+      return {
+        ...prev,
+        enterpriseId: nextEnterpriseId,
+        groupId: hasGroup ? prev.groupId : getFirstGroupIdForEnterprise(nextEnterpriseId),
+      };
+    });
+  }, [enterpriseOptions, getFirstGroupIdForEnterprise, getGroupsForEnterprise]);
+
+  const formatDateTime = (value?: string) =>
+    value ? new Date(value).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin definir';
+
+  const handleToggleEnterprise = (enterpriseId: number) => {
+    setExpandedEnterprise((prev) => (prev === enterpriseId ? null : enterpriseId));
+    setExpandedGroup(null);
+  };
+
+  const handleToggleGroup = (groupId: number) => {
+    setExpandedGroup((prev) => (prev === groupId ? null : groupId));
+  };
+
+  const handleEnterpriseSelect = (id: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      enterpriseId: id,
+      groupId: getFirstGroupIdForEnterprise(id),
+    }));
+    setEnterprisePopoverOpen(false);
+    setEnterpriseSearch('');
+    setEnterpriseInvalid(false);
+    setGroupSearch('');
+    setGroupInvalid(false);
+  };
+
+  const handleEnterpriseTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (enterprisePopoverOpen) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      setEnterprisePopoverOpen(true);
+      event.preventDefault();
+      return;
+    }
+    if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      setEnterprisePopoverOpen(true);
+      setEnterpriseSearch(event.key);
+      setEnterpriseInvalid(false);
+      event.preventDefault();
+    }
+  };
+
+  const handleGroupTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (groupPopoverOpen) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      setGroupPopoverOpen(true);
+      event.preventDefault();
+      return;
+    }
+    if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      setGroupPopoverOpen(true);
+      setGroupSearch(event.key);
+      setGroupInvalid(false);
+      event.preventDefault();
+    }
+  };
+
   const resetForm = useCallback(() => {
+    const enterpriseId = enterpriseOptions[0]?.id ?? null;
     setFormData({
-      groupId: null,
+      enterpriseId,
+      groupId: getFirstGroupIdForEnterprise(enterpriseId),
       questionIds: [],
       name: '',
       startDate: new Date().toISOString().split('T')[0],
       startTime: '09:00',
       endDate: new Date().toISOString().split('T')[0],
       endTime: '18:00',
+      groupScore: '',
     });
     setIsQuestionPickerOpen(false);
     setQuestionSearch('');
-  }, []);
+    setEnterpriseInvalid(false);
+    setGroupInvalid(false);
+    setEnterpriseSearch('');
+    setGroupSearch('');
+  }, [enterpriseOptions, getFirstGroupIdForEnterprise]);
 
-  const handleOpenDialog = useCallback(() => {
-    resetForm();
-    setIsDialogOpen(true);
-  }, [resetForm]);
+  const handleOpenDialog = useCallback(
+    (survey?: GroupSurvey) => {
+      if (survey) {
+        const group = getGroupFromSurvey(survey);
+        const enterpriseMeta = getEnterpriseMetaForGroup(group);
+        const startDateTime = survey.startAt ? new Date(survey.startAt) : new Date();
+        const endDateTime = survey.endAt ? new Date(survey.endAt) : new Date();
+        setEditingSurvey(survey);
+        setFormData({
+          enterpriseId: enterpriseMeta.id,
+          groupId: group?.id ?? null,
+          questionIds: [],
+          name: survey.name,
+          startDate: startDateTime.toISOString().split('T')[0],
+          startTime: startDateTime.toISOString().slice(11, 16),
+          endDate: endDateTime.toISOString().split('T')[0],
+          endTime: endDateTime.toISOString().slice(11, 16),
+          groupScore: survey.groupScore ?? '',
+        });
+      } else {
+        setEditingSurvey(null);
+        resetForm();
+      }
+      setIsDialogOpen(true);
+      setIsQuestionPickerOpen(false);
+      setQuestionSearch('');
+    },
+    [getEnterpriseMetaForGroup, getGroupFromSurvey, resetForm]
+  );
 
   const handleCloseDialog = useCallback(() => {
     setIsDialogOpen(false);
+    setEditingSurvey(null);
     resetForm();
   }, [resetForm]);
 
@@ -418,13 +704,8 @@ export function SurveysDashboard() {
       return;
     }
 
-    if (!formData.groupId) {
-      toast.error('Selecciona un grupo');
-      return;
-    }
-
-    if (formData.questionIds.length === 0) {
-      toast.error('Selecciona al menos una pregunta');
+    if (!formData.enterpriseId || !formData.groupId) {
+      toast.error('Empresa y grupo son requeridos');
       return;
     }
 
@@ -456,17 +737,25 @@ export function SurveysDashboard() {
       const payload = {
         name: formData.name.trim(),
         groupId: formData.groupId,
-        questionIds: formData.questionIds,
         startAt: startDateTime.toISOString(),
         endAt: endDateTime.toISOString(),
+        groupScore: formData.groupScore === '' ? undefined : Number(formData.groupScore),
       };
 
-      await fetchAPI('/group-survey-scores', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      if (editingSurvey) {
+        await fetchAPI(`/group-survey-scores/${editingSurvey.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Encuesta actualizada exitosamente');
+      } else {
+        await fetchAPI('/group-survey-scores', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        toast.success('Encuesta creada exitosamente');
+      }
 
-      toast.success('Encuesta creada exitosamente');
       handleCloseDialog();
       loadData(true);
     } catch (error: any) {
@@ -475,9 +764,21 @@ export function SurveysDashboard() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData.groupId, formData.questionIds, formData.startDate, handleCloseDialog, loadData]);
+  }, [
+    editingSurvey,
+    formData.enterpriseId,
+    formData.groupId,
+    formData.groupScore,
+    formData.name,
+    formData.startDate,
+    formData.startTime,
+    formData.endDate,
+    formData.endTime,
+    handleCloseDialog,
+    loadData,
+  ]);
 
-  const handleDeleteClick = useCallback((survey: Survey) => {
+  const handleDeleteClick = useCallback((survey: GroupSurvey) => {
     setDeletingSurvey(survey);
     setIsDeleteDialogOpen(true);
   }, []);
@@ -487,7 +788,7 @@ export function SurveysDashboard() {
 
     setSubmitting(true);
     try {
-      await fetchAPI(`/indiv-survey-scores/${deletingSurvey.id}`, {
+      await fetchAPI(`/group-survey-scores/${deletingSurvey.id}`, {
         method: 'DELETE',
       });
       toast.success('Encuesta eliminada exitosamente');
@@ -530,7 +831,8 @@ export function SurveysDashboard() {
             {refreshing ? 'Actualizando...' : 'Actualizar'}
           </Button>
           <Button
-            onClick={() => handleOpenDialog()}
+          onClick={() => handleOpenDialog()}
+          disabled={!canCreateSurvey}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/50"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -573,8 +875,8 @@ export function SurveysDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Empleados Encuestados</p>
-                <p className="text-3xl font-bold text-white">{stats.uniqueEmployees}</p>
+                <p className="text-sm text-gray-400">Grupos Cubiertos</p>
+                <p className="text-3xl font-bold text-white">{stats.coveredGroups}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
@@ -590,7 +892,7 @@ export function SurveysDashboard() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Buscar por encuesta, empleado o email..."
+              placeholder="Buscar por encuesta, grupo o empresa..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/50"
@@ -614,7 +916,7 @@ export function SurveysDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {filteredSurveys.length === 0 ? (
+            {paginatedHierarchy.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
                 <FileText className="w-12 h-12 text-gray-600" />
                 <p className="text-gray-400">
@@ -622,22 +924,174 @@ export function SurveysDashboard() {
                 </p>
               </div>
             ) : (
-              filteredSurveys.map((survey) => (
-                <SurveyCard
-                  key={survey.id}
-                  survey={survey}
-                  onDelete={handleDeleteClick}
-                />
+              paginatedHierarchy.map((entry) => (
+                <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
+                  <button
+                    className="w-full flex items-center justify-between text-left"
+                    onClick={() => handleToggleEnterprise(entry.enterprise.id)}
+                  >
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <Building2 className="w-4 h-4 text-purple-300" />
+                        <span className="font-semibold text-white">{entry.enterprise.name}</span>
+                        <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                          ID: {entry.enterprise.id}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-400 mt-1">
+                        {entry.groups.length} grupo{entry.groups.length === 1 ? '' : 's'} registrados
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                      <span>Ver grupos</span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${
+                          expandedEnterprise === entry.enterprise.id ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </div>
+                  </button>
+
+                  {expandedEnterprise === entry.enterprise.id && (
+                    <div className="mt-4 space-y-3">
+                      {entry.groups.map((groupNode) => (
+                        <div key={groupNode.group.id} className="bg-slate-900/40 border border-white/5 rounded-lg p-3 space-y-3">
+                          <button
+                            className="w-full flex items-center justify-between text-left"
+                            onClick={() => handleToggleGroup(groupNode.group.id)}
+                          >
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <Layers className="w-4 h-4 text-amber-300" />
+                                <span className="font-medium text-white">{groupNode.group.name}</span>
+                                <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                  ID: {groupNode.group.id}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-400 mt-1">
+                                {groupNode.surveys.length} encuesta{groupNode.surveys.length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-300">
+                              <span>Ver encuestas</span>
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform ${
+                                  expandedGroup === groupNode.group.id ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {expandedGroup === groupNode.group.id && (
+                            <div className="mt-3 space-y-2">
+                              {groupNode.surveys.length === 0 ? (
+                                <p className="text-sm text-gray-400 pl-2">Sin encuestas registradas</p>
+                              ) : (
+                                groupNode.surveys.map((survey) => (
+                                  <div
+                                    key={survey.id}
+                                    className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <h4 className="font-semibold text-white">{survey.name}</h4>
+                                        <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                          ID: {survey.id}
+                                        </Badge>
+                                      </div>
+                                      <div className="grid gap-2 text-sm text-gray-300 md:grid-cols-3">
+                                        <div className="flex items-center space-x-2">
+                                          <Calendar className="w-4 h-4 text-gray-400" />
+                                          <span>Inicio: {formatDateTime(survey.startAt)}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <Calendar className="w-4 h-4 text-gray-400" />
+                                          <span>Fin: {formatDateTime(survey.endAt)}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <TrendingUp className="w-4 h-4 text-gray-400" />
+                                          <span>Score grupo: {survey.groupScore ?? 'N/D'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2 md:ml-4">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleOpenDialog(survey)}
+                                        className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteClick(survey)}
+                                        className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6">
+              <p className="text-sm text-gray-400">
+                Mostrando{' '}
+                {hierarchy.length === 0 ? (
+                  '0'
+                ) : (
+                  <>
+                    {pageStart}-{pageEnd}
+                  </>
+                )}{' '}
+                de {hierarchy.length} empresas
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-300">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  Siguiente
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Create/Edit Dialog */}
       <Dialog
         open={isDialogOpen}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (open) {
             setIsDialogOpen(true);
           } else {
@@ -653,7 +1107,7 @@ export function SurveysDashboard() {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-white" />
               </div>
-              <span>Nueva Encuesta</span>
+              <span>{editingSurvey ? 'Editar Encuesta' : 'Nueva Encuesta'}</span>
             </DialogTitle>
             <DialogDescription className="text-gray-400">
               Completa los datos para registrar una nueva encuesta
@@ -675,37 +1129,110 @@ export function SurveysDashboard() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="groupId" className="text-gray-300">
-                ID de Grupo *
-              </Label>
-              <Select
-                value={formData.groupId?.toString() || ''}
-                onValueChange={(value) => {
-                  const groupId = parseInt(value, 10);
-                  const groupQuestionsForValue = questions.filter(
-                    (question) => getQuestionGroupId(question) === groupId
-                  );
-                  const allowedIds = new Set(
-                    [...defaultQuestions, ...groupQuestionsForValue].map((question) => question.id)
-                  );
-                  setFormData((prev) => ({
-                    ...prev,
-                    groupId,
-                    questionIds: prev.questionIds.filter((id) => allowedIds.has(id)),
-                  }));
-                }}
-              >
-                <SelectTrigger id="groupId" className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Seleccionar grupo" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10">
-                  {groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id.toString()}>
-                      {group.name} (ID: {group.id})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-gray-300">Empresa *</Label>
+              <Popover open={enterprisePopoverOpen} onOpenChange={setEnterprisePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onKeyDown={handleEnterpriseTriggerKeyDown}
+                    className={`w-full justify-between bg-slate-800/50 border-white/10 text-gray-200 hover:bg-slate-800/70 ${
+                      enterpriseInvalid ? 'border-red-500/60' : ''
+                    }`}
+                  >
+                    <span>{selectedEnterpriseLabel}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-70" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[340px] bg-slate-900 border-white/10 text-white" align="start">
+                  <Command>
+                    <CommandInput
+                      ref={enterpriseInputRef}
+                      placeholder="Buscar empresa..."
+                      value={enterpriseSearch}
+                      onValueChange={setEnterpriseSearch}
+                      className="text-slate-900 dark:text-white placeholder:text-gray-500"
+                    />
+                    <CommandList>
+                      <CommandEmpty>Sin resultados</CommandEmpty>
+                      <CommandGroup>
+                        {filteredEnterpriseOptions.map((option) => (
+                          <CommandItem
+                            key={option.id}
+                            value={`${option.name.toLowerCase()}-${option.id}`}
+                            onSelect={() => handleEnterpriseSelect(option.id)}
+                          >
+                            {option.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {enterpriseInvalid && <p className="text-xs text-red-400">Selecciona una empresa válida</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-300">Grupo *</Label>
+              <Popover open={groupPopoverOpen} onOpenChange={setGroupPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onKeyDown={handleGroupTriggerKeyDown}
+                    disabled={availableGroups.length === 0}
+                    className={`w-full justify-between bg-slate-800/50 border-white/10 text-gray-200 hover:bg-slate-800/70 ${
+                      groupInvalid ? 'border-red-500/60' : ''
+                    }`}
+                  >
+                    <span>{selectedGroupLabel}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-70" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[340px] bg-slate-900 border-white/10 text-white" align="start">
+                  <Command>
+                    <CommandInput
+                      ref={groupInputRef}
+                      placeholder="Buscar grupo..."
+                      value={groupSearch}
+                      onValueChange={setGroupSearch}
+                      className="text-slate-900 dark:text-white placeholder:text-gray-500"
+                    />
+                    <CommandList>
+                      <CommandEmpty>Sin resultados</CommandEmpty>
+                      <CommandGroup>
+                        {filteredGroupOptions.map((group) => (
+                          <CommandItem
+                            key={group.id}
+                            value={`${group.name.toLowerCase()}-${group.id}`}
+                            onSelect={() => {
+                              const groupId = group.id;
+                              const groupQuestionsForValue = questions.filter(
+                                (question) => getQuestionGroupId(question) === groupId
+                              );
+                              const allowedIds = new Set(
+                                [...defaultQuestions, ...groupQuestionsForValue].map((question) => question.id)
+                              );
+                              setFormData((prev) => ({
+                                ...prev,
+                                groupId,
+                                questionIds: prev.questionIds.filter((id) => allowedIds.has(id)),
+                              }));
+                              setGroupPopoverOpen(false);
+                              setGroupSearch('');
+                              setGroupInvalid(false);
+                            }}
+                          >
+                            {group.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {groupInvalid && <p className="text-xs text-red-400">Selecciona un grupo válido</p>}
             </div>
 
             <div className="space-y-2">
@@ -901,12 +1428,8 @@ export function SurveysDashboard() {
 
           <div className="py-4">
             <p className="text-gray-300">
-              ¿Estás seguro de que deseas eliminar la encuesta de{' '}
-              <span className="font-bold text-white">
-                {deletingSurvey?.employee?.firstName || 'Empleado'} {deletingSurvey?.employee?.lastName || 'No disponible'}
-              </span>
-              {' '}en{' '}
-              <span className="font-bold text-white">{deletingSurvey?.survey?.name || 'Encuesta sin nombre'}</span>?
+              ¿Estás seguro de que deseas eliminar la encuesta{' '}
+              <span className="font-bold text-white">{deletingSurvey?.name || 'Encuesta sin nombre'}</span>?
             </p>
           </div>
 

@@ -37,7 +37,9 @@ import {
   Building2,
   UserCog,
   Eye,
-  EyeOff
+  EyeOff,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { fetchAPI } from '@/lib/apiClient';
 import { toast } from 'sonner';
@@ -81,6 +83,7 @@ interface EmployeeFormData {
 }
 
 export function UsersManagement() {
+  const PAGE_SIZE = 10;
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
@@ -94,6 +97,7 @@ export function UsersManagement() {
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: '',
     lastName: '',
@@ -273,6 +277,15 @@ export function UsersManagement() {
     return matchesSearch && matchesStatus;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, filteredEmployees.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE));
+  const pageStart = filteredEmployees.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = filteredEmployees.length === 0 ? 0 : Math.min(filteredEmployees.length, currentPage * PAGE_SIZE);
+  const paginatedEmployees = filteredEmployees.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-64 space-y-4">
@@ -419,7 +432,7 @@ export function UsersManagement() {
                 <p className="text-gray-400">No se encontraron usuarios</p>
               </div>
             ) : (
-              filteredEmployees.map((employee) => (
+              paginatedEmployees.map((employee) => (
                 <div
                   key={employee.id}
                   className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-white/10 hover:border-white/20 transition-all space-y-3 md:space-y-0"
@@ -507,6 +520,46 @@ export function UsersManagement() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6">
+              <p className="text-sm text-gray-400">
+                Mostrando{' '}
+                {filteredEmployees.length === 0 ? (
+                  '0'
+                ) : (
+                  <>
+                    {pageStart}-{pageEnd}
+                  </>
+                )}{' '}
+                de {filteredEmployees.length} usuarios
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-300">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  Siguiente
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

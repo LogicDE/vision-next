@@ -28,7 +28,9 @@ import {
   Mail,
   Phone,
   Building,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { fetchAPI } from '@/lib/apiClient';
 import { toast } from 'sonner';
@@ -53,6 +55,7 @@ interface EnterpriseFormData {
 }
 
 export function EnterprisesManagement() {
+  const PAGE_SIZE = 10;
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +64,7 @@ export function EnterprisesManagement() {
   const [editingEnterprise, setEditingEnterprise] = useState<Enterprise | null>(null);
   const [deletingEnterprise, setDeletingEnterprise] = useState<Enterprise | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState<EnterpriseFormData>({
     name: '',
     email: '',
@@ -178,6 +182,15 @@ export function EnterprisesManagement() {
     enterprise.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     enterprise.address?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filteredEnterprises.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEnterprises.length / PAGE_SIZE));
+  const pageStart = filteredEnterprises.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = filteredEnterprises.length === 0 ? 0 : Math.min(filteredEnterprises.length, currentPage * PAGE_SIZE);
+  const paginatedEnterprises = filteredEnterprises.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (loading) {
     return (
@@ -315,7 +328,7 @@ export function EnterprisesManagement() {
                 <p className="text-gray-400">No se encontraron empresas</p>
               </div>
             ) : (
-              filteredEnterprises.map((enterprise) => (
+              paginatedEnterprises.map((enterprise) => (
                 <div
                   key={enterprise.id}
                   className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-white/10 hover:border-white/20 transition-all space-y-3 md:space-y-0"
@@ -392,6 +405,46 @@ export function EnterprisesManagement() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6">
+              <p className="text-sm text-gray-400">
+                Mostrando{' '}
+                {filteredEnterprises.length === 0 ? (
+                  '0'
+                ) : (
+                  <>
+                    {pageStart}-{pageEnd}
+                  </>
+                )}{' '}
+                de {filteredEnterprises.length} empresas
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-300">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  Siguiente
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api';
+import api, { clearAuthTokens, setAuthTokens } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -61,7 +61,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
+      if (response.data?.accessToken || response.data?.refreshToken) {
+        setAuthTokens({
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        });
+      }
       const currentUser = await fetchUser();
       if (!currentUser) throw new Error('Error obteniendo usuario');
       setUser(currentUser);
@@ -83,6 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {
       /* ignora error */
     } finally {
+      clearAuthTokens();
       setUser(null);
       setSessionExpired(true);
       router.push('/login');
@@ -92,7 +99,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // === Refresh Token ===
   const refreshToken = useCallback(async () => {
     try {
-      await api.post('/auth/refresh');
+      const response = await api.post('/auth/refresh');
+      if (response.data?.accessToken || response.data?.refreshToken) {
+        setAuthTokens({
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        });
+      }
       const refreshedUser = await fetchUser();
       if (refreshedUser) {
         setUser(refreshedUser);

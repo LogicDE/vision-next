@@ -255,20 +255,19 @@ CREATE TABLE IF NOT EXISTS question_i18n (
 -- EVENTS / INTERVENTIONS
 -- =========================================================
 CREATE TABLE IF NOT EXISTS events (
-  id_event   SERIAL PRIMARY KEY,
-  id_manager INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
-  title_message VARCHAR(100) NOT NULL,
-  body_message  VARCHAR(255) NOT NULL,
+  id_event        SERIAL PRIMARY KEY,
+  id_group        INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
+  title_message   VARCHAR(100) NOT NULL,
+  body_message    VARCHAR(255) NOT NULL,
   coordinator_name VARCHAR(200),
-  start_at   TIMESTAMPTZ,
-  end_at     TIMESTAMPTZ NOT NULL
+  start_at        TIMESTAMPTZ,
+  end_at          TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS interventions (
-  id_inter   SERIAL PRIMARY KEY,
-  id_manager INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
-  type       VARCHAR(100) NOT NULL,
-  description VARCHAR(255),
+  id_inter      SERIAL PRIMARY KEY,
+  id_group      INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
+  description   VARCHAR(255),
   title_message VARCHAR(100) NOT NULL,
   body_message  VARCHAR(255) NOT NULL
 );
@@ -449,7 +448,15 @@ INSERT INTO enterprises (id_enterprise, name, telephone, email) VALUES
 (3, 'TechCorp Global', '5512349999', 'info@techcorp.com'),
 (4, 'HealthPlus Internacional', '5558887777', 'contacto@healthplus.com'),
 (5, 'Innovate Solutions', '5522223333', 'hello@innovate.com'),
-(6, 'BioWellness Group', '5533334444', 'support@biowellness.com')
+(6, 'BioWellness Group', '5533334444', 'support@biowellness.com'),
+(7, 'FutureWork Labs', '5543219876', 'contact@futurework.io'),
+(8, 'MindfulCorp', '5545551212', 'hello@mindfulcorp.com'),
+(9, 'NovaHealth Partners', '5512125656', 'info@novahealth.co'),
+(10, 'Zenith Analytics', '5537373737', 'hi@zenithanalytics.ai'),
+(11, 'PulseWell Alliance', '5556667771', 'contact@pulsewell.com'),
+(12, 'Equilibrium Analytics', '5557778882', 'hello@equanalytics.ai'),
+(13, 'NeuroSync Wellness', '5558889993', 'team@neurosync.io'),
+(14, 'Hyperion Labs', '5559990004', 'ops@hyperionlabs.ai')
 ON CONFLICT (id_enterprise) DO UPDATE SET
 name = EXCLUDED.name,
 telephone = EXCLUDED.telephone,
@@ -468,7 +475,15 @@ INSERT INTO enterprise_locations (id_location, id_enterprise, id_address, locati
 (9, 5, 10, 'Oficina Berlín', true),
 (10, 6, 11, 'Institut París', true),
 (11, 3, 12, 'Tech Hub SF', true),
-(12, 4, 13, 'Wellness Center NY', true)
+(12, 4, 13, 'Wellness Center NY', true),
+(13, 7, 3, 'FutureWork HQ', true),
+(14, 8, 4, 'Mindful Central', true),
+(15, 9, 5, 'Nova Health Hub', true),
+(16, 10, 6, 'Zenith Campus', true),
+(17, 11, 7, 'PulseWell Norte', true),
+(18, 12, 8, 'Equilibrium Torre', true),
+(19, 13, 9, 'NeuroSync Centro', true),
+(20, 14, 10, 'Hyperion Labs West', true)
 ON CONFLICT (id_location) DO UPDATE SET
 id_enterprise = EXCLUDED.id_enterprise,
 id_address = EXCLUDED.id_address,
@@ -497,7 +512,7 @@ name = EXCLUDED.name,
 device_type = EXCLUDED.device_type,
 registered_at = EXCLUDED.registered_at;
 
--- Employees (47 empleados total)
+-- Employees (63 empleados total)
 INSERT INTO employees (id_employee, id_manager, id_enterprise, id_role, first_name, last_name, email, username, password_hash, telephone, status, created_at, updated_at) VALUES
 -- Empresa 1 - VitaNexo Corporativo (22 empleados)
 (1, NULL, 1, 1, 'Carlos', 'Lodic', 'carlos@vitanexo.com', 'carloslodic', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5512345678', 'active', NOW() - INTERVAL '100 days', NOW()),
@@ -550,7 +565,23 @@ INSERT INTO employees (id_employee, id_manager, id_enterprise, id_role, first_na
 (44, 43, 6, 4, 'Sarah', 'Johnson', 'sarah.johnson@biowellness.com', 'sarahjohnson', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5542223333', 'active', NOW() - INTERVAL '25 days', NOW()),
 (45, 44, 6, 3, 'Michael', 'Brown', 'michael.brown@biowellness.com', 'michaelbrown', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5543334444', 'active', NOW() - INTERVAL '20 days', NOW()),
 (46, 44, 6, 3, 'Emily', 'Davis', 'emily.davis@biowellness.com', 'emilydavis', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5544445555', 'active', NOW() - INTERVAL '15 days', NOW()),
-(47, 44, 6, 3, 'David', 'Wilson', 'david.wilson@biowellness.com', 'davidwilson', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5545556666', 'active', NOW() - INTERVAL '10 days', NOW())
+(47, 44, 6, 3, 'David', 'Wilson', 'david.wilson@biowellness.com', 'davidwilson', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5545556666', 'active', NOW() - INTERVAL '10 days', NOW()),
+(48, 31, 7, 4, 'Luciana', 'Torres', 'luciana.torres@futurework.io', 'lucianatorres', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5543219876', 'active', NOW() - INTERVAL '12 days', NOW()),
+(49, 32, 7, 3, 'Matias', 'Soto', 'matias.soto@futurework.io', 'matiassoto', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5541112223', 'active', NOW() - INTERVAL '8 days', NOW()),
+(50, 33, 8, 4, 'Renata', 'Campos', 'renata.campos@mindfulcorp.com', 'renatacampos', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5545554433', 'active', NOW() - INTERVAL '6 days', NOW()),
+(51, 34, 8, 3, 'Andres', 'Mora', 'andres.mora@mindfulcorp.com', 'andresmora', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5545557788', 'active', NOW() - INTERVAL '5 days', NOW()),
+(52, 35, 9, 4, 'Valeria', 'Silva', 'valeria.silva@novahealth.co', 'valeriasilva', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5512129898', 'active', NOW() - INTERVAL '9 days', NOW()),
+(53, 35, 9, 3, 'Mauricio', 'Diaz', 'mauricio.diaz@novahealth.co', 'mauriciodiaz', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5512121112', 'active', NOW() - INTERVAL '7 days', NOW()),
+(54, 39, 10, 4, 'Daniela', 'Costa', 'daniela.costa@zenithanalytics.ai', 'danielacosta', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5537373333', 'active', NOW() - INTERVAL '4 days', NOW()),
+(55, 40, 10, 3, 'Gustavo', 'Reyes', 'gustavo.reyes@zenithanalytics.ai', 'gustavoreyes', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5537379999', 'active', NOW() - INTERVAL '3 days', NOW()),
+(56, NULL, 11, 4, 'Santiago', 'Vega', 'santiago.vega@pulsewell.com', 'santiagovega', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5556667771', 'active', NOW() - INTERVAL '11 days', NOW()),
+(57, 56, 11, 3, 'Marina', 'Quiroz', 'marina.quiroz@pulsewell.com', 'marinaquiroz', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5556667772', 'active', NOW() - INTERVAL '7 days', NOW()),
+(58, NULL, 12, 4, 'Ignacio', 'Beltran', 'ignacio.beltran@equanalytics.ai', 'ignaciobeltran', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5557778882', 'active', NOW() - INTERVAL '13 days', NOW()),
+(59, 58, 12, 3, 'Bianca', 'Uribe', 'bianca.uribe@equanalytics.ai', 'biancauribe', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5557778883', 'active', NOW() - INTERVAL '6 days', NOW()),
+(60, NULL, 13, 4, 'Camilo', 'Reyes', 'camilo.reyes@neurosync.io', 'camiloreyes', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5558889993', 'active', NOW() - INTERVAL '10 days', NOW()),
+(61, 60, 13, 3, 'Julieta', 'Salas', 'julieta.salas@neurosync.io', 'julietasalas', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5558889994', 'active', NOW() - INTERVAL '4 days', NOW()),
+(62, NULL, 14, 4, 'Esteban', 'Mercado', 'esteban.mercado@hyperionlabs.ai', 'estebanmercado', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5559990004', 'active', NOW() - INTERVAL '9 days', NOW()),
+(63, 62, 14, 3, 'Patricio', 'Rueda', 'patricio.rueda@hyperionlabs.ai', 'patriciorueda', '$2b$12$NNWfni4hJdsq9wVHCIcY8eBolWxzEguF4xA3UIzCqOtaWbfPwWeH2', '5559990005', 'active', NOW() - INTERVAL '5 days', NOW())
 ON CONFLICT (id_employee) DO UPDATE SET
 id_manager = EXCLUDED.id_manager,
 id_enterprise = EXCLUDED.id_enterprise,
@@ -580,7 +611,23 @@ INSERT INTO groups (id_group, id_manager, name) VALUES
 (11, 44, 'Equipo Machine Learning'),
 (12, 14, 'Equipo QA y Testing'),
 (13, 21, 'Equipo DevOps'),
-(14, 25, 'Equipo Bioestadística')
+(14, 25, 'Equipo Bioestadística'),
+(15, 32, 'Equipo Estrategia Global'),
+(16, 36, 'Equipo Bienestar Mental'),
+(17, 40, 'Equipo Analítica Predictiva'),
+(18, 44, 'Equipo Expansión'),
+(19, 25, 'Equipo Innovación Futuro'),
+(20, 32, 'Equipo Mindful Ops'),
+(21, 36, 'Equipo Nova Health'),
+(22, 40, 'Equipo Zenith Labs'),
+(23, 48, 'Equipo Future Strategy'),
+(24, 50, 'Equipo Mindful Growth'),
+(25, 52, 'Equipo Nova Insights'),
+(26, 54, 'Equipo Zenith AI'),
+(27, 56, 'Equipo Pulse Strategy'),
+(28, 58, 'Equipo Equilibrium Data'),
+(29, 60, 'Equipo NeuroSync Care'),
+(30, 62, 'Equipo Hyperion AI')
 ON CONFLICT (id_group) DO UPDATE SET
 id_manager = EXCLUDED.id_manager,
 name = EXCLUDED.name;
@@ -797,12 +844,28 @@ ON CONFLICT (id_question, id_survey) DO NOTHING;
 -- =========================================================
 
 -- Events
-INSERT INTO events (id_event, id_manager, title_message, body_message, coordinator_name, start_at, end_at) VALUES
-(1, 2, 'Taller Bienestar', 'Sesión de mindfulness y manejo de estrés', 'Dr. Juan Perez', NOW() + INTERVAL '5 days', NOW() + INTERVAL '5 days 3 hours'),
-(2, 7, 'Revisión Trimestral', 'Evaluación de métricas y objetivos del equipo', 'Laura Díaz', NOW() + INTERVAL '10 days', NOW() + INTERVAL '10 days 2 hours'),
-(3, 14, 'Taller de Resiliencia', 'Desarrollo de habilidades para manejar situaciones de estrés', 'Dra. Sofia Lopez', NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days 2 hours')
+INSERT INTO events (id_event, id_group, title_message, body_message, coordinator_name, start_at, end_at) VALUES
+(1, 1, 'Taller Bienestar', 'Sesión de mindfulness y manejo de estrés', 'Dr. Juan Perez', NOW() + INTERVAL '5 days', NOW() + INTERVAL '5 days 3 hours'),
+(2, 2, 'Revisión Trimestral', 'Evaluación de métricas y objetivos del equipo', 'Laura Díaz', NOW() + INTERVAL '10 days', NOW() + INTERVAL '10 days 2 hours'),
+(3, 5, 'Taller de Resiliencia', 'Desarrollo de habilidades para manejar situaciones de estrés', 'Dra. Sofia Lopez', NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days 2 hours'),
+(4, 15, 'Summit Estrategia Global', 'Planeación anual con líderes regionales', 'Emma Weber', NOW() + INTERVAL '12 days', NOW() + INTERVAL '12 days 4 hours'),
+(5, 16, 'Foro Bienestar Mental', 'Panel de expertos sobre carga psicológica', 'Marie Laurent', NOW() + INTERVAL '15 days', NOW() + INTERVAL '15 days 3 hours'),
+(6, 17, 'Workshop Predictivo', 'Analítica para predicción de burnout', 'Paula Oliveira', NOW() + INTERVAL '9 days', NOW() + INTERVAL '9 days 5 hours'),
+(7, 18, 'Plan Expansión Q4', 'Revisión de nuevos mercados', 'Sarah Johnson', NOW() + INTERVAL '20 days', NOW() + INTERVAL '20 days 2 hours'),
+(8, 19, 'Innovación Futuro', 'Ideación de productos y servicios', 'Hector Rios', NOW() + INTERVAL '13 days', NOW() + INTERVAL '13 days 3 hours'),
+(9, 20, 'Mindful Ops Lab', 'Entrenamiento en técnicas de calma activa', 'Emma Weber', NOW() + INTERVAL '6 days', NOW() + INTERVAL '6 days 2 hours'),
+(10, 21, 'Nova Health Connect', 'Networking clínico entre sedes', 'Marie Laurent', NOW() + INTERVAL '17 days', NOW() + INTERVAL '17 days 3 hours'),
+(11, 22, 'Zenith Radar', 'Presentación de dashboards predictivos', 'Paula Oliveira', NOW() + INTERVAL '11 days', NOW() + INTERVAL '11 days 4 hours'),
+(12, 23, 'Future Strategy Lab', 'Planeación de OKRs y entregables clave', 'Luciana Torres', NOW() + INTERVAL '8 days', NOW() + INTERVAL '8 days 3 hours'),
+(13, 24, 'Mindful Growth Sprint', 'Programación de talleres mindful para sedes', 'Renata Campos', NOW() + INTERVAL '14 days', NOW() + INTERVAL '14 days 2 hours'),
+(14, 25, 'Nova Insights Summit', 'Presentación de analítica clínica avanzada', 'Valeria Silva', NOW() + INTERVAL '18 days', NOW() + INTERVAL '18 days 4 hours'),
+(15, 26, 'Zenith AI Expo', 'Demo de nuevas herramientas de IA aplicada', 'Daniela Costa', NOW() + INTERVAL '16 days', NOW() + INTERVAL '16 days 5 hours'),
+(16, 27, 'Pulse Strategy Summit', 'Kickoff de estrategias PulseWell', 'Santiago Vega', NOW() + INTERVAL '9 days', NOW() + INTERVAL '9 days 3 hours'),
+(17, 28, 'Equilibrium Data Week', 'Sesiones de ciencia de datos aplicada', 'Ignacio Beltran', NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days 4 hours'),
+(18, 29, 'NeuroSync Wellness Jam', 'Dinámicas de bienestar neurocognitivo', 'Camilo Reyes', NOW() + INTERVAL '19 days', NOW() + INTERVAL '19 days 2 hours'),
+(19, 30, 'Hyperion AI Labs', 'Presentación de prototipos Hyperion', 'Esteban Mercado', NOW() + INTERVAL '21 days', NOW() + INTERVAL '21 days 5 hours')
 ON CONFLICT (id_event) DO UPDATE SET
-id_manager = EXCLUDED.id_manager,
+id_group = EXCLUDED.id_group,
 title_message = EXCLUDED.title_message,
 body_message = EXCLUDED.body_message,
 coordinator_name = EXCLUDED.coordinator_name,
@@ -810,13 +873,12 @@ start_at = EXCLUDED.start_at,
 end_at = EXCLUDED.end_at;
 
 -- Interventions
-INSERT INTO interventions (id_inter, id_manager, type, description, title_message, body_message) VALUES
-(1, 2, 'coaching', 'Sesión individual de manejo de estrés', 'Sesión de Coaching', 'Hemos notado niveles elevados de estrés, agendemos una sesión'),
-(2, 7, 'training', 'Capacitación en técnicas de productividad', 'Optimización de Productividad', 'Te invitamos a nuestro taller de métodos ágiles'),
-(3, 14, 'mentoring', 'Sesión de mentoría para desarrollo profesional', 'Plan de Desarrollo', 'Hemos identificado oportunidades de crecimiento, agendemos una sesión')
+INSERT INTO interventions (id_inter, id_group, description, title_message, body_message) VALUES
+(1, 1, 'Sesión individual de manejo de estrés', 'Sesión de Coaching', 'Hemos notado niveles elevados de estrés, agendemos una sesión'),
+(2, 2, 'Capacitación en técnicas de productividad', 'Optimización de Productividad', 'Te invitamos a nuestro taller de métodos ágiles'),
+(3, 5, 'Sesión de mentoría para desarrollo profesional', 'Plan de Desarrollo', 'Hemos identificado oportunidades de crecimiento, agendemos una sesión')
 ON CONFLICT (id_inter) DO UPDATE SET
-id_manager = EXCLUDED.id_manager,
-type = EXCLUDED.type,
+id_group = EXCLUDED.id_group,
 description = EXCLUDED.description,
 title_message = EXCLUDED.title_message,
 body_message = EXCLUDED.body_message;

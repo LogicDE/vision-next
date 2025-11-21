@@ -29,14 +29,14 @@ export class GroupsService {
 
   findAll() {
     return this.groupRepo.find({
-      relations: ['manager', 'members', 'snapshots', 'surveys', 'questions'],
+      relations: ['manager', 'manager.enterprise', 'members', 'snapshots', 'surveys', 'questions'],
     });
   }
 
   async findOne(id: number) {
     const group = await this.groupRepo.findOne({
       where: { id },
-      relations: ['manager', 'members', 'snapshots', 'surveys', 'questions'],
+      relations: ['manager', 'manager.enterprise', 'members', 'snapshots', 'surveys', 'questions'],
     });
     if (!group) throw new NotFoundException('Group no encontrado');
     return group;

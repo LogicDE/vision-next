@@ -1,11 +1,19 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL, getAccessToken } from '@/lib/api';
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+
+  const token = getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_URL}${endpoint}`, {
     credentials: 'include', // importante para cookies/token
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     ...options,
   });
 
