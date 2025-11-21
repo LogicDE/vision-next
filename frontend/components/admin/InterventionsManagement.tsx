@@ -458,9 +458,9 @@ export function InterventionsManagement() {
       setFormData({
         enterpriseId: enterpriseMeta.id,
         groupId: group?.id ?? null,
-        titleMessage: intervention.titleMessage,
-        bodyMessage: intervention.bodyMessage,
-        description: intervention.description,
+            titleMessage: intervention.titleMessage,
+            bodyMessage: intervention.bodyMessage,
+            description: intervention.description,
       });
     } else {
       const enterpriseId = enterpriseOptions[0]?.id ?? null;
@@ -555,115 +555,138 @@ export function InterventionsManagement() {
         ) : paginatedHierarchy.length === 0 ? (
           <p className="text-gray-400 text-center py-10">No se encontraron intervenciones</p>
         ) : (
-          paginatedHierarchy.map((entry) => (
-            <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
-              <button
-                className="w-full flex items-center justify-between text-left"
-                onClick={() => handleToggleEnterprise(entry.enterprise.id)}
-              >
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="w-4 h-4 text-orange-300" />
-                    <span className="font-semibold text-white">{entry.enterprise.name}</span>
-                    <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                      ID: {entry.enterprise.id}
-                    </Badge>
+          paginatedHierarchy.map((entry) => {
+            const groupCount = entry.groups.length;
+            const interventionCount = entry.groups.reduce(
+              (sum, groupNode) => sum + groupNode.interventions.length,
+              0,
+            );
+            return (
+              <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
+                <button
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => handleToggleEnterprise(entry.enterprise.id)}
+                >
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="w-4 h-4 text-orange-300" />
+                      <span className="font-semibold text-white">{entry.enterprise.name}</span>
+                      <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                        ID: {entry.enterprise.id}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                        {groupCount} grupo{groupCount === 1 ? '' : 's'}
+                      </Badge>
+                      <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
+                        {interventionCount} intervención{interventionCount === 1 ? '' : 'es'}
+                      </Badge>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-400 mt-1">
-                    {entry.groups.length} grupo{entry.groups.length === 1 ? '' : 's'} registrados
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-300">
-                  <span>Ver grupos</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${
-                      expandedEnterprise === entry.enterprise.id ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </button>
+                  <div className="flex items-center gap-2 text-sm text-gray-300">
+                    <span>Ver grupos</span>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        expandedEnterprise === entry.enterprise.id ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </div>
+                </button>
 
-              {expandedEnterprise === entry.enterprise.id && (
-                <div className="mt-4 space-y-3">
-                  {entry.groups.map((groupNode) => (
-                    <div key={groupNode.group.id} className="bg-slate-900/40 border border-white/5 rounded-lg p-3 space-y-3">
-                      <button
-                        className="w-full flex items-center justify-between text-left"
-                        onClick={() => handleToggleGroup(groupNode.group.id)}
-                      >
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <Layers className="w-4 h-4 text-amber-300" />
-                            <span className="font-medium text-white">{groupNode.group.name}</span>
-                            <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                              ID: {groupNode.group.id}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-400 mt-1">
-                            {groupNode.interventions.length} intervención{groupNode.interventions.length === 1 ? '' : 'es'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-300">
-                          <span>Ver intervenciones</span>
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform ${
-                              expandedGroup === groupNode.group.id ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      {expandedGroup === groupNode.group.id && (
-                        <div className="mt-3 space-y-2">
-                          {groupNode.interventions.length === 0 ? (
-                            <p className="text-sm text-gray-400 pl-2">Sin intervenciones registradas</p>
-                          ) : (
-                            groupNode.interventions.map((intervention) => (
-                              <div
-                                key={intervention.id}
-                                className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <h4 className="font-semibold text-white">{intervention.titleMessage}</h4>
-                                    <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                                      ID: {intervention.id}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-gray-300">{intervention.description}</p>
-                                  {intervention.bodyMessage && (
-                                    <p className="text-xs text-gray-500 italic mt-2">{intervention.bodyMessage}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2 md:ml-4">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleOpenDialog(intervention)}
-                                    className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDelete(intervention.id)}
-                                    className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
+                {expandedEnterprise === entry.enterprise.id && (
+                  <div className="mt-4 space-y-3">
+                    {entry.groups.map((groupNode) => {
+                      const groupInterventionCount = groupNode.interventions.length;
+                      return (
+                        <div
+                          key={groupNode.group.id}
+                          className="bg-slate-900/40 border border-white/5 rounded-lg p-3 space-y-3"
+                        >
+                          <button
+                            className="w-full flex items-center justify-between text-left"
+                            onClick={() => handleToggleGroup(groupNode.group.id)}
+                          >
+                <div>
+                              <div className="flex items-center space-x-2">
+                                <Layers className="w-4 h-4 text-amber-300" />
+                                <span className="font-medium text-white">{groupNode.group.name}</span>
+                                <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                  ID: {groupNode.group.id}
+                                </Badge>
                               </div>
-                            ))
+                              <p className="text-sm text-gray-400 mt-1">
+                                {groupNode.interventions.length} intervención{groupNode.interventions.length === 1 ? '' : 'es'}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
+                                  {groupInterventionCount} intervención{groupInterventionCount === 1 ? '' : 'es'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-300">
+                              <span>Ver intervenciones</span>
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform ${
+                                  expandedGroup === groupNode.group.id ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {expandedGroup === groupNode.group.id && (
+                            <div className="mt-3 space-y-2">
+                              {groupNode.interventions.length === 0 ? (
+                                <p className="text-sm text-gray-400 pl-2">Sin intervenciones registradas</p>
+                              ) : (
+                                groupNode.interventions.map((intervention) => (
+                                  <div
+                                    key={intervention.id}
+                                    className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <h4 className="font-semibold text-white">{intervention.titleMessage}</h4>
+                                        <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                          ID: {intervention.id}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-gray-300">{intervention.description}</p>
+                                      {intervention.bodyMessage && (
+                                        <p className="text-xs text-gray-500 italic mt-2">{intervention.bodyMessage}</p>
+                                      )}
+                </div>
+                                    <div className="flex items-center space-x-2 md:ml-4">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleOpenDialog(intervention)}
+                                        className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                  </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDelete(intervention.id)}
+                                        className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                                  </div>
+          ))
+        )}
+      </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
       {totalPages > 1 && (

@@ -916,7 +916,7 @@ export function SurveysDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {paginatedHierarchy.length === 0 ? (
+          {paginatedHierarchy.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
                 <FileText className="w-12 h-12 text-gray-600" />
                 <p className="text-gray-400">
@@ -924,7 +924,10 @@ export function SurveysDashboard() {
                 </p>
               </div>
             ) : (
-              paginatedHierarchy.map((entry) => (
+              paginatedHierarchy.map((entry) => {
+              const groupCount = entry.groups.length;
+              const surveyCount = entry.groups.reduce((sum, groupNode) => sum + groupNode.surveys.length, 0);
+              return (
                 <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
                   <button
                     className="w-full flex items-center justify-between text-left"
@@ -938,9 +941,14 @@ export function SurveysDashboard() {
                           ID: {entry.enterprise.id}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-400 mt-1">
-                        {entry.groups.length} grupo{entry.groups.length === 1 ? '' : 's'} registrados
-                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                          {groupCount} grupo{groupCount === 1 ? '' : 's'}
+                        </Badge>
+                        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                          {surveyCount} encuesta{surveyCount === 1 ? '' : 's'}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-300">
                       <span>Ver grupos</span>
@@ -954,95 +962,107 @@ export function SurveysDashboard() {
 
                   {expandedEnterprise === entry.enterprise.id && (
                     <div className="mt-4 space-y-3">
-                      {entry.groups.map((groupNode) => (
-                        <div key={groupNode.group.id} className="bg-slate-900/40 border border-white/5 rounded-lg p-3 space-y-3">
-                          <button
-                            className="w-full flex items-center justify-between text-left"
-                            onClick={() => handleToggleGroup(groupNode.group.id)}
+                      {entry.groups.map((groupNode) => {
+                        const surveyTotal = groupNode.surveys.length;
+                        return (
+                          <div
+                            key={groupNode.group.id}
+                            className="bg-slate-900/40 border border-white/5 rounded-lg p-3 space-y-3"
                           >
-                            <div>
-                              <div className="flex items-center space-x-2">
-                                <Layers className="w-4 h-4 text-amber-300" />
-                                <span className="font-medium text-white">{groupNode.group.name}</span>
-                                <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                                  ID: {groupNode.group.id}
-                                </Badge>
+                            <button
+                              className="w-full flex items-center justify-between text-left"
+                              onClick={() => handleToggleGroup(groupNode.group.id)}
+                            >
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <Layers className="w-4 h-4 text-amber-300" />
+                                  <span className="font-medium text-white">{groupNode.group.name}</span>
+                                  <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                    ID: {groupNode.group.id}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-400 mt-1">
+                                  {groupNode.surveys.length} encuesta{groupNode.surveys.length === 1 ? '' : 's'}
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-xs">
+                                    {surveyTotal} encuesta{surveyTotal === 1 ? '' : 's'}
+                                  </Badge>
+                                </div>
                               </div>
-                              <p className="text-sm text-gray-400 mt-1">
-                                {groupNode.surveys.length} encuesta{groupNode.surveys.length === 1 ? '' : 's'}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-300">
-                              <span>Ver encuestas</span>
-                              <ChevronDown
-                                className={`w-4 h-4 transition-transform ${
-                                  expandedGroup === groupNode.group.id ? 'rotate-180' : ''
-                                }`}
-                              />
-                            </div>
-                          </button>
+                              <div className="flex items-center gap-2 text-sm text-gray-300">
+                                <span>Ver encuestas</span>
+                                <ChevronDown
+                                  className={`w-4 h-4 transition-transform ${
+                                    expandedGroup === groupNode.group.id ? 'rotate-180' : ''
+                                  }`}
+                                />
+                              </div>
+                            </button>
 
-                          {expandedGroup === groupNode.group.id && (
-                            <div className="mt-3 space-y-2">
-                              {groupNode.surveys.length === 0 ? (
-                                <p className="text-sm text-gray-400 pl-2">Sin encuestas registradas</p>
-                              ) : (
-                                groupNode.surveys.map((survey) => (
-                                  <div
-                                    key={survey.id}
-                                    className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
-                                  >
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <h4 className="font-semibold text-white">{survey.name}</h4>
-                                        <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                                          ID: {survey.id}
-                                        </Badge>
+                            {expandedGroup === groupNode.group.id && (
+                              <div className="mt-3 space-y-2">
+                                {groupNode.surveys.length === 0 ? (
+                                  <p className="text-sm text-gray-400 pl-2">Sin encuestas registradas</p>
+                                ) : (
+                                  groupNode.surveys.map((survey) => (
+                                    <div
+                                      key={survey.id}
+                                      className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
+                                    >
+                                      <div className="flex-1">
+                                        <div className="flex items-center space-x-2 mb-2">
+                                          <h4 className="font-semibold text-white">{survey.name}</h4>
+                                          <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                            ID: {survey.id}
+                                          </Badge>
+                                        </div>
+                                        <div className="grid gap-2 text-sm text-gray-300 md:grid-cols-3">
+                                          <div className="flex items-center space-x-2">
+                                            <Calendar className="w-4 h-4 text-gray-400" />
+                                            <span>Inicio: {formatDateTime(survey.startAt)}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <Calendar className="w-4 h-4 text-gray-400" />
+                                            <span>Fin: {formatDateTime(survey.endAt)}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <TrendingUp className="w-4 h-4 text-gray-400" />
+                                            <span>Score grupo: {survey.groupScore ?? 'N/D'}</span>
+                                          </div>
+                                        </div>
                                       </div>
-                                      <div className="grid gap-2 text-sm text-gray-300 md:grid-cols-3">
-                                        <div className="flex items-center space-x-2">
-                                          <Calendar className="w-4 h-4 text-gray-400" />
-                                          <span>Inicio: {formatDateTime(survey.startAt)}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <Calendar className="w-4 h-4 text-gray-400" />
-                                          <span>Fin: {formatDateTime(survey.endAt)}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <TrendingUp className="w-4 h-4 text-gray-400" />
-                                          <span>Score grupo: {survey.groupScore ?? 'N/D'}</span>
-                                        </div>
+                                      <div className="flex items-center space-x-2 md:ml-4">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleOpenDialog(survey)}
+                                          className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDeleteClick(survey)}
+                                          className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
                                       </div>
                                     </div>
-                                    <div className="flex items-center space-x-2 md:ml-4">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleOpenDialog(survey)}
-                                        className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeleteClick(survey)}
-                                        className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-              ))
+              );
+              })
             )}
           </div>
           {totalPages > 1 && (
@@ -1099,7 +1119,7 @@ export function SurveysDashboard() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white">
+        <DialogContent className="sm:max-w-lg bg-slate-900 border-white/10 text-white max-h-[90vh] overflow-y-auto">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500" />
           
           <DialogHeader>

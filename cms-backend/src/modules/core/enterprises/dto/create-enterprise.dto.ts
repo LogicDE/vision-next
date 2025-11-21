@@ -1,4 +1,4 @@
-import { IsString, IsEmail, Length } from 'class-validator';
+import { IsString, IsEmail, Length, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateEnterpriseDto {
   @IsString()
@@ -12,4 +12,8 @@ export class CreateEnterpriseDto {
   @IsEmail()
   @Length(1, 150)
   email!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
