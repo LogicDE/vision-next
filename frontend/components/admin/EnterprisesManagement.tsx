@@ -180,6 +180,7 @@ export function EnterprisesManagement() {
     email: '',
     telephone: '',
   });
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [locationFormData, setLocationFormData] = useState<LocationFormData>({
     id: null,
     enterpriseId: null,
@@ -258,6 +259,7 @@ export function EnterprisesManagement() {
         telephone: '',
       });
     }
+    setEmailError(null);
     setIsDialogOpen(true);
   };
 
@@ -269,6 +271,7 @@ export function EnterprisesManagement() {
       email: '',
       telephone: '',
     });
+    setEmailError(null);
   };
 
   const TELEPHONE_REGEX = /^\d{9,15}$/;
@@ -289,6 +292,7 @@ export function EnterprisesManagement() {
       return;
     }
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       const payload = {
@@ -310,10 +314,23 @@ export function EnterprisesManagement() {
         toast.success('Empresa creada exitosamente');
       }
       handleCloseDialog();
-      loadEnterprises();
+      await loadEnterprises();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
-      toast.error(error.message || 'Error al guardar empresa');
-      console.error('Error saving enterprise:', error);
+      const message = error?.message || '';
+      // Manejo específico para conflicto de email (409)
+      if (message.startsWith('Error 409:')) {
+        try {
+          const jsonPart = message.slice('Error 409:'.length).trim();
+          const parsed = JSON.parse(jsonPart);
+          setEmailError(parsed?.message || 'El correo electrónico ya está registrado en otra empresa');
+        } catch {
+          setEmailError('El correo electrónico ya está registrado en otra empresa');
+        }
+      } else {
+        toast.error(message || 'Error al guardar empresa');
+        console.error('Error saving enterprise:', error);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -327,6 +344,7 @@ export function EnterprisesManagement() {
   const handleDeleteConfirm = async () => {
     if (!deletingEnterprise) return;
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       await fetchAPI(`/enterprises/${deletingEnterprise.id}`, {
@@ -335,7 +353,8 @@ export function EnterprisesManagement() {
       toast.success('Empresa eliminada exitosamente');
       setIsDeleteDialogOpen(false);
       setDeletingEnterprise(null);
-      loadEnterprises();
+      await loadEnterprises();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar empresa');
       console.error('Error deleting enterprise:', error);
@@ -1109,9 +1128,17 @@ export function EnterprisesManagement() {
                 type="email"
                 placeholder="contacto@empresa.com"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  setEmailError(null);
+                }}
                 className="bg-slate-800/50 border-white/10 text-white placeholder:text-gray-500 focus:border-green-500/50"
               />
+              {emailError && (
+                <p className="text-sm text-red-400 mt-1">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
