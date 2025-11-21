@@ -155,6 +155,13 @@ export function EventsDashboard() {
   const formatDateTime = (value?: string) =>
     value ? new Date(value).toLocaleString() : 'Sin definir';
 
+  const toInputDateTimeValue = (value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const enterpriseOptions = useMemo(() => {
     const optionMap = new Map<number, string>();
     enterprises.forEach((enterprise) => optionMap.set(enterprise.id, enterprise.name));
@@ -246,8 +253,8 @@ export function EventsDashboard() {
         titleMessage: event.titleMessage,
         bodyMessage: event.bodyMessage || '',
         coordinatorName: event.coordinatorName || '',
-        startAt: event.startAt ? new Date(event.startAt).toISOString().slice(0,16) : '',
-        endAt: event.endAt ? new Date(event.endAt).toISOString().slice(0,16) : '',
+        startAt: toInputDateTimeValue(event.startAt),
+        endAt: toInputDateTimeValue(event.endAt),
       });
     } else {
       setEditingEvent(null);

@@ -16,6 +16,9 @@ export class Enterprise {
   @Column({ length: 150, unique: true })
   email!: string;
 
+  @Column({ type: 'boolean', default: true })
+  active!: boolean;
+
   @OneToMany(() => EnterpriseLocation, (l: EnterpriseLocation) => l.enterprise)
   locations!: EnterpriseLocation[];
 

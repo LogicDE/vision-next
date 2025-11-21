@@ -23,13 +23,15 @@ export class AddressesService {
   }
 
   findAll() {
-    return this.addressRepo.find({ relations: ['postalCode', 'neighborhood'] });
+    return this.addressRepo.find({
+      relations: ['postalCode', 'postalCode.country', 'neighborhood', 'neighborhood.city'],
+    });
   }
 
   async findOne(id: number) {
-    const address = await this.addressRepo.findOne({ 
-      where: { id }, 
-      relations: ['postalCode', 'neighborhood'] 
+    const address = await this.addressRepo.findOne({
+      where: { id },
+      relations: ['postalCode', 'postalCode.country', 'neighborhood', 'neighborhood.city'],
     });
     if (!address) throw new NotFoundException('Address no encontrada');
     return address;

@@ -19,14 +19,14 @@ export class EnterprisesService {
 
   findAll() {
     return this.enterpriseRepo.find({
-      relations: ['locations', 'employees'],
+      relations: ['locations', 'locations.devices', 'locations.address', 'employees'],
     });
   }
 
   async findOne(id: number) {
     const enterprise = await this.enterpriseRepo.findOne({
       where: { id },
-      relations: ['locations', 'employees'],
+      relations: ['locations', 'locations.devices', 'locations.address', 'employees'],
     });
 
     if (!enterprise) throw new NotFoundException('Enterprise no encontrada');

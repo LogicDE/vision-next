@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS enterprises (
   id_enterprise SERIAL PRIMARY KEY,
   name       VARCHAR(150) NOT NULL,
   telephone  VARCHAR(15)  NOT NULL CHECK (telephone ~ '^\d{9,15}$'),
-  email      VARCHAR(150) NOT NULL UNIQUE
+  email      VARCHAR(150) NOT NULL UNIQUE,
+  active     BOOLEAN      NOT NULL DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS enterprise_locations (
@@ -141,9 +142,10 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 
 CREATE TABLE IF NOT EXISTS groups (
-  id_group  SERIAL PRIMARY KEY,
+  id_group   SERIAL PRIMARY KEY,
   id_manager INTEGER NOT NULL REFERENCES employees(id_employee) ON DELETE RESTRICT,
-  name      VARCHAR(100) NOT NULL
+  name       VARCHAR(100) NOT NULL,
+  active     BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS groups_employees (
@@ -153,6 +155,49 @@ CREATE TABLE IF NOT EXISTS groups_employees (
 );
 CREATE INDEX IF NOT EXISTS idx_groups_employees_employee ON groups_employees(id_employee);
 CREATE INDEX IF NOT EXISTS idx_groups_employees_group    ON groups_employees(id_group);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'enterprises') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'enterprises' AND column_name = 'active'
+        ) THEN
+            ALTER TABLE enterprises ADD COLUMN active BOOLEAN NOT NULL DEFAULT true;
+        END IF;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'groups') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'groups' AND column_name = 'active'
+        ) THEN
+            ALTER TABLE groups ADD COLUMN active BOOLEAN;
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'groups' AND column_name = 'state'
+            ) THEN
+                UPDATE groups
+                SET active = CASE WHEN LOWER(state) = 'inactive' THEN false ELSE true END;
+                ALTER TABLE groups DROP COLUMN state;
+            ELSE
+                UPDATE groups SET active = true;
+            END IF;
+            ALTER TABLE groups ALTER COLUMN active SET DEFAULT true;
+            ALTER TABLE groups ALTER COLUMN active SET NOT NULL;
+        ELSE
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'groups' AND column_name = 'state'
+            ) THEN
+                UPDATE groups
+                SET active = CASE WHEN LOWER(state) = 'inactive' THEN false ELSE true END
+                WHERE active IS NULL;
+                ALTER TABLE groups DROP COLUMN state;
+            END IF;
+        END IF;
+    END IF;
+END $$;
 
 -- =========================================================
 -- AUDIT LOGS
@@ -442,25 +487,26 @@ id_postal_code = EXCLUDED.id_postal_code,
 id_neighborhood = EXCLUDED.id_neighborhood;
 
 -- Enterprises
-INSERT INTO enterprises (id_enterprise, name, telephone, email) VALUES
-(1, 'VitaNexo Corporativo', '5512345678', 'corporate@vitanexo.com'),
-(2, 'VitaNexo Salud', '5559876543', 'salud@vitanexo.com'),
-(3, 'TechCorp Global', '5512349999', 'info@techcorp.com'),
-(4, 'HealthPlus Internacional', '5558887777', 'contacto@healthplus.com'),
-(5, 'Innovate Solutions', '5522223333', 'hello@innovate.com'),
-(6, 'BioWellness Group', '5533334444', 'support@biowellness.com'),
-(7, 'FutureWork Labs', '5543219876', 'contact@futurework.io'),
-(8, 'MindfulCorp', '5545551212', 'hello@mindfulcorp.com'),
-(9, 'NovaHealth Partners', '5512125656', 'info@novahealth.co'),
-(10, 'Zenith Analytics', '5537373737', 'hi@zenithanalytics.ai'),
-(11, 'PulseWell Alliance', '5556667771', 'contact@pulsewell.com'),
-(12, 'Equilibrium Analytics', '5557778882', 'hello@equanalytics.ai'),
-(13, 'NeuroSync Wellness', '5558889993', 'team@neurosync.io'),
-(14, 'Hyperion Labs', '5559990004', 'ops@hyperionlabs.ai')
+INSERT INTO enterprises (id_enterprise, name, telephone, email, active) VALUES
+(1, 'VitaNexo Corporativo', '5512345678', 'corporate@vitanexo.com', true),
+(2, 'VitaNexo Salud', '5559876543', 'salud@vitanexo.com', true),
+(3, 'TechCorp Global', '5512349999', 'info@techcorp.com', true),
+(4, 'HealthPlus Internacional', '5558887777', 'contacto@healthplus.com', true),
+(5, 'Innovate Solutions', '5522223333', 'hello@innovate.com', true),
+(6, 'BioWellness Group', '5533334444', 'support@biowellness.com', true),
+(7, 'FutureWork Labs', '5543219876', 'contact@futurework.io', true),
+(8, 'MindfulCorp', '5545551212', 'hello@mindfulcorp.com', true),
+(9, 'NovaHealth Partners', '5512125656', 'info@novahealth.co', true),
+(10, 'Zenith Analytics', '5537373737', 'hi@zenithanalytics.ai', true),
+(11, 'PulseWell Alliance', '5556667771', 'contact@pulsewell.com', true),
+(12, 'Equilibrium Analytics', '5557778882', 'hello@equanalytics.ai', true),
+(13, 'NeuroSync Wellness', '5558889993', 'team@neurosync.io', true),
+(14, 'Hyperion Labs', '5559990004', 'ops@hyperionlabs.ai', true)
 ON CONFLICT (id_enterprise) DO UPDATE SET
 name = EXCLUDED.name,
 telephone = EXCLUDED.telephone,
-email = EXCLUDED.email;
+email = EXCLUDED.email,
+active = EXCLUDED.active;
 
 -- Enterprise Locations
 INSERT INTO enterprise_locations (id_location, id_enterprise, id_address, location_name, active) VALUES
@@ -597,40 +643,41 @@ created_at = EXCLUDED.created_at,
 updated_at = EXCLUDED.updated_at;
 
 -- Groups (14 grupos total)
-INSERT INTO groups (id_group, id_manager, name) VALUES
-(1, 2, 'Equipo Desarrollo Core'),
-(2, 7, 'Equipo Data Science'),
-(3, 2, 'Equipo Operaciones'),
-(4, 7, 'Equipo Investigación'),
-(5, 14, 'Equipo Desarrollo Frontend'),
-(6, 21, 'Equipo Backend Avanzado'),
-(7, 25, 'Equipo Data Analytics'),
-(8, 32, 'Equipo Desarrollo Mobile'),
-(9, 36, 'Equipo Investigación Clínica'),
-(10, 40, 'Equipo UX/UI Design'),
-(11, 44, 'Equipo Machine Learning'),
-(12, 14, 'Equipo QA y Testing'),
-(13, 21, 'Equipo DevOps'),
-(14, 25, 'Equipo Bioestadística'),
-(15, 32, 'Equipo Estrategia Global'),
-(16, 36, 'Equipo Bienestar Mental'),
-(17, 40, 'Equipo Analítica Predictiva'),
-(18, 44, 'Equipo Expansión'),
-(19, 25, 'Equipo Innovación Futuro'),
-(20, 32, 'Equipo Mindful Ops'),
-(21, 36, 'Equipo Nova Health'),
-(22, 40, 'Equipo Zenith Labs'),
-(23, 48, 'Equipo Future Strategy'),
-(24, 50, 'Equipo Mindful Growth'),
-(25, 52, 'Equipo Nova Insights'),
-(26, 54, 'Equipo Zenith AI'),
-(27, 56, 'Equipo Pulse Strategy'),
-(28, 58, 'Equipo Equilibrium Data'),
-(29, 60, 'Equipo NeuroSync Care'),
-(30, 62, 'Equipo Hyperion AI')
+INSERT INTO groups (id_group, id_manager, name, active) VALUES
+(1, 2, 'Equipo Desarrollo Core', true),
+(2, 7, 'Equipo Data Science', true),
+(3, 2, 'Equipo Operaciones', true),
+(4, 7, 'Equipo Investigación', true),
+(5, 14, 'Equipo Desarrollo Frontend', true),
+(6, 21, 'Equipo Backend Avanzado', true),
+(7, 25, 'Equipo Data Analytics', true),
+(8, 32, 'Equipo Desarrollo Mobile', true),
+(9, 36, 'Equipo Investigación Clínica', true),
+(10, 40, 'Equipo UX/UI Design', true),
+(11, 44, 'Equipo Machine Learning', true),
+(12, 14, 'Equipo QA y Testing', true),
+(13, 21, 'Equipo DevOps', true),
+(14, 25, 'Equipo Bioestadística', true),
+(15, 32, 'Equipo Estrategia Global', true),
+(16, 36, 'Equipo Bienestar Mental', true),
+(17, 40, 'Equipo Analítica Predictiva', true),
+(18, 44, 'Equipo Expansión', true),
+(19, 25, 'Equipo Innovación Futuro', true),
+(20, 32, 'Equipo Mindful Ops', true),
+(21, 36, 'Equipo Nova Health', true),
+(22, 40, 'Equipo Zenith Labs', true),
+(23, 48, 'Equipo Future Strategy', true),
+(24, 50, 'Equipo Mindful Growth', true),
+(25, 52, 'Equipo Nova Insights', true),
+(26, 54, 'Equipo Zenith AI', true),
+(27, 56, 'Equipo Pulse Strategy', true),
+(28, 58, 'Equipo Equilibrium Data', true),
+(29, 60, 'Equipo NeuroSync Care', true),
+(30, 62, 'Equipo Hyperion AI', true)
 ON CONFLICT (id_group) DO UPDATE SET
 id_manager = EXCLUDED.id_manager,
-name = EXCLUDED.name;
+name = EXCLUDED.name,
+active = EXCLUDED.active;
 
 -- Groups Employees
 INSERT INTO groups_employees (id_group, id_employee) VALUES
