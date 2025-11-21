@@ -38,15 +38,7 @@ export function SessionTimeout() {
 
   const resetTimers = useCallback(() => {
     clearAllTimers();
-    warningTimer.current = setTimeout(() => {
-      setShowModal(true);
-      startCountdown();
-    }, WARNING_TIME);
-    logoutTimer.current = setTimeout(() => {
-      setShowModal(false);
-      logout();
-    }, LOGOUT_TIME);
-  }, [clearAllTimers, startCountdown, logout]);
+  }, [clearAllTimers]);
 
   const handleUserActivity = useCallback(() => {
     setShowModal(false);
@@ -56,13 +48,12 @@ export function SessionTimeout() {
   useEffect(() => {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'touchmove'];
     events.forEach((e) => window.addEventListener(e, handleUserActivity, { passive: true }));
-    resetTimers();
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, handleUserActivity));
       clearAllTimers();
     };
-  }, [handleUserActivity, resetTimers, clearAllTimers]);
+  }, [handleUserActivity, clearAllTimers]);
 
   const continueSession = useCallback(async () => {
     setIsRefreshing(true);

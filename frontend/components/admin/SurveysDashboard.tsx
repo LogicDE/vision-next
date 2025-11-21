@@ -532,7 +532,6 @@ export function SurveysDashboard() {
     return availableGroups.filter((group) => group.name.toLowerCase().includes(term));
   }, [availableGroups, groupSearch]);
 
-  const canCreateSurvey = enterpriseOptions.length > 0 && availableGroups.length > 0;
 
   useEffect(() => {
     if (!enterprisePopoverOpen) {
@@ -588,6 +587,19 @@ export function SurveysDashboard() {
 
   const formatDateTime = (value?: string) =>
     value ? new Date(value).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin definir';
+
+  const toLocalDateParts = (value?: string) => {
+    const d = value ? new Date(value) : new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return {
+      date: `${year}-${month}-${day}`,
+      time: `${hours}:${minutes}`,
+    };
+  };
 
   const handleToggleEnterprise = (enterpriseId: number) => {
     setExpandedEnterprise((prev) => (prev === enterpriseId ? null : enterpriseId));
@@ -667,18 +679,18 @@ export function SurveysDashboard() {
       if (survey) {
         const group = getGroupFromSurvey(survey);
         const enterpriseMeta = getEnterpriseMetaForGroup(group);
-        const startDateTime = survey.startAt ? new Date(survey.startAt) : new Date();
-        const endDateTime = survey.endAt ? new Date(survey.endAt) : new Date();
+        const startParts = toLocalDateParts(survey.startAt);
+        const endParts = toLocalDateParts(survey.endAt);
         setEditingSurvey(survey);
         setFormData({
           enterpriseId: enterpriseMeta.id,
           groupId: group?.id ?? null,
           questionIds: [],
           name: survey.name,
-          startDate: startDateTime.toISOString().split('T')[0],
-          startTime: startDateTime.toISOString().slice(11, 16),
-          endDate: endDateTime.toISOString().split('T')[0],
-          endTime: endDateTime.toISOString().slice(11, 16),
+          startDate: startParts.date,
+          startTime: startParts.time,
+          endDate: endParts.date,
+          endTime: endParts.time,
           groupScore: survey.groupScore ?? '',
         });
       } else {
@@ -732,6 +744,7 @@ export function SurveysDashboard() {
       return;
     }
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       const payload = {
@@ -757,7 +770,8 @@ export function SurveysDashboard() {
       }
 
       handleCloseDialog();
-      loadData(true);
+      await loadData(true);
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar encuesta');
       console.error('Error saving survey:', error);
@@ -786,6 +800,7 @@ export function SurveysDashboard() {
   const handleDeleteConfirm = useCallback(async () => {
     if (!deletingSurvey) return;
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       await fetchAPI(`/group-survey-scores/${deletingSurvey.id}`, {
@@ -794,7 +809,8 @@ export function SurveysDashboard() {
       toast.success('Encuesta eliminada exitosamente');
       setIsDeleteDialogOpen(false);
       setDeletingSurvey(null);
-      loadData(true);
+      await loadData(true);
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar encuesta');
       console.error('Error deleting survey:', error);
@@ -831,8 +847,7 @@ export function SurveysDashboard() {
             {refreshing ? 'Actualizando...' : 'Actualizar'}
           </Button>
           <Button
-          onClick={() => handleOpenDialog()}
-          disabled={!canCreateSurvey}
+            onClick={() => handleOpenDialog()}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/50"
           >
             <Plus className="w-4 h-4 mr-2" />

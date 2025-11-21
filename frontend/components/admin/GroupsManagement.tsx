@@ -349,6 +349,7 @@ export function GroupsManagement() {
       return;
     }
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       let groupId = editingGroup?.id ?? null;
@@ -389,7 +390,8 @@ export function GroupsManagement() {
       }
 
       handleCloseDialog();
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar grupo');
       console.error('Error saving group:', error);

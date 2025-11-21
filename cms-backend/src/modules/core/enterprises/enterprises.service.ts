@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enterprise } from '../../../entities/enterprise.entity';
@@ -12,9 +12,20 @@ export class EnterprisesService {
     private readonly enterpriseRepo: Repository<Enterprise>,
   ) {}
 
-  create(dto: CreateEnterpriseDto) {
-    const enterprise = this.enterpriseRepo.create(dto);
-    return this.enterpriseRepo.save(enterprise);
+  async create(dto: CreateEnterpriseDto) {
+    if (!/^\d{9,15}$/.test(dto.telephone)) {
+      throw new BadRequestException('El teléfono debe tener entre 9 y 15 dígitos numéricos');
+    }
+
+    try {
+      const enterprise = this.enterpriseRepo.create(dto);
+      return await this.enterpriseRepo.save(enterprise);
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        throw new ConflictException('El correo electrónico ya está registrado en otra empresa');
+      }
+      throw error;
+    }
   }
 
   findAll() {
