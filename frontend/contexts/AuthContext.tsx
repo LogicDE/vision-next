@@ -10,6 +10,7 @@ export enum UserRole {
   USER = 'User',
 }
 
+//No modificar por ahora
 export interface User {
   id: string;
   name: string;
