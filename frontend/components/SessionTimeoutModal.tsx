@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Clock, AlertTriangle, RefreshCw, LogOut, Loader2 } from 'lucide-react';
 
 // 🕒 Configuración realista:
-const WARNING_TIME = 1000 * 60 * 4; // 4 minutos
-const LOGOUT_TIME = 1000 * 60 * 5; // 5 minutos
+const WARNING_TIME = 1000 * 60 * 3; // aviso tras 3 minutos de inactividad
+const LOGOUT_TIME = 1000 * 60 * 4; // cierre tras 4 minutos sin interacción
 const COUNTDOWN_DURATION = 60; // segundos visibles
 
 export function SessionTimeout() {
@@ -46,19 +46,21 @@ export function SessionTimeout() {
     }, LOGOUT_TIME);
   }, [clearAllTimers, startCountdown, logout]);
 
+  const handleUserActivity = useCallback(() => {
+    setShowModal(false);
+    resetTimers();
+  }, [resetTimers]);
+
   useEffect(() => {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'touchmove'];
-    const handleActivity = () => {
-      if (!showModal) resetTimers();
-    };
-    events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
+    events.forEach((e) => window.addEventListener(e, handleUserActivity, { passive: true }));
     resetTimers();
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      events.forEach((e) => window.removeEventListener(e, handleUserActivity));
       clearAllTimers();
     };
-  }, [showModal, resetTimers, clearAllTimers]);
+  }, [handleUserActivity, resetTimers, clearAllTimers]);
 
   const continueSession = useCallback(async () => {
     setIsRefreshing(true);

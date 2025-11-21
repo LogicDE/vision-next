@@ -19,6 +19,9 @@ export class Group {
   @Column({ length: 100 })
   name!: string;
 
+  @Column({ type: 'boolean', default: true })
+  active!: boolean;
+
   @OneToMany(() => GroupEmployee, (ge) => ge.group)
   members!: GroupEmployee[];
 
