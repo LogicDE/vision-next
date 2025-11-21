@@ -153,13 +153,19 @@ export function EventsDashboard() {
   const getEnterpriseMetaForEvent = (event: Event) => getEnterpriseMetaForGroup(getGroupFromEvent(event));
 
   const formatDateTime = (value?: string) =>
-    value ? new Date(value).toLocaleString() : 'Sin definir';
+    value
+      ? new Date(value).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
+      : 'Sin definir';
 
   const toInputDateTimeValue = (value?: string) => {
     if (!value) return '';
-    const date = new Date(value);
-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return localDate.toISOString().slice(0, 16);
+    const d = new Date(value);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const enterpriseOptions = useMemo(() => {
@@ -305,9 +311,22 @@ export function EventsDashboard() {
       return;
     }
 
+    const toIsoString = (value?: string) => {
+      if (!value) return undefined;
+      const date = new Date(value);
+      return date.toISOString();
+    };
+
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
-      const { enterpriseId, ...payload } = formData;
+      const { enterpriseId, ...rest } = formData;
+      const payload = {
+        ...rest,
+        startAt: toIsoString(rest.startAt),
+        endAt: toIsoString(rest.endAt),
+      };
+
       if (editingEvent) {
         await fetchAPI(`/events/${editingEvent.id}`, {
           method: 'PUT',
@@ -322,7 +341,8 @@ export function EventsDashboard() {
         toast.success('Evento creado exitosamente');
       }
       handleCloseDialog();
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar evento');
     } finally {
@@ -337,13 +357,15 @@ export function EventsDashboard() {
 
   const handleDeleteConfirm = async () => {
     if (!deletingEvent) return;
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       await fetchAPI(`/events/${deletingEvent.id}`, { method: 'DELETE' });
       toast.success('Evento eliminado exitosamente');
       setIsDeleteDialogOpen(false);
       setDeletingEvent(null);
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar evento');
     } finally {
@@ -526,7 +548,6 @@ export function EventsDashboard() {
     if (!term) return availableGroups;
     return availableGroups.filter((group) => group.name.toLowerCase().includes(term));
   }, [availableGroups, groupSearch]);
-  const canCreateEvent = enterpriseOptions.length > 0 && availableGroups.length > 0;
 
   const paginatedHierarchy = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -640,7 +661,6 @@ export function EventsDashboard() {
           </Button>
           <Button
             onClick={() => handleOpenDialog()}
-            disabled={!canCreateEvent}
             className="relative overflow-hidden group bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-lg shadow-orange-500/50 hover:shadow-xl hover:shadow-amber-500/50 transition-all"
           >
             <span className="relative z-10 flex items-center">

@@ -202,6 +202,7 @@ export function UsersManagement() {
       return;
     }
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       const payload = {
@@ -231,7 +232,8 @@ export function UsersManagement() {
         toast.success('Usuario creado exitosamente');
       }
       handleCloseDialog();
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar usuario');
       console.error('Error saving employee:', error);
@@ -248,6 +250,7 @@ export function UsersManagement() {
   const handleDeleteConfirm = async () => {
     if (!deletingEmployee) return;
 
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       await fetchAPI(`/employees/${deletingEmployee.id}`, {
@@ -256,7 +259,8 @@ export function UsersManagement() {
       toast.success('Usuario eliminado exitosamente');
       setIsDeleteDialogOpen(false);
       setDeletingEmployee(null);
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       toast.error(error.message || 'Error al eliminar usuario');
       console.error('Error deleting employee:', error);

@@ -337,7 +337,6 @@ export function InterventionsManagement() {
     return availableGroups.filter((group) => group.name.toLowerCase().includes(term));
   }, [availableGroups, groupSearch]);
 
-  const canCreateIntervention = enterpriseOptions.length > 0 && availableGroups.length > 0;
 
   useEffect(() => {
     if (!enterprisePopoverOpen) {
@@ -481,6 +480,7 @@ export function InterventionsManagement() {
       toast.error('El título, la empresa y el grupo son requeridos');
       return;
     }
+    const scrollY = window.scrollY;
     setSubmitting(true);
     try {
       const payload = {
@@ -496,7 +496,8 @@ export function InterventionsManagement() {
       await fetchAPI(endpoint, { method, body: JSON.stringify(payload) });
       toast.success(editingIntervention ? 'Intervención actualizada' : 'Intervención creada');
       setIsDialogOpen(false);
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || 'Error guardando intervención');
@@ -507,10 +508,12 @@ export function InterventionsManagement() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar esta intervención?')) return;
+    const scrollY = window.scrollY;
     try {
       await fetchAPI(`/interventions/${id}`, { method: 'DELETE' });
       toast.success('Intervención eliminada');
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || 'Error eliminando intervención');
@@ -527,7 +530,6 @@ export function InterventionsManagement() {
         </h2>
         <Button
           onClick={() => handleOpenDialog()}
-          disabled={!canCreateIntervention}
           className="bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 transition-all"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -841,7 +843,7 @@ export function InterventionsManagement() {
                           >
                             {group.name}
                           </CommandItem>
-                        ))}
+                  ))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
