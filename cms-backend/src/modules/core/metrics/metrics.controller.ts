@@ -32,8 +32,10 @@ export class MetricsController {
 async getRealtimeMetrics(@Param('userId') userId: string) {
   const realtimeKPIs = await this.metricsService.getRealtime();
 
+  const burnoutPrediction = await this.predictionService.predictBurnout(userId);
+
   // 🔹 Obtener predicción de burnout (es un número)
-  const burnoutScore = await this.predictionService.predictBurnout(userId);
+  const burnoutScore = burnoutPrediction.prediction.burnout_probability;
 
   // 🔹 Generar alertas locales
   for (const metric of realtimeKPIs) {

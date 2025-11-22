@@ -128,6 +128,7 @@ services:
       - ./test/locust:/tests/locust
       - ./test/reports:/tests/reports
       - ./test/baseline:/tests/baseline
+      - ./test/run_tests.sh:/tests/run_tests.sh
     environment:
       CMS_API_URL: "http://cms-backend:8000"
       LOCUST_USERS: 50

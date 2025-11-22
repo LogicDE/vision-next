@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef  } from '@nestjs/common';
 import { MetricsController } from './metrics.controller';
 import { MetricsService } from './metrics.service';
 import { DashboardModule } from '../dashboard/dashboard.module';
@@ -14,7 +14,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     DashboardModule,
     AlertsModule,
     NotificationModule,
-    PredictionModule,
+    forwardRef (() => PredictionModule),
     AuthModule,
   ],
   controllers: [MetricsController],

@@ -38,9 +38,10 @@ export async function uploadProfilePicture(file: any, employeeId: number) {
     },
   });
 
+  // URL "casi permanente"
   const [signedUrl] = await blob.getSignedUrl({
     action: 'read',
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 días
+    expires: '03-01-2500', // expiración muy lejana
   });
 
   return signedUrl;
@@ -51,11 +52,13 @@ export async function getProfilePictureSignedUrl(employeeId: number) {
 
   const file = bucket.file(`employees/employee_${employeeId}.jpg`);
 
+  // URL "casi permanente"
   const [signedUrl] = await file.getSignedUrl({
     action: 'read',
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 días
+    expires: '03-01-2500', // expiración muy lejana
   });
 
   return signedUrl;
 }
+
 

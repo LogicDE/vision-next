@@ -63,9 +63,15 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.error
             )
 
+            is LoginUiState.Error -> Text(
+                "Error: ${state.message}",
+                color = MaterialTheme.colorScheme.error
+            )
+
             is LoginUiState.Success -> {
                 LaunchedEffect(Unit) { onLoggedIn(state.user) }
             }
+
 
             else -> {}
         }

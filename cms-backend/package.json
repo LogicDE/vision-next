@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.3",
+    "@influxdata/influxdb-client": "^1.35.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",
@@ -41,7 +42,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.5",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.3.0",
+    "@types/node": "^24.10.1",
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^11.0.0",
     "typescript": "^5.2.0"

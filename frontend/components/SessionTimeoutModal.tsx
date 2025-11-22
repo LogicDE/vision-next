@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Clock, AlertTriangle, RefreshCw, LogOut, Loader2 } from 'lucide-react';
 
-// Temporizadores desactivados
-const WARNING_TIME = Number.MAX_SAFE_INTEGER;
-const LOGOUT_TIME = Number.MAX_SAFE_INTEGER;
-const COUNTDOWN_DURATION = 60;
+//No modificar por ahora
+
+// 🕒 Configuración realista:
+const WARNING_TIME = 1000 * 60 * 3; // aviso tras 3 minutos de inactividad
+const LOGOUT_TIME = 1000 * 60 * 4; // cierre tras 4 minutos sin interacción
+const COUNTDOWN_DURATION = 60; // segundos visibles
 
 export function SessionTimeout() {
   const { refreshToken, logout } = useAuth();

@@ -4,10 +4,11 @@ import { AlertsService } from './alerts.service';
 import { CacheModule } from '../../infrastructure/cache/cache.module';
 import { HttpModule } from '@nestjs/axios';
 import { AuthModule } from '../../../auth/auth.module';
+import { PredictionModule } from '../prediction/prediction.module';
 
 
 @Module({
-  imports: [CacheModule, HttpModule, AuthModule],
+  imports: [CacheModule, HttpModule, AuthModule, PredictionModule],
   providers: [AlertsService],
   exports: [AlertsService],
 })
