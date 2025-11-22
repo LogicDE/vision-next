@@ -2,6 +2,7 @@ package com.example.vision_next2.data.network.auth
 
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 
@@ -17,5 +18,8 @@ interface AuthApi {
     fun refresh(
         @Header("Authorization") refreshHeader: String
     ):Call<RefreshResponse>
+
+    @GET("auth/me")
+    suspend fun profile(): ProfileResponse
 
 }

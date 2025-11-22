@@ -2,6 +2,7 @@ package com.example.vision_next2.data.network
 
 import com.example.vision_next2.data.local.TokenStorage
 import com.example.vision_next2.data.network.auth.AuthApi
+import com.example.vision_next2.data.network.employee.EmployeeApi
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -31,15 +32,18 @@ object NetworkModule {
             .build()
     }
 
-    private fun provideAuthApi(baseUrl: String): AuthApi {
-        return Retrofit.Builder()
+    private fun provideAuthApi(baseUrl: String): AuthApi =
+        Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(AuthApi::class.java)
-    }
 
     fun provideAuthApiWithClient(tokenStorage: TokenStorage): AuthApi {
         return provideRetrofit(tokenStorage).create(AuthApi::class.java)
+    }
+
+    fun provideEmployeeApi(tokenStorage: TokenStorage): EmployeeApi {
+        return provideRetrofit(tokenStorage).create(EmployeeApi::class.java)
     }
 }

@@ -97,17 +97,20 @@ fun MainScreen(
             topBar = { TopHeader(userName = "Carlos") },
             bottomBar = { BottomNavigationBar(navController = navController) }
         ) { paddingValues ->
+            LaunchedEffect(Unit) {
+                viewModel.loadProfile()
+            }
             NavHost(
                 navController = navController,
                 startDestination = "health",
                 modifier = Modifier.padding(paddingValues)
             ) {
                 composable("health") { HealthScreen() }
-                composable("mental") { MentalScreen() }
-                composable("ai") { AIScreen() }
-                composable("alerts") { NotificationsPanelScreen() }
+                composable("surveys") { SurveysScreen(viewModel) }
+                composable("events") { EventsScreen(viewModel) }
+                composable("interventions") { InterventionsScreen(viewModel) }
 
-                // 🔴 Pantalla de Configuración con logout integrado
+                // Pantalla de Configuración con logout integrado
                 composable("settings") {
                     UserSettingsScreen(
                         viewModel = viewModel,

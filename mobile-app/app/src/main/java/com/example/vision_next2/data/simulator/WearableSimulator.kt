@@ -1,13 +1,20 @@
 package com.example.vision_next2.data.simulator
 
 import android.util.Log
+import com.example.vision_next2.data.simulator.HealthMetricSnapshot
+import com.example.vision_next2.data.simulator.MetricHistoryEntry
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import org.json.JSONArray
 import java.time.LocalDate
+import java.time.Instant
 import java.time.LocalTime
 import java.util.Random
 
@@ -71,6 +78,10 @@ object WearableSimulator {
     private var stressTicksRemaining: Int = 0
     @Volatile
     private var lastSleepSummaryDay: LocalDate? = null
+    @Volatile
+    private var lastSleepSummary: SleepSummary? = null
+    @Volatile
+    private var lastSample: WearableSample? = null
 
     // Global simulator state
     @Volatile
@@ -89,6 +100,12 @@ object WearableSimulator {
     private var currentRefreshToken: String? = null
 
     private var job: Job? = null
+    private val metricHistoryMap = mutableMapOf<String, ArrayDeque<MetricHistoryEntry>>()
+    private val _metricHistoryFlow = MutableStateFlow<Map<String, List<MetricHistoryEntry>>>(emptyMap())
+    private val _healthMetricsFlow = MutableStateFlow<HealthMetricSnapshot?>(null)
+
+    fun healthMetrics(): StateFlow<HealthMetricSnapshot?> = _healthMetricsFlow.asStateFlow()
+    fun metricsHistory(): StateFlow<Map<String, List<MetricHistoryEntry>>> = _metricHistoryFlow.asStateFlow()
 
     fun updateConfig(config: WearableBaselineConfig) {
         currentConfig = config
@@ -112,6 +129,11 @@ object WearableSimulator {
         currentUserId = userId
         currentAccessToken = accessToken
         currentRefreshToken = refreshToken
+        if (userId != null) {
+            scope.launch {
+                preloadHistoricalData(userId, accessToken, refreshToken)
+            }
+        }
         startIfReady()
     }
 
@@ -121,6 +143,9 @@ object WearableSimulator {
         currentRefreshToken = null
         Log.d(TAG, "onUserLoggedOut – stopping simulator")
         stopInternal()
+        _healthMetricsFlow.value = null
+        _metricHistoryFlow.value = emptyMap()
+        metricHistoryMap.clear()
     }
 
     private fun startIfReady() {
@@ -142,8 +167,10 @@ object WearableSimulator {
             while (isActive) {
                 val now = LocalTime.now()
                 val sample = generateSample(now, config, userId)
+                lastSample = sample
                 Log.d(TAG, "Loop tick at $now, sending sample: $sample")
                 sendSample(sample, config.endpointBaseUrl)
+                publishSampleMetrics(sample)
                 maybeSendSleepSummary(config, userId, config.endpointBaseUrl, now)
                 delay(intervalMs)
             }
@@ -212,7 +239,7 @@ object WearableSimulator {
             // Roughly 2 stress episodes per hour → probability per 5s tick ≈ 2 / (3600/5)
             val eventProbabilityPerTick = 2.0 / 720.0
             if (rng.nextDouble() < eventProbabilityPerTick) {
-                stressTicksRemaining = rng.nextInt(6, 18) // 30–90 seconds at 5s per tick
+                stressTicksRemaining = 6 + rng.nextInt(12) // 30–90 segundos aprox. (6-18 ticks)
             }
         }
 
@@ -260,6 +287,143 @@ object WearableSimulator {
         )
     }
 
+    private fun publishSampleMetrics(sample: WearableSample) {
+        val sleepSummary = lastSleepSummary
+        val snapshot = HealthMetricSnapshot(
+            timestamp = System.currentTimeMillis(),
+            restingHeartRate = sample.hrBpm.toDouble(),
+            hrvRmssd = sample.hrvRmssdMs,
+            skinTemperature = sample.skinTempC,
+            respirationRate = sample.respRateBpm,
+            spo2 = sample.spo2Pct,
+            eda = sample.edaMicrosiemens,
+            totalSleepMinutes = sleepSummary?.totalSleepSeconds?.div(60.0),
+            sleepEfficiency = sleepSummary?.efficiencyPct,
+            sleepLatencyMinutes = sleepSummary?.sleepLatencySeconds?.div(60.0)
+        )
+        _healthMetricsFlow.value = snapshot
+
+        recordMetric("resting_hr", sample.hrBpm.toDouble())
+        recordMetric("hrv_rmssd", sample.hrvRmssdMs)
+        recordMetric("skin_temp", sample.skinTempC)
+        recordMetric("respiration", sample.respRateBpm)
+        recordMetric("spo2", sample.spo2Pct)
+        recordMetric("eda", sample.edaMicrosiemens)
+
+        if (sleepSummary != null) {
+            recordMetric("sleep_total", sleepSummary.totalSleepSeconds / 60.0)
+            recordMetric("sleep_efficiency", sleepSummary.efficiencyPct)
+            recordMetric("sleep_latency", sleepSummary.sleepLatencySeconds / 60.0)
+        }
+    }
+
+    private fun recordMetric(key: String, value: Double) {
+        val deque = metricHistoryMap.getOrPut(key) { ArrayDeque() }
+        deque.addLast(MetricHistoryEntry(System.currentTimeMillis(), value))
+        while (deque.size > 30) {
+            deque.removeFirst()
+        }
+        metricHistoryMap[key] = deque
+        _metricHistoryFlow.value = metricHistoryMap.mapValues { it.value.toList() }
+    }
+
+    private suspend fun preloadHistoricalData(userId: Int, accessToken: String?, refreshToken: String?) {
+        if (accessToken.isNullOrBlank() || refreshToken.isNullOrBlank()) return
+        val baseUrl = currentConfig.endpointBaseUrl.trimEnd('/')
+        val url = "$baseUrl/api/biometric/history?user_id=$userId&window=30d&limit=30"
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .addHeader("Authorization", "Bearer $accessToken")
+            .addHeader("X-Refresh-Token", refreshToken)
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "History fetch failed code=${response.code}")
+                    return
+                }
+                val body = response.body?.string() ?: return
+                val payload = JSONObject(body)
+
+                val historyJson = payload.optJSONObject("history")
+                if (historyJson != null) {
+                    val parsedHistory = mutableMapOf<String, List<MetricHistoryEntry>>()
+                    val keys = historyJson.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        val entries = parseHistoryArray(key, historyJson.optJSONArray(key))
+                        if (entries.isNotEmpty()) {
+                            parsedHistory[key] = entries
+                        }
+                    }
+                    if (parsedHistory.isNotEmpty()) {
+                        metricHistoryMap.clear()
+                        parsedHistory.forEach { (metricKey, entries) ->
+                            val deque = ArrayDeque<MetricHistoryEntry>()
+                            entries.forEach { deque.addLast(it) }
+                            metricHistoryMap[metricKey] = deque
+                        }
+                        _metricHistoryFlow.value = parsedHistory
+                    }
+                }
+
+                val latestJson = payload.optJSONObject("latest")
+                if (latestJson != null) {
+                    val snapshot = HealthMetricSnapshot(
+                        timestamp = parseIsoMillis(latestJson.optString("timestamp")),
+                        restingHeartRate = normalizeMetricValue("resting_hr", latestJson.optDoubleOrNull("resting_hr")),
+                        hrvRmssd = normalizeMetricValue("hrv_rmssd", latestJson.optDoubleOrNull("hrv_rmssd")),
+                        skinTemperature = normalizeMetricValue("skin_temp", latestJson.optDoubleOrNull("skin_temp")),
+                        respirationRate = normalizeMetricValue("respiration", latestJson.optDoubleOrNull("respiration")),
+                        spo2 = normalizeMetricValue("spo2", latestJson.optDoubleOrNull("spo2")),
+                        eda = normalizeMetricValue("eda", latestJson.optDoubleOrNull("eda")),
+                        totalSleepMinutes = normalizeMetricValue("sleep_total", latestJson.optDoubleOrNull("sleep_total")),
+                        sleepEfficiency = normalizeMetricValue("sleep_efficiency", latestJson.optDoubleOrNull("sleep_efficiency")),
+                        sleepLatencyMinutes = normalizeMetricValue("sleep_latency", latestJson.optDoubleOrNull("sleep_latency"))
+                    )
+                    _healthMetricsFlow.value = snapshot
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error fetching biometric history: ${e.message}")
+        }
+    }
+
+    private fun parseHistoryArray(metricKey: String, array: JSONArray?): List<MetricHistoryEntry> {
+        if (array == null || array.length() == 0) return emptyList()
+        val entries = mutableListOf<MetricHistoryEntry>()
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            val rawValue = obj.optDoubleOrNull("value") ?: continue
+            val normalized = normalizeMetricValue(metricKey, rawValue) ?: continue
+            val timestamp = parseIsoMillis(obj.optString("timestamp"))
+            entries.add(MetricHistoryEntry(timestamp, normalized))
+        }
+        return entries
+    }
+
+    private fun normalizeMetricValue(metricKey: String, rawValue: Double?): Double? {
+        if (rawValue == null) return null
+        return when (metricKey) {
+            "sleep_total", "sleep_latency" -> rawValue / 60.0
+            else -> rawValue
+        }
+    }
+
+    private fun parseIsoMillis(value: String?): Long {
+        if (value.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            Instant.parse(value).toEpochMilli()
+        } catch (_: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    private fun JSONObject.optDoubleOrNull(key: String): Double? =
+        if (!has(key) || isNull(key)) null else runCatching { getDouble(key) }.getOrNull()
+
     private fun normal(mean: Double, stdDev: Double): Double {
         return mean + rng.nextGaussian() * stdDev
     }
@@ -306,7 +470,12 @@ object WearableSimulator {
         if (now.hour == 7 && lastSleepSummaryDay != today) {
             val summary = generateSleepSummary(config, userId)
             sendSleepSummary(summary, endpointBaseUrl)
+            lastSleepSummary = summary
             lastSleepSummaryDay = today
+            recordMetric("sleep_total", summary.totalSleepSeconds / 60.0)
+            recordMetric("sleep_efficiency", summary.efficiencyPct)
+            recordMetric("sleep_latency", summary.sleepLatencySeconds / 60.0)
+            lastSample?.let { publishSampleMetrics(it) }
         }
     }
 
