@@ -6,7 +6,7 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface EmployeeApi {
-    @GET("group-survey-scores/me")
+    @GET("indiv-survey-scores/me")
     suspend fun getAssignedSurveys(
         @Query("page") page: Int,
         @Query("limit") limit: Int
@@ -16,9 +16,6 @@ interface EmployeeApi {
     suspend fun submitSurvey(
         @Body body: SubmitSurveyRequest
     ): SubmitSurveyResponse
-
-    @GET("indiv-survey-scores/me")
-    suspend fun getAnsweredSurveys(): List<AnsweredSurveyDto>
 
     @GET("events/me")
     suspend fun getEvents(

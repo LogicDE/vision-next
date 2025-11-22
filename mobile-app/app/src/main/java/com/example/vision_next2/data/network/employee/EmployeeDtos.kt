@@ -12,6 +12,7 @@ data class GroupSummaryDto(
 
 data class AssignedSurveyDto(
     val id: Int,
+    val surveyVersionId: Int,
     val name: String,
     val startAt: String?,
     val endAt: String?,
@@ -20,7 +21,8 @@ data class AssignedSurveyDto(
     val answered: Boolean,
     val indivScore: Int?,
     val submittedAt: String?,
-    val questions: List<SurveyQuestionDto>
+    val questions: List<SurveyQuestionDto>,
+    val isActive: Boolean
 )
 
 data class SurveyPageDto(
@@ -31,20 +33,13 @@ data class SurveyPageDto(
 )
 
 data class SubmitSurveyRequest(
-    val surveyId: Int,
+    val surveyVersionId: Int,
     val answers: List<Int>
 )
 
 data class SubmitSurveyResponse(
     val id: Int,
-    val surveyId: Int,
-    val indivScore: Int?,
-    val submittedAt: String?
-)
-
-data class AnsweredSurveyDto(
-    val id: Int,
-    val survey: AssignedSurveyDto,
+    val surveyVersionId: Int,
     val indivScore: Int?,
     val submittedAt: String?
 )

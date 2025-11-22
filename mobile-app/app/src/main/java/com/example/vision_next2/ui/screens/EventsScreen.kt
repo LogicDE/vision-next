@@ -36,12 +36,21 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.collections.emptyList
+import kotlin.collections.groupBy
+import kotlin.collections.isNotEmpty
+import kotlin.text.contains
 
 @Composable
 fun EventsScreen(authViewModel: AuthViewModel) {
     val context = LocalContext.current
-    val repository = remember {
-        EmployeeRepository(NetworkModule.provideEmployeeApi(TokenStorage(context)))
+    val tokenStorage = remember { TokenStorage(context) }
+    val repository = remember(tokenStorage) {
+        EmployeeRepository(
+            NetworkModule.provideEmployeeApi(tokenStorage),
+            NetworkModule.provideAuthApiWithClient(tokenStorage),
+            tokenStorage
+        )
     }
     val profile by authViewModel.profile.collectAsState()
     val isAdmin = profile?.rol?.equals("Admin", ignoreCase = true) == true

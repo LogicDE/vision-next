@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -23,6 +23,20 @@ export class EventsController {
     return this.service.findAll();
   }
 
+  @Get('me')
+  @Roles('Admin', 'Manager', 'Employee')
+  getAssigned(
+    @Request() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    const employeeId = req.user?.sub;
+    if (!employeeId) {
+      throw new BadRequestException('Empleado no identificado');
+    }
+    return this.service.getAssignedForEmployee(employeeId, Number(page), Number(limit));
+  }
+
   @Get(':id')
   @Roles('Admin', 'Manager')
   findOne(@Param('id') id: number) {
@@ -37,7 +51,7 @@ export class EventsController {
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: number, @Request() req: any) {
+    return this.service.remove(+id, req.user?.sub);
   }
 }

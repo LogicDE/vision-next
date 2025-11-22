@@ -51,6 +51,17 @@ export class Employee {
   @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'NOW()' })
   updatedAt!: Date;
 
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy?: Employee;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deleted_by' })
+  deletedBy?: Employee;
+
   @OneToMany(() => Group, (g) => g.manager)
   managedGroups!: Group[];
 

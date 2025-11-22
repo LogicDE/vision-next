@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Intervention } from '../../../entities/intervention.entity';
+import { Employee } from '../../../entities/employee.entity';
 import { Group } from '../../../entities/group.entity';
+import { GroupEmployee } from '../../../entities/group-employee.entity';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { UpdateInterventionDto } from './dto/update-intervention.dto';
 
@@ -13,6 +15,8 @@ export class InterventionsService {
     private repo: Repository<Intervention>,
     @InjectRepository(Group)
     private groupRepo: Repository<Group>,
+    @InjectRepository(GroupEmployee)
+    private groupEmployeeRepo: Repository<GroupEmployee>,
   ) {}
 
   async create(dto: CreateInterventionDto) {
@@ -30,12 +34,15 @@ export class InterventionsService {
   }
 
   findAll() {
-    return this.repo.find({ relations: ['group', 'group.manager', 'group.manager.enterprise'] });
+    return this.repo.find({
+      where: { isDeleted: false },
+      relations: ['group', 'group.manager', 'group.manager.enterprise'],
+    });
   }
 
   async findOne(id: number) {
     const intervention = await this.repo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['group', 'group.manager', 'group.manager.enterprise'],
     });
     if (!intervention) throw new NotFoundException('Intervention no encontrado');
@@ -58,9 +65,48 @@ export class InterventionsService {
     return this.repo.save(intervention);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const intervention = await this.findOne(id);
-    await this.repo.remove(intervention);
+    intervention.isDeleted = true;
+    if (deletedBy) {
+      intervention.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.repo.save(intervention);
     return { message: 'Intervention eliminada' };
+  }
+
+  async getAssignedForEmployee(employeeId: number, page = 1, limit = 10) {
+    const memberships = await this.groupEmployeeRepo.find({
+      where: { employeeId },
+    });
+    const groupIds = memberships.map((m) => m.groupId);
+    if (groupIds.length === 0) {
+      return {
+        items: [],
+        total: 0,
+        page,
+        limit,
+      };
+    }
+
+    const baseQuery = this.repo
+      .createQueryBuilder('intervention')
+      .leftJoinAndSelect('intervention.group', 'group')
+      .where('intervention.group IN (:...groupIds)', { groupIds })
+      .andWhere('intervention.isDeleted = false');
+
+    const total = await baseQuery.clone().getCount();
+    const items = await baseQuery
+      .orderBy('intervention.titleMessage', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 }

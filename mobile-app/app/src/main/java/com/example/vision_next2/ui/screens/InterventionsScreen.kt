@@ -37,8 +37,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun InterventionsScreen(authViewModel: AuthViewModel) {
     val context = LocalContext.current
-    val repository = remember {
-        EmployeeRepository(NetworkModule.provideEmployeeApi(TokenStorage(context)))
+    val tokenStorage = remember { TokenStorage(context) }
+    val repository = remember(tokenStorage) {
+        EmployeeRepository(
+            NetworkModule.provideEmployeeApi(tokenStorage),
+            NetworkModule.provideAuthApiWithClient(tokenStorage),
+            tokenStorage
+        )
     }
     val profile by authViewModel.profile.collectAsState()
     val isAdmin = profile?.rol?.equals("Admin", ignoreCase = true) == true

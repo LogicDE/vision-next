@@ -13,8 +13,9 @@ export class GroupSurveyScoresController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreateGroupSurveyScoreDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateGroupSurveyScoreDto, @Request() req: any) {
+    const createdBy = req.user?.sub;
+    return this.service.create(dto, createdBy);
   }
 
   @Get()

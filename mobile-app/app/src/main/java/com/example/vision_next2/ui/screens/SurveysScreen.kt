@@ -47,8 +47,13 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun SurveysScreen(authViewModel: AuthViewModel) {
     val context = LocalContext.current
-    val repository = remember {
-        EmployeeRepository(NetworkModule.provideEmployeeApi(TokenStorage(context)))
+    val tokenStorage = remember { TokenStorage(context) }
+    val repository = remember(tokenStorage) {
+        EmployeeRepository(
+            NetworkModule.provideEmployeeApi(tokenStorage),
+            NetworkModule.provideAuthApiWithClient(tokenStorage),
+            tokenStorage
+        )
     }
     val profileState = authViewModel.profile.collectAsState()
     val profile = profileState.value
@@ -69,18 +74,32 @@ fun SurveysScreen(authViewModel: AuthViewModel) {
         scope.launch {
             loading = true
             error = null
-            val response = repository.getSurveys(targetPage, 5)
-            if (response.isSuccess) {
-                val payload = response.getOrNull()
-                if (payload != null) {
-                    page = payload.page
-                    total = payload.total
-                    surveys = if (reset) payload.items else surveys + payload.items
+            try {
+                val response = repository.getSurveys(targetPage, 5)
+                if (response.isSuccess) {
+                    val payload = response.getOrNull()
+                    if (payload != null) {
+                        page = payload.page
+                        total = payload.total
+                        surveys = if (reset) payload.items else surveys + payload.items
+                        // Clear error if we got successful response
+                        error = null
+                    } else {
+                        error = "No se recibieron datos"
+                    }
+                } else {
+                    val exception = response.exceptionOrNull()
+                    val errorMsg = exception?.message ?: "Error al cargar encuestas"
+                    error = errorMsg
+                    // Log for debugging
+                    android.util.Log.e("SurveysScreen", "Error loading surveys: $errorMsg", exception)
                 }
-            } else {
-                error = response.exceptionOrNull()?.message ?: "Error al cargar encuestas"
+            } catch (e: Exception) {
+                error = "Error inesperado: ${e.message}"
+                android.util.Log.e("SurveysScreen", "Exception in loadPage", e)
+            } finally {
+                loading = false
             }
-            loading = false
         }
     }
 
@@ -104,6 +123,12 @@ fun SurveysScreen(authViewModel: AuthViewModel) {
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { loadPage(1, reset = true) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Refrescar")
+        }
         when {
             isAdmin -> {
                 AdminInfoMessage()
@@ -157,9 +182,9 @@ fun SurveysScreen(authViewModel: AuthViewModel) {
                             item(key = "survey-header-$groupId") {
                                 Text(
                                     text = groupName,
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(vertical = 4.dp)
+                                    modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
                             if (groupSurveys.isEmpty()) {
@@ -172,7 +197,13 @@ fun SurveysScreen(authViewModel: AuthViewModel) {
                                     )
                                 }
                             } else {
-                                items(groupSurveys, key = { it.id }) { survey ->
+                                // Sort: active first, then inactive
+                                val sortedSurveys = groupSurveys.sortedWith(
+                                    compareBy<AssignedSurveyDto> { !it.isActive }
+                                        .thenByDescending { it.startAt ?: "" }
+                                )
+                                
+                                items(sortedSurveys, key = { "${it.id}-${it.surveyVersionId}" }) { survey ->
                                     SurveyCard(
                                         survey = survey,
                                         onRespond = {
@@ -222,13 +253,14 @@ fun SurveysScreen(authViewModel: AuthViewModel) {
                     }
                     scope.launch {
                         submitting = true
-                        val result = repository.submitSurvey(survey.id, orderedAnswers)
+                        val result = repository.submitSurvey(survey.surveyVersionId, orderedAnswers)
                         if (result.isSuccess) {
                             val updated = surveys.map {
-                                if (it.id == survey.id) {
+                                if (it.surveyVersionId == survey.surveyVersionId) {
                                     it.copy(
                                         answered = true,
-                                        indivScore = result.getOrNull()?.indivScore
+                                        indivScore = result.getOrNull()?.indivScore,
+                                        submittedAt = result.getOrNull()?.submittedAt
                                     )
                                 } else it
                             }
@@ -255,10 +287,10 @@ private fun SurveyCard(survey: AssignedSurveyDto, onRespond: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (survey.answered) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
+            containerColor = when {
+                survey.answered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                survey.isActive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
             }
         )
     ) {
@@ -268,7 +300,20 @@ private fun SurveyCard(survey: AssignedSurveyDto, onRespond: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(survey.name, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(survey.name, style = MaterialTheme.typography.titleMedium)
+                if (survey.isActive && !survey.answered) {
+                    FilterChip(
+                        selected = true,
+                        onClick = { },
+                        label = { Text("Activa", style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
             Text(
                 text = "Grupo: ${survey.group?.name ?: "Sin asignar"}",
                 style = MaterialTheme.typography.bodyMedium

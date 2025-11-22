@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMan
 import { Enterprise } from './enterprise.entity';
 import { Address } from './address.entity';
 import { Device } from './device.entity';
+import { Employee } from './employee.entity';
 
 @Entity('enterprise_locations')
 export class EnterpriseLocation {
@@ -21,6 +22,20 @@ export class EnterpriseLocation {
 
   @Column({ default: true })
   active!: boolean;
+
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy?: Employee;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deleted_by' })
+  deletedBy?: Employee;
 
   @OneToMany(() => Device, (d: Device) => d.location)
   devices!: Device[];

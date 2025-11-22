@@ -7,10 +7,9 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles =
+      this.reflector.get<string[]>(ROLES_KEY, context.getHandler()) ??
+      this.reflector.get<string[]>(ROLES_KEY, context.getClass());
     if (!requiredRoles || requiredRoles.length === 0) return true; // no role required
 
     const req = context.switchToHttp().getRequest();
@@ -23,8 +22,21 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const has = requiredRoles.includes(user.role);
-    if (!has) throw new ForbiddenException('Insufficient role');
+    const rawRole = user.role ?? user.rol ?? user.Rol ?? '';
+    const normalizedRole = `${rawRole}`.toLowerCase().trim();
+    const normalizedRequired = requiredRoles.map((role) => role.toLowerCase().trim());
+    const has = normalizedRequired.includes(normalizedRole);
+    if (!has) {
+      console.log('RolesGuard deny', {
+        requiredRoles,
+        normalizedRequired,
+        userRole: user.role,
+        normalizedRole,
+        path: req?.url,
+        method: req?.method,
+      });
+      throw new ForbiddenException('Insufficient role');
+    }
     return true;
   }
 }

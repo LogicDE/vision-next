@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Question } from '../../../entities/question.entity';
+import { Employee } from '../../../entities/employee.entity';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 
@@ -40,9 +41,13 @@ export class QuestionsService {
     return this.repo.save(question);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const question = await this.findOne(id);
-    await this.repo.remove(question);
+    question.isDeleted = true;
+    if (deletedBy) {
+      question.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.repo.save(question);
     return { message: 'Question eliminada' };
   }
 }

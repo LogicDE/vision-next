@@ -347,22 +347,27 @@ export function SurveysDashboard() {
         fetchAPI('/survey-versions/current'),
       ]);
 
-      const normalizedSurveys: GroupSurvey[] = (surveysData || []).map((survey: any) => ({
-        id: survey.id,
-        name: survey.name || `Encuesta ${survey.id}`,
-        startAt: survey.startAt || survey.start_at || null,
-        endAt: survey.endAt || survey.end_at || null,
-        groupScore: survey.groupScore ?? survey.group_score ?? null,
-        group: survey.group,
-        questions: survey.questions || [],
-        questionCount: survey.questionCount ?? survey.questions?.length ?? 0,
-        answerCount: survey.answerCount ?? 0,
-        state: survey.state || 'active',
-        version: survey.version ? {
+      const normalizedSurveys: GroupSurvey[] = (surveysData || []).map((survey: any) => {
+        const version = survey.version ? {
           id: survey.version.id,
           versionNum: survey.version.versionNum || survey.version.version_num,
-        } : undefined,
-      }));
+          startAt: survey.version.startAt || survey.version.start_at || null,
+          endAt: survey.version.endAt || survey.version.end_at || null,
+        } : undefined;
+        return ({
+          id: survey.id,
+          name: survey.name || `Encuesta ${survey.id}`,
+          startAt: survey.startAt || survey.start_at || version?.startAt || null,
+          endAt: survey.endAt || survey.end_at || version?.endAt || null,
+          groupScore: survey.groupScore ?? survey.group_score ?? null,
+          group: survey.group,
+          questions: survey.questions || [],
+          questionCount: survey.questionCount ?? survey.questions?.length ?? 0,
+          answerCount: survey.answerCount ?? 0,
+          state: survey.state || 'active',
+          version,
+        });
+      });
 
       setSurveys(normalizedSurveys);
       setGroups(groupsData);
@@ -667,8 +672,10 @@ export function SurveysDashboard() {
       return;
     }
 
-    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
-    const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
+    // Create dates in local timezone, then convert to ISO string
+    // This ensures the date and time are preserved correctly
+    const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+    const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`);
 
     if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
       toast.error('Fechas u horas inválidas');
@@ -680,6 +687,11 @@ export function SurveysDashboard() {
       return;
     }
 
+    // Convert to ISO string with timezone offset to preserve the exact date/time
+    // Format: YYYY-MM-DDTHH:mm:ss.sssZ
+    const startISO = startDateTime.toISOString();
+    const endISO = endDateTime.toISOString();
+
     const scrollY = window.scrollY;
     setSubmitting(true);
     try {
@@ -687,8 +699,8 @@ export function SurveysDashboard() {
       const payload: any = {
         name: formData.name.trim(),
         groupId: formData.groupId,
-        startAt: startDateTime.toISOString(),
-        endAt: endDateTime.toISOString(),
+        startAt: startISO,
+        endAt: endISO,
         groupScore: formData.groupScore === '' ? undefined : Number(formData.groupScore),
       };
 

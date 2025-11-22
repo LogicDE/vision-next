@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enterprise } from '../../../entities/enterprise.entity';
+import { Employee } from '../../../entities/employee.entity';
 import { CreateEnterpriseDto } from './dto/create-enterprise.dto';
 import { UpdateEnterpriseDto } from './dto/update-enterprise.dto';
 
@@ -30,13 +31,14 @@ export class EnterprisesService {
 
   findAll() {
     return this.enterpriseRepo.find({
+      where: { isDeleted: false },
       relations: ['locations', 'locations.devices', 'locations.address', 'employees'],
     });
   }
 
   async findOne(id: number) {
     const enterprise = await this.enterpriseRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['locations', 'locations.devices', 'locations.address', 'employees'],
     });
 
@@ -51,9 +53,17 @@ export class EnterprisesService {
     return this.enterpriseRepo.save(enterprise);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const enterprise = await this.findOne(id);
-    await this.enterpriseRepo.remove(enterprise);
+    const timestamp = Date.now();
+    enterprise.isDeleted = true;
+    if (deletedBy) {
+      enterprise.deletedBy = { id: deletedBy } as Employee;
+    }
+    // Clear unique fields to prevent conflicts
+    enterprise.email = `deleted_${id}_${timestamp}@deleted.local`;
+    enterprise.telephone = undefined;
+    await this.enterpriseRepo.save(enterprise);
     return { message: 'Enterprise eliminada' };
   }
 }

@@ -29,6 +29,7 @@ export class GroupsService {
 
   findAll() {
     return this.groupRepo.find({
+      where: { isDeleted: false },
       relations: [
         'manager',
         'manager.enterprise',
@@ -42,7 +43,7 @@ export class GroupsService {
 
   async findOne(id: number) {
     const group = await this.groupRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: [
         'manager',
         'manager.enterprise',
@@ -70,9 +71,13 @@ export class GroupsService {
     return this.groupRepo.save(group);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const group = await this.findOne(id);
-    await this.groupRepo.remove(group);
+    group.isDeleted = true;
+    if (deletedBy) {
+      group.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.groupRepo.save(group);
     return { message: 'Group eliminado' };
   }
 }

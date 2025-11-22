@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from '../../../entities/event.entity';
+import { Employee } from '../../../entities/employee.entity';
 import { Group } from '../../../entities/group.entity';
+import { GroupEmployee } from '../../../entities/group-employee.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
@@ -13,6 +15,8 @@ export class EventsService {
     private readonly eventRepo: Repository<Event>,
     @InjectRepository(Group)
     private readonly groupRepo: Repository<Group>,
+    @InjectRepository(GroupEmployee)
+    private readonly groupEmployeeRepo: Repository<GroupEmployee>,
   ) {}
 
   async create(dto: CreateEventDto) {
@@ -31,13 +35,14 @@ export class EventsService {
 
   findAll() {
     return this.eventRepo.find({
+      where: { isDeleted: false },
       relations: ['group', 'group.manager', 'group.manager.enterprise'],
     });
   }
 
   async findOne(id: number) {
     const event = await this.eventRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['group', 'group.manager', 'group.manager.enterprise'],
     });
 
@@ -72,9 +77,48 @@ export class EventsService {
     return this.eventRepo.save(event);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const event = await this.findOne(id);
-    await this.eventRepo.remove(event);
+    event.isDeleted = true;
+    if (deletedBy) {
+      event.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.eventRepo.save(event);
     return { message: 'Event eliminado' };
+  }
+
+  async getAssignedForEmployee(employeeId: number, page = 1, limit = 10) {
+    const memberships = await this.groupEmployeeRepo.find({
+      where: { employeeId },
+    });
+    const groupIds = memberships.map((m) => m.groupId);
+    if (groupIds.length === 0) {
+      return {
+        items: [],
+        total: 0,
+        page,
+        limit,
+      };
+    }
+
+    const baseQuery = this.eventRepo
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.group', 'group')
+      .where('event.group IN (:...groupIds)', { groupIds })
+      .andWhere('event.isDeleted = false');
+
+    const total = await baseQuery.clone().getCount();
+    const items = await baseQuery
+      .orderBy('event.startAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 }

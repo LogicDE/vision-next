@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../../../entities/role.entity';
+import { Employee } from '../../../entities/employee.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
@@ -19,13 +20,14 @@ export class RolesService {
 
   findAll() {
     return this.repo.find({
+      where: { isDeleted: false },
       relations: ['rolePermissions', 'employees'],
     });
   }
 
   async findOne(id: number) {
     const role = await this.repo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['rolePermissions', 'employees'],
     });
     if (!role) throw new NotFoundException('Role no encontrado');
@@ -38,9 +40,13 @@ export class RolesService {
     return this.repo.save(role);
   }
 
-  async remove(id: number) {
+  async remove(id: number, deletedBy?: number) {
     const role = await this.findOne(id);
-    await this.repo.remove(role);
+    role.isDeleted = true;
+    if (deletedBy) {
+      role.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.repo.save(role);
     return { message: 'Role eliminado' };
   }
 }
