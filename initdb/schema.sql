@@ -283,6 +283,21 @@ CREATE INDEX IF NOT EXISTS idx_surveys_versions_survey ON surveys_versions(id_su
 CREATE INDEX IF NOT EXISTS idx_surveys_versions_active ON surveys_versions(active);
 CREATE INDEX IF NOT EXISTS idx_surveys_versions_time ON surveys_versions(start_at, end_at);
 
+-- =========================================================
+-- QUESTIONS + i18n
+-- =========================================================
+CREATE TABLE IF NOT EXISTS questions (
+  id_question SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS question_i18n (
+  id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
+  locale      VARCHAR(10)    NOT NULL,
+  text        VARCHAR(255)    NOT NULL,
+  PRIMARY KEY (id_question, locale)
+);
+
 CREATE TABLE IF NOT EXISTS survey_versions_questions (
   id_survey_question SERIAL PRIMARY KEY,
   id_survey_version INTEGER NOT NULL REFERENCES surveys_versions(id_survey_version) ON DELETE CASCADE,
@@ -311,22 +326,6 @@ CREATE TABLE IF NOT EXISTS response_answers (
 );
 CREATE INDEX IF NOT EXISTS idx_ra_indiv_score ON response_answers(id_indiv_score);
 CREATE INDEX IF NOT EXISTS idx_ra_survey_question ON response_answers(id_survey_question);
-
--- =========================================================
--- QUESTIONS + i18n
--- =========================================================
-CREATE TABLE IF NOT EXISTS questions (
-  id_question SERIAL PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS question_i18n (
-  id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
-  locale      VARCHAR(10)    NOT NULL,
-  text        VARCHAR(255)    NOT NULL,
-  PRIMARY KEY (id_question, locale)
-);
-
 -- =========================================================
 -- EVENTS / INTERVENTIONS
 -- =========================================================
