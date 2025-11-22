@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query, Logger } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -9,6 +9,7 @@ import { Roles } from '../../../auth/roles.decorator';
 @Controller('events')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
   constructor(private readonly service: EventsService) {}
 
   @Post()
@@ -31,6 +32,7 @@ export class EventsController {
     @Query('limit') limit = 10,
   ) {
     const employeeId = req.user?.sub;
+    this.logger.debug(`Employee ${employeeId} requested events page=${page} limit=${limit}`);
     if (!employeeId) {
       throw new BadRequestException('Empleado no identificado');
     }

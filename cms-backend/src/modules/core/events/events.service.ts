@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from '../../../entities/event.entity';
@@ -10,6 +10,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
   constructor(
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
@@ -88,11 +89,14 @@ export class EventsService {
   }
 
   async getAssignedForEmployee(employeeId: number, page = 1, limit = 10) {
+    this.logger.debug(`Fetching events for employee ${employeeId} page=${page} limit=${limit}`);
     const memberships = await this.groupEmployeeRepo.find({
       where: { employeeId },
     });
     const groupIds = memberships.map((m) => m.groupId);
+    this.logger.debug(`Employee ${employeeId} belongs to groups ${JSON.stringify(groupIds)}`);
     if (groupIds.length === 0) {
+      this.logger.debug(`Employee ${employeeId} has no groups, returning empty`);
       return {
         items: [],
         total: 0,
@@ -113,6 +117,9 @@ export class EventsService {
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
+    this.logger.debug(
+      `Employee ${employeeId} events loaded count=${items.length} total=${total}`
+    );
 
     return {
       items,

@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query, Logger } from '@nestjs/common';
 import { InterventionsService } from './interventions.service';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { UpdateInterventionDto } from './dto/update-intervention.dto';
@@ -9,6 +9,7 @@ import { Roles } from '../../../auth/roles.decorator';
 @Controller('interventions')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class InterventionsController {
+  private readonly logger = new Logger(InterventionsController.name);
   constructor(private readonly service: InterventionsService) {}
 
   @Post()
@@ -31,6 +32,7 @@ export class InterventionsController {
     @Query('limit') limit = 10,
   ) {
     const employeeId = req.user?.sub;
+    this.logger.debug(`Employee ${employeeId} requested interventions page=${page} limit=${limit}`);
     if (!employeeId) {
       throw new BadRequestException('Empleado no identificado');
     }

@@ -1,5 +1,6 @@
 package com.example.vision_next2.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -58,6 +59,7 @@ fun InterventionsScreen(authViewModel: AuthViewModel) {
         if (isAdmin) return
         scope.launch {
             loading = true
+            Log.d("InterventionsScreen", "Requesting page=$pageToLoad reset=$reset")
             val result = repository.getInterventions(pageToLoad, 5)
             if (result.isSuccess) {
                 val payload = result.getOrNull()
@@ -66,9 +68,12 @@ fun InterventionsScreen(authViewModel: AuthViewModel) {
                     total = payload.total
                     interventions = if (reset) payload.items else interventions + payload.items
                     error = null
+                    Log.d("InterventionsScreen", "Loaded ${payload.items.size} interventions (total ${payload.total})")
                 }
             } else {
-                error = result.exceptionOrNull()?.message ?: "Error al cargar intervenciones"
+                val errorMsg = result.exceptionOrNull()?.message ?: "Error al cargar intervenciones"
+                error = errorMsg
+                Log.e("InterventionsScreen", "Failed loading interventions: $errorMsg", result.exceptionOrNull())
             }
             loading = false
         }

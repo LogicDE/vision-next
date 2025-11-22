@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Intervention } from '../../../entities/intervention.entity';
@@ -10,6 +10,7 @@ import { UpdateInterventionDto } from './dto/update-intervention.dto';
 
 @Injectable()
 export class InterventionsService {
+  private readonly logger = new Logger(InterventionsService.name);
   constructor(
     @InjectRepository(Intervention)
     private repo: Repository<Intervention>,
@@ -76,11 +77,16 @@ export class InterventionsService {
   }
 
   async getAssignedForEmployee(employeeId: number, page = 1, limit = 10) {
+    this.logger.debug(
+      `Fetching interventions for employee ${employeeId} page=${page} limit=${limit}`
+    );
     const memberships = await this.groupEmployeeRepo.find({
       where: { employeeId },
     });
     const groupIds = memberships.map((m) => m.groupId);
+    this.logger.debug(`Employee ${employeeId} groups: ${JSON.stringify(groupIds)}`);
     if (groupIds.length === 0) {
+      this.logger.debug(`Employee ${employeeId} has no groups`);
       return {
         items: [],
         total: 0,
@@ -101,6 +107,9 @@ export class InterventionsService {
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
+    this.logger.debug(
+      `Employee ${employeeId} interventions loaded count=${items.length} total=${total}`
+    );
 
     return {
       items,
