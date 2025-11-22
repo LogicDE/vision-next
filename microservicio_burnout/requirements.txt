@@ -8,6 +8,7 @@ python-multipart>=0.0.5
 pydantic>=2.0.0
 
 httpx>=0.24.0
+influxdb-client>=1.38.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 

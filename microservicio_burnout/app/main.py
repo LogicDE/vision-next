@@ -25,6 +25,7 @@ from app.AlertsService.alerts_service import AlertsService
 from app.DashboardService.dashboard_service import DashboardService
 from app.InterventionService.intervention_service import InterventionService
 from app.clients.metrics_client import MetricsClient
+from app.predict_iwbs_endpoint import router as iwbs_router
 
 # Crear instancia de FastAPI
 app = FastAPI(
@@ -48,6 +49,9 @@ alerts_service = AlertsService()
 dashboard_service = DashboardService()
 intervention_service = InterventionService()
 metrics_client = MetricsClient()
+
+# Registrar routers
+app.include_router(iwbs_router)
 
 # Modelos Pydantic para validación de datos
 class UserData(BaseModel):
