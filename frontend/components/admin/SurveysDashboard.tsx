@@ -73,6 +73,11 @@ interface GroupOption {
   manager?: GroupManager;
 }
 
+interface SurveyQuestionDto {
+  id: number;
+  text: string;
+}
+
 interface GroupSurvey {
   id: number;
   name: string;
@@ -80,6 +85,14 @@ interface GroupSurvey {
   endAt?: string;
   groupScore?: number;
   group?: GroupOption;
+  questions?: SurveyQuestionDto[];
+  questionCount?: number;
+  answerCount?: number;
+  state?: 'active' | 'inactive' | 'rejected';
+  version?: {
+    id: number;
+    versionNum: number;
+  };
 }
 
 interface QuestionI18n {
@@ -106,7 +119,15 @@ interface SurveyFormData {
   endDate: string;
   endTime: string;
   groupScore: number | '';
-  questionIds: number[];
+}
+
+interface CurrentVersion {
+  id: number;
+  versionNum: number;
+  active: boolean;
+  createdAt: string;
+  questionCount: number;
+  questions: Array<{ id: number; text: string; order?: number }>;
 }
 
 const getQuestionGroupId = (question?: QuestionOption) => {
@@ -134,8 +155,7 @@ export function SurveysDashboard() {
   const [surveys, setSurveys] = useState<GroupSurvey[]>([]);
   const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
-  const [questions, setQuestions] = useState<QuestionOption[]>([]);
-  const [questionSearch, setQuestionSearch] = useState('');
+  const [currentVersion, setCurrentVersion] = useState<CurrentVersion | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -147,6 +167,8 @@ export function SurveysDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedEnterprise, setExpandedEnterprise] = useState<number | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
+  const [surveyPage, setSurveyPage] = useState<Map<number, number>>(new Map());
+  const SURVEYS_PER_PAGE = 10;
   const [enterprisePopoverOpen, setEnterprisePopoverOpen] = useState(false);
   const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState('');
@@ -158,7 +180,6 @@ export function SurveysDashboard() {
   const [formData, setFormData] = useState<SurveyFormData>({
     enterpriseId: null,
     groupId: null,
-    questionIds: [],
     name: '',
     startDate: new Date().toISOString().split('T')[0],
     startTime: '09:00',
@@ -166,73 +187,6 @@ export function SurveysDashboard() {
     endTime: '18:00',
     groupScore: '',
   });
-  const [isQuestionPickerOpen, setIsQuestionPickerOpen] = useState(false);
-
-  const questionLookup = useMemo(() => {
-    const map = new Map<number, QuestionOption>();
-    questions.forEach((question) => {
-      map.set(question.id, question);
-    });
-    return map;
-  }, [questions]);
-
-  const defaultQuestions = useMemo(
-    () => questions.filter((question) => getQuestionGroupId(question) == null),
-    [questions]
-  );
-
-  const groupSpecificQuestions = useMemo(() => {
-    if (!formData.groupId) return [];
-    return questions.filter((question) => getQuestionGroupId(question) === formData.groupId);
-  }, [questions, formData.groupId]);
-
-  const visibleQuestions = useMemo(() => {
-    const map = new Map<number, QuestionOption>();
-    defaultQuestions.forEach((question) => map.set(question.id, question));
-    groupSpecificQuestions.forEach((question) => map.set(question.id, question));
-    return Array.from(map.values());
-  }, [defaultQuestions, groupSpecificQuestions]);
-
-  const getQuestionLabel = useCallback((question?: QuestionOption) => {
-    if (!question) return '';
-    return (
-      question.i18nTexts?.find((txt) => ['es-MX', 'es'].includes(txt.locale))?.text ||
-      question.i18nTexts?.[0]?.text ||
-      `Pregunta ${question.id}`
-    );
-  }, []);
-
-  const filteredQuestions = useMemo(() => {
-    const search = questionSearch.trim().toLowerCase();
-    if (!search) {
-      return visibleQuestions;
-    }
-
-    return visibleQuestions.filter((question) => {
-      const label = getQuestionLabel(question).toLowerCase();
-      return (
-        label.includes(search) ||
-        question.id.toString().includes(search)
-      );
-    });
-  }, [questionSearch, visibleQuestions, getQuestionLabel]);
-
-  const questionSummary = useMemo(() => {
-    if (formData.questionIds.length === 0) return 'Seleccionar preguntas';
-    return `${formData.questionIds.length} pregunta${formData.questionIds.length === 1 ? '' : 's'} seleccionadas`;
-  }, [formData.questionIds]);
-
-  const toggleQuestion = useCallback((questionId: number) => {
-    setFormData((prev) => {
-      const exists = prev.questionIds.includes(questionId);
-      return {
-        ...prev,
-        questionIds: exists
-          ? prev.questionIds.filter((id) => id !== questionId)
-          : [...prev.questionIds, questionId],
-      };
-    });
-  }, []);
 
   const enterpriseNameMap = useMemo(
     () => new Map(enterprises.map((enterprise) => [enterprise.id, enterprise.name])),
@@ -386,71 +340,34 @@ export function SurveysDashboard() {
         setLoading(true);
       }
 
-      const [surveysData, groupsData, enterprisesData, questionsData, questionsI18nData] = await Promise.all([
+      const [surveysData, groupsData, enterprisesData, currentVersionRes] = await Promise.all([
         fetchAPI('/group-survey-scores'),
         fetchAPI('/groups'),
         fetchAPI('/enterprises'),
-        fetchAPI('/questions'),
-        fetchAPI('/question-i18n'),
+        fetchAPI('/survey-versions/current'),
       ]);
 
-      const normalizedSurveys: GroupSurvey[] = surveysData.map((survey: any) => ({
+      const normalizedSurveys: GroupSurvey[] = (surveysData || []).map((survey: any) => ({
         id: survey.id,
         name: survey.name || `Encuesta ${survey.id}`,
         startAt: survey.startAt || survey.start_at || null,
         endAt: survey.endAt || survey.end_at || null,
         groupScore: survey.groupScore ?? survey.group_score ?? null,
         group: survey.group,
+        questions: survey.questions || [],
+        questionCount: survey.questionCount ?? survey.questions?.length ?? 0,
+        answerCount: survey.answerCount ?? 0,
+        state: survey.state || 'active',
+        version: survey.version ? {
+          id: survey.version.id,
+          versionNum: survey.version.versionNum || survey.version.version_num,
+        } : undefined,
       }));
-
-      const questionMap = new Map<number, QuestionOption>();
-
-      questionsData.forEach((question: QuestionOption) => {
-        questionMap.set(question.id, {
-          ...question,
-          group: question.group
-            ? { id: question.group.id, name: question.group.name }
-            : question.groupId
-            ? { id: question.groupId, name: `Grupo ${question.groupId}` }
-            : undefined,
-          groupId: getQuestionGroupId(question),
-          i18nTexts: question.i18nTexts || [],
-        });
-      });
-
-      questionsI18nData.forEach((entry: any) => {
-        const targetLocale = entry.locale || entry.language || 'es';
-        const questionId = entry.questionId ?? entry.id_question ?? entry.question?.id;
-        if (!questionId) {
-          return;
-        }
-
-        const existing = questionMap.get(questionId);
-        const textEntry = { locale: targetLocale, text: entry.text };
-
-        if (existing) {
-          const existingLocales = new Set(existing.i18nTexts?.map((txt) => txt.locale));
-          if (!existingLocales.has(targetLocale)) {
-            existing.i18nTexts = [...(existing.i18nTexts || []), textEntry];
-          }
-        } else {
-          questionMap.set(questionId, {
-            id: questionId,
-            group: entry.question?.group
-              ? { id: entry.question.group.id, name: entry.question.group.name }
-              : undefined,
-            groupId: entry.question?.group?.id ?? null,
-            i18nTexts: [textEntry],
-          });
-        }
-      });
-
-      const mergedQuestions = Array.from(questionMap.values()).sort((a, b) => a.id - b.id);
 
       setSurveys(normalizedSurveys);
       setGroups(groupsData);
       setEnterprises(enterprisesData);
-      setQuestions(mergedQuestions);
+      setCurrentVersion(currentVersionRes);
     } catch (error: any) {
       toast.error(error.message || 'Error al cargar datos');
       console.error('Error loading data:', error);
@@ -585,6 +502,21 @@ export function SurveysDashboard() {
     });
   }, [enterpriseOptions, getFirstGroupIdForEnterprise, getGroupsForEnterprise]);
 
+  // Pre-fill questions from existing group surveys when creating a new survey
+  useEffect(() => {
+    if (editingSurvey || !formData.groupId || surveys.length === 0) return;
+
+    const existingGroupSurveys = surveys.filter(
+      (survey) => getGroupFromSurvey(survey)?.id === formData.groupId
+    );
+
+    if (existingGroupSurveys.length > 0) {
+      const firstSurvey = existingGroupSurveys[0];
+      const existingQuestionIds = firstSurvey.questions?.map((q) => q.id) ?? [];
+      
+    }
+  }, [formData.groupId, editingSurvey, surveys, getGroupFromSurvey]);
+
   const formatDateTime = (value?: string) =>
     value ? new Date(value).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : 'Sin definir';
 
@@ -658,7 +590,6 @@ export function SurveysDashboard() {
     setFormData({
       enterpriseId,
       groupId: getFirstGroupIdForEnterprise(enterpriseId),
-      questionIds: [],
       name: '',
       startDate: new Date().toISOString().split('T')[0],
       startTime: '09:00',
@@ -666,8 +597,6 @@ export function SurveysDashboard() {
       endTime: '18:00',
       groupScore: '',
     });
-    setIsQuestionPickerOpen(false);
-    setQuestionSearch('');
     setEnterpriseInvalid(false);
     setGroupInvalid(false);
     setEnterpriseSearch('');
@@ -681,11 +610,11 @@ export function SurveysDashboard() {
         const enterpriseMeta = getEnterpriseMetaForGroup(group);
         const startParts = toLocalDateParts(survey.startAt);
         const endParts = toLocalDateParts(survey.endAt);
+        const hasAnswers = (survey.answerCount ?? 0) > 0;
         setEditingSurvey(survey);
         setFormData({
           enterpriseId: enterpriseMeta.id,
           groupId: group?.id ?? null,
-          questionIds: [],
           name: survey.name,
           startDate: startParts.date,
           startTime: startParts.time,
@@ -693,13 +622,14 @@ export function SurveysDashboard() {
           endTime: endParts.time,
           groupScore: survey.groupScore ?? '',
         });
+        // Store hasAnswers in a ref or state for use in the dialog
+        (window as any).__surveyHasAnswers = hasAnswers;
       } else {
         setEditingSurvey(null);
         resetForm();
+        (window as any).__surveyHasAnswers = false;
       }
       setIsDialogOpen(true);
-      setIsQuestionPickerOpen(false);
-      setQuestionSearch('');
     },
     [getEnterpriseMetaForGroup, getGroupFromSurvey, resetForm]
   );
@@ -731,6 +661,12 @@ export function SurveysDashboard() {
       return;
     }
 
+    // Check if current version exists
+    if (!currentVersion) {
+      toast.error('No hay una versión de encuesta activa. Crea una versión en "Evaluación del bienestar > Ver. Encuestas" primero.');
+      return;
+    }
+
     const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
     const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
 
@@ -747,7 +683,8 @@ export function SurveysDashboard() {
     const scrollY = window.scrollY;
     setSubmitting(true);
     try {
-      const payload = {
+      const hasAnswers = editingSurvey !== null && (editingSurvey.answerCount ?? 0) > 0;
+      const payload: any = {
         name: formData.name.trim(),
         groupId: formData.groupId,
         startAt: startDateTime.toISOString(),
@@ -773,7 +710,8 @@ export function SurveysDashboard() {
       await loadData(true);
       requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
     } catch (error: any) {
-      toast.error(error.message || 'Error al guardar encuesta');
+      const errorMessage = error.message || 'Error al guardar encuesta';
+      toast.error(errorMessage);
       console.error('Error saving survey:', error);
     } finally {
       setSubmitting(false);
@@ -788,6 +726,7 @@ export function SurveysDashboard() {
     formData.startTime,
     formData.endDate,
     formData.endTime,
+    currentVersion,
     handleCloseDialog,
     loadData,
   ]);
@@ -931,7 +870,7 @@ export function SurveysDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-          {paginatedHierarchy.length === 0 ? (
+            {paginatedHierarchy.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
                 <FileText className="w-12 h-12 text-gray-600" />
                 <p className="text-gray-400">
@@ -940,10 +879,10 @@ export function SurveysDashboard() {
               </div>
             ) : (
               paginatedHierarchy.map((entry) => {
-              const groupCount = entry.groups.length;
-              const surveyCount = entry.groups.reduce((sum, groupNode) => sum + groupNode.surveys.length, 0);
-              return (
-                <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
+                const groupCount = entry.groups.length;
+                const surveyCount = entry.groups.reduce((sum, groupNode) => sum + groupNode.surveys.length, 0);
+                return (
+                  <div key={entry.enterprise.id} className="bg-slate-900/40 border border-white/10 rounded-lg p-4 space-y-3">
                   <button
                     className="w-full flex items-center justify-between text-left"
                     onClick={() => handleToggleEnterprise(entry.enterprise.id)}
@@ -1020,53 +959,147 @@ export function SurveysDashboard() {
                                 {groupNode.surveys.length === 0 ? (
                                   <p className="text-sm text-gray-400 pl-2">Sin encuestas registradas</p>
                                 ) : (
-                                  groupNode.surveys.map((survey) => (
-                                    <div
-                                      key={survey.id}
-                                      className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
-                                    >
-                                      <div className="flex-1">
-                                        <div className="flex items-center space-x-2 mb-2">
-                                          <h4 className="font-semibold text-white">{survey.name}</h4>
-                                          <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                                            ID: {survey.id}
-                                          </Badge>
-                                        </div>
-                                        <div className="grid gap-2 text-sm text-gray-300 md:grid-cols-3">
-                                          <div className="flex items-center space-x-2">
-                                            <Calendar className="w-4 h-4 text-gray-400" />
-                                            <span>Inicio: {formatDateTime(survey.startAt)}</span>
+                                  (() => {
+                                    const currentSurveyPage = surveyPage.get(groupNode.group.id) || 1;
+                                    const surveyStart = (currentSurveyPage - 1) * SURVEYS_PER_PAGE;
+                                    const surveyEnd = surveyStart + SURVEYS_PER_PAGE;
+                                    const paginatedSurveys = groupNode.surveys.slice(surveyStart, surveyEnd);
+                                    const totalSurveyPages = Math.ceil(groupNode.surveys.length / SURVEYS_PER_PAGE);
+                                    
+                                    return (
+                                      <>
+                                        {paginatedSurveys.map((survey) => {
+                                          const questionCount = survey.questionCount ?? survey.questions?.length ?? 0;
+                                          const answerCount = survey.answerCount ?? 0;
+                                          const state = survey.state || 'active';
+                                          const getStateBadge = (state: string) => {
+                                            switch (state) {
+                                              case 'active':
+                                                return <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">Activa</Badge>;
+                                              case 'inactive':
+                                                return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 text-xs">Inactiva</Badge>;
+                                              case 'rejected':
+                                                return <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-xs">Rechazada</Badge>;
+                                              default:
+                                                return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30 text-xs">{state}</Badge>;
+                                            }
+                                          };
+                                          return (
+                                            <div
+                                              key={survey.id}
+                                              className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-900/60 border border-white/10 rounded-lg space-y-3 md:space-y-0"
+                                            >
+                                              <div className="flex-1">
+                                                <div className="flex items-center space-x-2 mb-2">
+                                                  <h4 className="font-semibold text-white">{survey.name}</h4>
+                                                  <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                                    ID: {survey.id}
+                                                  </Badge>
+                                                  {getStateBadge(state)}
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                                                    {questionCount} pregunta{questionCount === 1 ? '' : 's'}
+                                                  </Badge>
+                                                  <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                                                    {answerCount} respuesta{answerCount === 1 ? '' : 's'}
+                                                  </Badge>
+                                                  {survey.version && (
+                                                    <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                                                      Versión {survey.version.versionNum}
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                                <div className="grid gap-2 text-sm text-gray-300 md:grid-cols-3">
+                                                  <div className="flex items-center space-x-2">
+                                                    <Calendar className="w-4 h-4 text-gray-400" />
+                                                    <span>Inicio: {formatDateTime(survey.startAt)}</span>
+                                                  </div>
+                                                  <div className="flex items-center space-x-2">
+                                                    <Calendar className="w-4 h-4 text-gray-400" />
+                                                    <span>Fin: {formatDateTime(survey.endAt)}</span>
+                                                  </div>
+                                                  <div className="flex items-center space-x-2">
+                                                    <TrendingUp className="w-4 h-4 text-gray-400" />
+                                                    <span>Score grupo: {survey.groupScore ?? 'N/D'}</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center space-x-2 md:ml-4">
+                                                {state !== 'rejected' && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                      try {
+                                                        await fetchAPI(`/group-survey-scores/${survey.id}/reject`, {
+                                                          method: 'PUT',
+                                                        });
+                                                        toast.success('Encuesta rechazada exitosamente');
+                                                        await loadData(true);
+                                                      } catch (error: any) {
+                                                        toast.error(error.message || 'Error al rechazar encuesta');
+                                                      }
+                                                    }}
+                                                    className="hover:bg-orange-500/20 text-orange-400 hover:text-orange-300"
+                                                    title="Rechazar encuesta"
+                                                  >
+                                                    <X className="w-4 h-4" />
+                                                  </Button>
+                                                )}
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => handleDeleteClick(survey)}
+                                                  className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                        {groupNode.surveys.length > SURVEYS_PER_PAGE && (
+                                          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                                            <p className="text-xs text-gray-400">
+                                              Mostrando {surveyStart + 1}-{Math.min(surveyEnd, groupNode.surveys.length)} de {groupNode.surveys.length} encuestas
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setSurveyPage(prev => {
+                                                  const newMap = new Map(prev);
+                                                  newMap.set(groupNode.group.id, Math.max(1, currentSurveyPage - 1));
+                                                  return newMap;
+                                                })}
+                                                disabled={currentSurveyPage === 1}
+                                                className="border-white/10 bg-slate-800 text-white hover:bg-slate-700 text-xs h-7"
+                                              >
+                                                <ChevronLeft className="w-3 h-3" />
+                                              </Button>
+                                              <span className="text-xs text-gray-300">
+                                                {currentSurveyPage} / {totalSurveyPages}
+                                              </span>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setSurveyPage(prev => {
+                                                  const newMap = new Map(prev);
+                                                  newMap.set(groupNode.group.id, Math.min(totalSurveyPages, currentSurveyPage + 1));
+                                                  return newMap;
+                                                })}
+                                                disabled={currentSurveyPage === totalSurveyPages}
+                                                className="border-white/10 bg-slate-800 text-white hover:bg-slate-700 text-xs h-7"
+                                              >
+                                                <ChevronRight className="w-3 h-3" />
+                                              </Button>
+                                            </div>
                                           </div>
-                                          <div className="flex items-center space-x-2">
-                                            <Calendar className="w-4 h-4 text-gray-400" />
-                                            <span>Fin: {formatDateTime(survey.endAt)}</span>
-                                          </div>
-                                          <div className="flex items-center space-x-2">
-                                            <TrendingUp className="w-4 h-4 text-gray-400" />
-                                            <span>Score grupo: {survey.groupScore ?? 'N/D'}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center space-x-2 md:ml-4">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleOpenDialog(survey)}
-                                          className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDeleteClick(survey)}
-                                          className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))
+                                        )}
+                                      </>
+                                    );
+                                  })()
                                 )}
                               </div>
                             )}
@@ -1076,11 +1109,13 @@ export function SurveysDashboard() {
                     </div>
                   )}
                 </div>
-              );
+                );
               })
             )}
           </div>
-          {totalPages > 1 && (
+        </CardContent>
+      </Card>
+      {totalPages > 1 && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6">
               <p className="text-sm text-gray-400">
                 Mostrando{' '}
@@ -1120,8 +1155,6 @@ export function SurveysDashboard() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
 
       {/* Create/Edit Dialog */}
       <Dialog
@@ -1242,17 +1275,9 @@ export function SurveysDashboard() {
                             key={group.id}
                             value={`${group.name.toLowerCase()}-${group.id}`}
                             onSelect={() => {
-                              const groupId = group.id;
-                              const groupQuestionsForValue = questions.filter(
-                                (question) => getQuestionGroupId(question) === groupId
-                              );
-                              const allowedIds = new Set(
-                                [...defaultQuestions, ...groupQuestionsForValue].map((question) => question.id)
-                              );
                               setFormData((prev) => ({
                                 ...prev,
-                                groupId,
-                                questionIds: prev.questionIds.filter((id) => allowedIds.has(id)),
+                                groupId: group.id,
                               }));
                               setGroupPopoverOpen(false);
                               setGroupSearch('');
@@ -1272,90 +1297,37 @@ export function SurveysDashboard() {
 
             <div className="space-y-2">
               <Label className="text-gray-300">
-                Preguntas Disponibles *
+                Versión de Encuesta
               </Label>
-              <Popover open={isQuestionPickerOpen} onOpenChange={setIsQuestionPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between bg-slate-800/50 border-white/10 text-gray-200 hover:bg-slate-800/70"
-                  >
-                    <span>{questionSummary}</span>
-                    <ListChecks className="w-4 h-4 text-purple-400" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[340px] bg-slate-900 border-white/10 text-white" align="start">
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        autoFocus
-                        placeholder="Buscar pregunta..."
-                        value={questionSearch}
-                        onChange={(e) => setQuestionSearch(e.target.value)}
-                        className="pl-10 bg-slate-800/70 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/50"
-                      />
+              {currentVersion ? (
+                <div className="p-3 bg-slate-800/50 border border-blue-500/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        Versión {currentVersion.versionNum}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {currentVersion.questionCount} pregunta(s) • Creada el {new Date(currentVersion.createdAt).toLocaleDateString('es-MX')}
+                      </p>
                     </div>
-                    <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
-                      {filteredQuestions.length === 0 ? (
-                        <p className="text-center text-sm text-gray-400 py-6">
-                          No se encontraron preguntas
-                        </p>
-                      ) : (
-                        filteredQuestions.map((question) => {
-                          const label = getQuestionLabel(question);
-                          const selected = formData.questionIds.includes(question.id);
-                          return (
-                            <button
-                              key={question.id}
-                              type="button"
-                              onClick={() => toggleQuestion(question.id)}
-                              className="w-full text-left flex items-start gap-3 rounded-lg px-3 py-2 bg-slate-800/40 border border-white/5 hover:border-purple-500/40 transition-colors"
-                            >
-                              <Checkbox
-                                checked={selected}
-                                onCheckedChange={() => toggleQuestion(question.id)}
-                                className="mt-1 border-white/30 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
-                              />
-                              <div className="flex flex-col">
-                                <span className="text-sm text-white">{label}</span>
-                                <span className="text-xs text-gray-400">
-                                  ID: {question.id}
-                                  {question.group?.name ? ` • Grupo: ${question.group.name}` : ''}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                      Activa
+                    </Badge>
                   </div>
-                </PopoverContent>
-              </Popover>
-              {formData.questionIds.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formData.questionIds.map((questionId) => {
-                    const question = questionLookup.get(questionId);
-                    const label = getQuestionLabel(question) || `Pregunta ${questionId}`;
-                    return (
-                      <Badge
-                        key={questionId}
-                        variant="secondary"
-                        className="bg-purple-500/20 text-purple-200 border-purple-500/40 flex items-center gap-1"
-                      >
-                        {label}
-                        <button
-                          type="button"
-                          onClick={() => toggleQuestion(questionId)}
-                          className="hover:text-white transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    );
-                  })}
                 </div>
+              ) : (
+                <div className="p-3 bg-slate-800/50 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-400 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    No hay una versión de encuesta activa. Crea una versión en "Evaluación del bienestar &gt; Ver. Encuestas" primero.
+                  </p>
+                </div>
+              )}
+              {!editingSurvey && (
+                <p className="text-xs text-blue-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Las nuevas encuestas usarán la versión actual activa.
+                </p>
               )}
             </div>
 
@@ -1445,7 +1417,7 @@ export function SurveysDashboard() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open: boolean) => setIsDeleteDialogOpen(open)}>
         <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-pink-500" />
           
