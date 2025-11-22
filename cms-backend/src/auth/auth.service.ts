@@ -3,7 +3,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Employee } from '../entities/employee.entity';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,15 +19,38 @@ export interface LoginResponse {
   };
 }
 
+// Helper para convertir string como '5m', '7d' a segundos
+function parseExpiration(value: string | undefined, defaultSeconds: number): number {
+  if (!value) return defaultSeconds;
+  const match = value.match(/^(\d+)(s|m|h|d)$/);
+  if (!match) return defaultSeconds;
+
+  const num = parseInt(match[1], 10);
+
+  switch (match[2]) {
+    case 's': return num;
+    case 'm': return num * 60;
+    case 'h': return num * 3600;
+    case 'd': return num * 86400;
+    default: return defaultSeconds;
+  }
+}
+
 @Injectable()
 export class AuthService {
+  private readonly accessTTL: number;
+  private readonly refreshTTL: number;
+
   constructor(
     @InjectRepository(Employee)
     private employeesRepo: Repository<Employee>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
-  ) {}
+  ) {
+    this.accessTTL = parseExpiration(this.configService.get<string>('JWT_EXPIRES_IN'), 300);
+    this.refreshTTL = parseExpiration(this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'), 604800);
+  }
 
   async validateUser(email: string, password: string): Promise<Employee | null> {
     if (!email || !password) {
@@ -49,122 +72,99 @@ export class AuthService {
     const employee = await this.validateUser(email, password);
     if (!employee) throw new UnauthorizedException('Credenciales inválidas');
 
-    // Generar JTI
     const jtiAccess = uuidv4();
     const jtiRefresh = uuidv4();
 
-    // Payloads
     const fullName = `${employee.firstName} ${employee.lastName}`;
     const payloadAccess = { sub: employee.id, email: employee.email, role: employee.role.name, nombre: fullName, jti: jtiAccess };
     const payloadRefresh = { sub: employee.id, email: employee.email, role: employee.role.name, nombre: fullName, jti: jtiRefresh };
 
     const access_token = this.jwtService.sign(payloadAccess, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '5m',
-    });
+      expiresIn: this.accessTTL,
+    } as JwtSignOptions);
 
     const refresh_token = this.jwtService.sign(payloadRefresh, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d',
-    });
+      expiresIn: this.refreshTTL,
+    } as JwtSignOptions);
 
-    // Guardar en Redis
-    const accessTTL = 60 * 5; // 5 min
-    const refreshTTL = 60 * 60 * 24 * 7; // 7 días
-
-    await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, accessTTL);
-    await this.redisService.set(`jwt:allow:${jtiRefresh}`, 1, refreshTTL);
+    await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, this.accessTTL);
+    await this.redisService.set(`jwt:allow:${jtiRefresh}`, 1, this.refreshTTL);
 
     await this.redisService.sadd(`jwt:active:${employee.id}`, jtiAccess);
     await this.redisService.sadd(`jwt:active:${employee.id}`, jtiRefresh);
 
-    await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: employee.id, type: 'access', exp: Date.now() + accessTTL * 1000 }, accessTTL);
-    await this.redisService.set(`jwt:meta:${jtiRefresh}`, { user_id: employee.id, type: 'refresh', exp: Date.now() + refreshTTL * 1000 }, refreshTTL);
+    await this.redisService.set(`jwt:meta:${jtiAccess}`, { user_id: employee.id, type: 'access', exp: Date.now() + this.accessTTL * 1000 }, this.accessTTL);
+    await this.redisService.set(`jwt:meta:${jtiRefresh}`, { user_id: employee.id, type: 'refresh', exp: Date.now() + this.refreshTTL * 1000 }, this.refreshTTL);
 
     return {
       access_token,
       refresh_token,
       user: {
         id: employee.id,
-        nombre: `${employee.firstName} ${employee.lastName}`,
+        nombre: fullName,
         email: employee.email,
         role: employee.role.name,
       },
     };
   }
-  // En AuthService
-async me(userId: number) {
-  const employee = await this.employeesRepo.findOne({
-    where: { id: userId },
-    relations: ['role'],
-  });
 
-  if (!employee) {
-    throw new UnauthorizedException('Usuario no encontrado');
-  }
-
-  return {
-    id: employee.id,
-    nombre: `${employee.firstName} ${employee.lastName}`,
-    email: employee.email,
-    rol: employee.role.name,
-  };
-}
-
-
-  async refreshToken(token: string): Promise<{ access_token: string; refresh_token: string }> {
-  try {
-    const payload: any = this.jwtService.verify(token, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+  async me(userId: number) {
+    const employee = await this.employeesRepo.findOne({
+      where: { id: userId },
+      relations: ['role'],
     });
 
-    // Verificar allowlist
-    const allowed = await this.redisService.get(`jwt:allow:${payload.jti}`);
-    if (!allowed) throw new UnauthorizedException('Refresh token inválido');
+    if (!employee) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
 
-    // ✅ Revocar refresh token viejo
-    await this.redisService.del(`jwt:allow:${payload.jti}`);
-    await this.redisService.srem(`jwt:active:${payload.sub}`, payload.jti);
-    await this.redisService.set(`jwt:denylist:${payload.jti}`, 1, 60 * 60); // 1 hr prevent replay
-
-    // ✅ Generar nuevos JTIs
-    const jtiAccess = uuidv4();
-    const jtiRefresh = uuidv4();
-
-    // ✅ Generar nuevo access token
-    const access_token = this.jwtService.sign(
-      { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiAccess },
-      {
-        secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '5m',
-      },
-    );
-
-    // ✅ Generar nuevo refresh token
-    const refresh_token = this.jwtService.sign(
-      { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiRefresh },
-      {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d',
-      },
-    );
-
-    // ✅ Guardar nuevos tokens en Redis
-    const accessTTL = 60 * 5;
-    const refreshTTL = 60 * 60 * 24 * 7;
-
-    await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, accessTTL);
-    await this.redisService.set(`jwt:allow:${jtiRefresh}`, 1, refreshTTL);
-
-    await this.redisService.sadd(`jwt:active:${payload.sub}`, jtiAccess);
-    await this.redisService.sadd(`jwt:active:${payload.sub}`, jtiRefresh);
-
-    return { access_token, refresh_token };
-  } catch {
-    throw new UnauthorizedException('Refresh token inválido');
+    return {
+      id: employee.id,
+      nombre: `${employee.firstName} ${employee.lastName}`,
+      email: employee.email,
+      rol: employee.role.name,
+    };
   }
-}
 
+  async refreshToken(token: string): Promise<{ access_token: string; refresh_token: string }> {
+    try {
+      const payload: any = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+
+      const allowed = await this.redisService.get(`jwt:allow:${payload.jti}`);
+      if (!allowed) throw new UnauthorizedException('Refresh token inválido');
+
+      await this.redisService.del(`jwt:allow:${payload.jti}`);
+      await this.redisService.srem(`jwt:active:${payload.sub}`, payload.jti);
+      await this.redisService.set(`jwt:denylist:${payload.jti}`, 1, 3600);
+
+      const jtiAccess = uuidv4();
+      const jtiRefresh = uuidv4();
+
+      const access_token = this.jwtService.sign(
+        { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiAccess },
+        { secret: this.configService.get<string>('JWT_SECRET'), expiresIn: this.accessTTL } as JwtSignOptions,
+      );
+
+      const refresh_token = this.jwtService.sign(
+        { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiRefresh },
+        { secret: this.configService.get<string>('JWT_REFRESH_SECRET'), expiresIn: this.refreshTTL } as JwtSignOptions,
+      );
+
+      await this.redisService.set(`jwt:allow:${jtiAccess}`, 1, this.accessTTL);
+      await this.redisService.set(`jwt:allow:${jtiRefresh}`, 1, this.refreshTTL);
+
+      await this.redisService.sadd(`jwt:active:${payload.sub}`, jtiAccess);
+      await this.redisService.sadd(`jwt:active:${payload.sub}`, jtiRefresh);
+
+      return { access_token, refresh_token };
+    } catch {
+      throw new UnauthorizedException('Refresh token inválido');
+    }
+  }
 
   async logout(userId: number, jti: string, exp?: number) {
     await this.redisService.srem(`jwt:active:${userId}`, jti);
@@ -174,12 +174,11 @@ async me(userId: number) {
     await this.redisService.set(`jwt:denylist:${jti}`, 1, ttl);
   }
 
-
   async logoutAll(userId: number) {
     const activeTokens = await this.redisService.smembers(`jwt:active:${userId}`);
     for (const jti of activeTokens) {
       await this.redisService.del(`jwt:allow:${jti}`);
-      await this.redisService.set(`jwt:denylist:${jti}`, 1, 3600); // 1 hora en denylist
+      await this.redisService.set(`jwt:denylist:${jti}`, 1, 3600);
     }
     await this.redisService.del(`jwt:active:${userId}`);
   }

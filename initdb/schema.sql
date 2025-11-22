@@ -263,7 +263,8 @@ CREATE TABLE IF NOT EXISTS surveys (
   id_survey SERIAL PRIMARY KEY,
   id_group INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
   name VARCHAR(150) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_surveys_group ON surveys(id_group);
 
@@ -688,7 +689,7 @@ location_name = EXCLUDED.location_name,
 active = EXCLUDED.active;
 
 -- Devices
-INSERT INTO devices (id_device, id_location, name, device_type, created_at) VALUES
+INSERT INTO devices (id_device, id_location, name, device_type, registered_at) VALUES
 (1, 1, 'Sensor Biométrico A1', 'wearable', NOW() - INTERVAL '30 days'),
 (2, 1, 'Monitor Cardiaco M2', 'medical_device', NOW() - INTERVAL '25 days'),
 (3, 2, 'Tracker Actividad T3', 'wearable', NOW() - INTERVAL '20 days'),
@@ -707,7 +708,7 @@ ON CONFLICT (id_device) DO UPDATE SET
 id_location = EXCLUDED.id_location,
 name = EXCLUDED.name,
 device_type = EXCLUDED.device_type,
-created_at = EXCLUDED.created_at;
+registered_at = EXCLUDED.registered_at;  -- Changed from created_at to registered_at
 
 -- Employees (63 empleados total)
 INSERT INTO employees (id_employee, id_manager, id_enterprise, id_role, first_name, last_name, email, username, password_hash, telephone, status, created_at, updated_at) VALUES
