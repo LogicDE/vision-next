@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -40,8 +40,8 @@ export class EmployeesController {
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id') id: number) {
-    return this.employeesService.remove(+id);
+  remove(@Param('id') id: number, @Request() req: any) {
+    return this.employeesService.remove(+id, req.user?.sub);
   }
 
   @Post(':id/upload-photo')

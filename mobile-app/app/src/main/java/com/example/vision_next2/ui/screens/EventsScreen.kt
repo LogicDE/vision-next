@@ -1,5 +1,6 @@
 package com.example.vision_next2.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -36,12 +37,21 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.collections.emptyList
+import kotlin.collections.groupBy
+import kotlin.collections.isNotEmpty
+import kotlin.text.contains
 
 @Composable
 fun EventsScreen(authViewModel: AuthViewModel) {
     val context = LocalContext.current
-    val repository = remember {
-        EmployeeRepository(NetworkModule.provideEmployeeApi(TokenStorage(context)))
+    val tokenStorage = remember { TokenStorage(context) }
+    val repository = remember(tokenStorage) {
+        EmployeeRepository(
+            NetworkModule.provideEmployeeApi(tokenStorage),
+            NetworkModule.provideAuthApiWithClient(tokenStorage),
+            tokenStorage
+        )
     }
     val profile by authViewModel.profile.collectAsState()
     val isAdmin = profile?.rol?.equals("Admin", ignoreCase = true) == true
@@ -56,6 +66,7 @@ fun EventsScreen(authViewModel: AuthViewModel) {
         if (isAdmin) return
         scope.launch {
             loading = true
+            Log.d("EventsScreen", "Requesting page=$pageToLoad reset=$reset")
             val result = repository.getEvents(pageToLoad, 5)
             if (result.isSuccess) {
                 val payload = result.getOrNull()
@@ -64,9 +75,12 @@ fun EventsScreen(authViewModel: AuthViewModel) {
                     total = payload.total
                     events = if (reset) payload.items else events + payload.items
                     error = null
+                    Log.d("EventsScreen", "Loaded ${payload.items.size} events (total ${payload.total})")
                 }
             } else {
-                error = result.exceptionOrNull()?.message ?: "Error al cargar eventos"
+                val errorMsg = result.exceptionOrNull()?.message ?: "Error al cargar eventos"
+                error = errorMsg
+                Log.e("EventsScreen", "Failed loading events: $errorMsg", result.exceptionOrNull())
             }
             loading = false
         }

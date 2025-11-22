@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request } from '@nestjs/common';
 import { EnterpriseLocationsService } from './enterprise-locations.service';
 import { CreateEnterpriseLocationDto } from './dto/create-enterprise-location.dto';
 import { UpdateEnterpriseLocationDto } from './dto/update-enterprise-location.dto';
@@ -37,7 +37,7 @@ export class EnterpriseLocationsController {
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: number, @Request() req: any) {
+    return this.service.remove(+id, req.user?.sub);
   }
 }

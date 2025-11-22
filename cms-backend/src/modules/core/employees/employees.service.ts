@@ -29,12 +29,15 @@ export class EmployeesService {
   }
 
   findAll() {
-    return this.employeeRepo.find({ relations: ['enterprise', 'role', 'manager'] });
+    return this.employeeRepo.find({
+      where: { isDeleted: false },
+      relations: ['enterprise', 'role', 'manager'],
+    });
   }
 
   async findOne(id: number) {
     const employee = await this.employeeRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['enterprise', 'role', 'manager'],
     });
     if (!employee) throw new NotFoundException('Employee no encontrado');
@@ -61,9 +64,18 @@ export class EmployeesService {
     return this.employeeRepo.save(employee);
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
-    await this.employeeRepo.delete(id);
+  async remove(id: number, deletedBy?: number) {
+    const employee = await this.findOne(id);
+    const timestamp = Date.now();
+    employee.isDeleted = true;
+    if (deletedBy) {
+      employee.deletedBy = { id: deletedBy } as any;
+    }
+    // Clear unique fields to prevent conflicts
+    employee.email = `deleted_${id}_${timestamp}@deleted.local`;
+    employee.username = `deleted_${id}_${timestamp}`;
+    employee.telephone = undefined;
+    await this.employeeRepo.save(employee);
     return { message: 'Employee eliminado' };
   }
 }

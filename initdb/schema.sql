@@ -387,6 +387,127 @@ INSERT INTO role_permissions (id_role, id_action) VALUES
 (4, 1), (4, 2), (4, 3), (4, 5)                   -- Manager crear, leer, actualizar, exportar
 ON CONFLICT (id_role, id_action) DO NOTHING;
 
+-- Limpiar datos de encuestas antiguos
+DO $$
+BEGIN
+  DELETE FROM response_answers;
+  DELETE FROM indiv_survey_scores;
+  DELETE FROM survey_versions_questions;
+  DELETE FROM surveys_versions;
+  DELETE FROM surveys;
+END $$;
+
+-- Crear plantilla de encuesta con 5 preguntas
+DO $$
+DECLARE
+  first_group INTEGER;
+  template_survey_id INTEGER;
+  template_version_id INTEGER;
+BEGIN
+  SELECT id_group INTO first_group FROM groups ORDER BY id_group LIMIT 1;
+  IF first_group IS NULL THEN
+    RAISE NOTICE 'No hay grupos para crear la plantilla';
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM surveys WHERE name = '__TEMPLATE__') THEN
+    INSERT INTO surveys (id_group, name, created_at, created_by)
+    VALUES (first_group, '__TEMPLATE__', NOW(), 1);
+  END IF;
+  SELECT id_survey INTO template_survey_id FROM surveys WHERE name = '__TEMPLATE__' LIMIT 1;
+
+  DELETE FROM surveys_versions WHERE id_survey = template_survey_id;
+
+  INSERT INTO surveys_versions (id_survey, version_num, created_by, created_at, group_score, active, start_at, end_at)
+  VALUES (template_survey_id, 1, 1, NOW(), 80, true, NOW(), NOW() + INTERVAL '7 days')
+  RETURNING id_survey_version INTO template_version_id;
+
+  DELETE FROM survey_versions_questions WHERE id_survey_version = template_version_id;
+
+  INSERT INTO survey_versions_questions (id_survey_version, id_question) VALUES
+    (template_version_id, 1),
+    (template_version_id, 2),
+    (template_version_id, 3),
+    (template_version_id, 4),
+    (template_version_id, 5)
+  ON CONFLICT (id_survey_version, id_question) DO NOTHING;
+END $$;
+
+-- Preguntas base
+INSERT INTO questions (id_question) VALUES
+(1),(2),(3),(4),(5)
+ON CONFLICT (id_question) DO NOTHING;
+
+INSERT INTO question_i18n (id_question, locale, text) VALUES
+(1, 'es', '¿Cómo calificarías tu estado de bienestar hoy?'),
+(2, 'es', '¿Te sientes energizado durante tus turnos?'),
+(3, 'es', '¿Consideras que tu carga de trabajo es adecuada?'),
+(4, 'es', '¿Tienes claridad sobre tus responsabilidades?'),
+(5, 'es', '¿Recomendarías a un colega esta empresa?')
+ON CONFLICT (id_question, locale) DO NOTHING;
+
+-- Encuestas por grupo
+DO $$
+DECLARE
+  grp RECORD;
+  survey_id INTEGER;
+  version_id INTEGER;
+BEGIN
+  FOR grp IN SELECT id_group, name FROM groups LOOP
+    INSERT INTO surveys (id_group, name, created_at, created_by)
+    VALUES (grp.id_group, 'Encuesta general - ' || grp.name, NOW(), 1)
+    RETURNING id_survey INTO survey_id;
+
+    INSERT INTO surveys_versions (id_survey, version_num, created_by, created_at, group_score, active, start_at, end_at)
+    VALUES (survey_id, 1, 1, NOW() - INTERVAL '1 day', 75, true, NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days')
+    RETURNING id_survey_version INTO version_id;
+
+    INSERT INTO survey_versions_questions (id_survey_version, id_question) VALUES
+    (version_id, 1),
+    (version_id, 2),
+    (version_id, 3),
+    (version_id, 4),
+    (version_id, 5)
+    ON CONFLICT (id_survey_version, id_question) DO NOTHING;
+  END LOOP;
+END $$;
+
+-- Eventos por grupo
+DO $$
+DECLARE
+  grp RECORD;
+BEGIN
+  DELETE FROM events;
+  FOR grp IN SELECT id_group, name FROM groups LOOP
+    INSERT INTO events (id_group, title_message, body_message, coordinator_name, start_at, end_at)
+    VALUES (
+      grp.id_group,
+      'Evento para ' || grp.name,
+      'Evento informativo de bienestar para el grupo ' || grp.name,
+      'Coordinador ' || grp.name,
+      NOW() + INTERVAL '1 day',
+      NOW() + INTERVAL '3 days'
+    );
+  END LOOP;
+END $$;
+
+-- Intervenciones por grupo
+DO $$
+DECLARE
+  grp RECORD;
+BEGIN
+  DELETE FROM interventions;
+  FOR grp IN SELECT id_group, name FROM groups LOOP
+    INSERT INTO interventions (id_group, description, title_message, body_message)
+    VALUES (
+      grp.id_group,
+      'Sesión de seguimiento para ' || grp.name,
+      'Intervención para ' || grp.name,
+      'Programa práctico y personalizado para mantener el bienestar.'
+    );
+  END LOOP;
+END $$;
+
 -- Countries
 INSERT INTO countries (id_country, iso_code, name) VALUES
 (1, 'MX', 'México'),
@@ -568,7 +689,7 @@ location_name = EXCLUDED.location_name,
 active = EXCLUDED.active;
 
 -- Devices
-INSERT INTO devices (id_device, id_location, name, device_type, registered_at) VALUES
+INSERT INTO devices (id_device, id_location, name, device_type, created_at) VALUES
 (1, 1, 'Sensor Biométrico A1', 'wearable', NOW() - INTERVAL '30 days'),
 (2, 1, 'Monitor Cardiaco M2', 'medical_device', NOW() - INTERVAL '25 days'),
 (3, 2, 'Tracker Actividad T3', 'wearable', NOW() - INTERVAL '20 days'),
@@ -587,7 +708,7 @@ ON CONFLICT (id_device) DO UPDATE SET
 id_location = EXCLUDED.id_location,
 name = EXCLUDED.name,
 device_type = EXCLUDED.device_type,
-registered_at = EXCLUDED.registered_at;
+created_at = EXCLUDED.created_at;
 
 -- Employees (63 empleados total)
 INSERT INTO employees (id_employee, id_manager, id_enterprise, id_role, first_name, last_name, email, username, password_hash, telephone, status, created_at, updated_at) VALUES
@@ -822,26 +943,27 @@ value = EXCLUDED.value;
 -- =========================================================
 
 -- Surveys
-INSERT INTO surveys (id_survey, id_group, name, created_at) VALUES
-(1, 1, 'Pulso Semanal Equipo Alfa', NOW() - INTERVAL '3 days'),
-(2, 2, 'Encuesta Estrés Área Beta', NOW() - INTERVAL '2 days'),
-(3, 1, 'Feedback Productividad Sprint', NOW() - INTERVAL '1 day'),
-(4, 5, 'Clima Laboral Región Norte', NOW() - INTERVAL '4 days'),
-(5, 6, 'Seguimiento Bienestar Sede C', NOW() - INTERVAL '3 days')
+INSERT INTO surveys (id_survey, id_group, name, created_at, created_by) VALUES
+(1, 1, 'Pulso Semanal Equipo Alfa', NOW() - INTERVAL '3 days', 1),
+(2, 2, 'Encuesta Estrés Área Beta', NOW() - INTERVAL '2 days', 1),
+(3, 1, 'Feedback Productividad Sprint', NOW() - INTERVAL '1 day', 1),
+(4, 5, 'Clima Laboral Región Norte', NOW() - INTERVAL '4 days', 1),
+(5, 6, 'Seguimiento Bienestar Sede C', NOW() - INTERVAL '3 days', 1)
 ON CONFLICT (id_survey) DO UPDATE SET
 id_group = EXCLUDED.id_group,
 name = EXCLUDED.name,
-created_at = EXCLUDED.created_at;
+created_at = EXCLUDED.created_at,
+created_by = COALESCE(EXCLUDED.created_by, 1);
 
 -- Survey Versions
 INSERT INTO surveys_versions (id_survey, version_num, created_by, created_at, group_score, active, start_at, end_at) VALUES
-(1, 1, NULL, NOW() - INTERVAL '3 days', 85, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days'),
-(2, 1, NULL, NOW() - INTERVAL '2 days', 92, true, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
-(3, 1, NULL, NOW() - INTERVAL '1 day', 88, true, NOW() - INTERVAL '1 day', NOW()),
-(4, 1, NULL, NOW() - INTERVAL '4 days', 82, true, NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days'),
-(5, 1, NULL, NOW() - INTERVAL '3 days', 87, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days')
+(1, 1, 1, NOW() - INTERVAL '3 days', 85, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days'),
+(2, 1, 1, NOW() - INTERVAL '2 days', 92, true, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
+(3, 1, 1, NOW() - INTERVAL '1 day', 88, true, NOW() - INTERVAL '1 day', NOW()),
+(4, 1, 1, NOW() - INTERVAL '4 days', 82, true, NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days'),
+(5, 1, 1, NOW() - INTERVAL '3 days', 87, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days')
 ON CONFLICT (id_survey, version_num) DO UPDATE SET
-created_by = EXCLUDED.created_by,
+created_by = COALESCE(EXCLUDED.created_by, 1),
 created_at = EXCLUDED.created_at,
 group_score = EXCLUDED.group_score,
 active = EXCLUDED.active,
@@ -1181,6 +1303,12 @@ BEGIN
   END IF;
   CREATE INDEX IF NOT EXISTS idx_surveys_is_deleted ON surveys(is_deleted);
 
+  -- Set created_by to 1 (admin) for existing surveys that don't have it
+  UPDATE surveys SET created_by = 1 WHERE created_by IS NULL;
+  
+  -- Set created_by to 1 (admin) for existing survey_versions that don't have it
+  UPDATE surveys_versions SET created_by = 1 WHERE created_by IS NULL;
+
   -- Events table
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'created_at') THEN
     ALTER TABLE events ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
@@ -1285,6 +1413,21 @@ BEGIN
     ALTER TABLE roles ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
   END IF;
   CREATE INDEX IF NOT EXISTS idx_roles_is_deleted ON roles(is_deleted);
+
+  -- Groups table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'groups' AND column_name = 'created_at') THEN
+    ALTER TABLE groups ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'groups' AND column_name = 'created_by') THEN
+    ALTER TABLE groups ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'groups' AND column_name = 'is_deleted') THEN
+    ALTER TABLE groups ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'groups' AND column_name = 'deleted_by') THEN
+    ALTER TABLE groups ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_groups_is_deleted ON groups(is_deleted);
 END $$;
 
 -- Aseguramos que las secuencias estén actualizadas para los próximos inserts
@@ -1294,7 +1437,7 @@ SELECT setval('group_snapshots_id_snapshot_seq', COALESCE((SELECT MAX(id_snapsho
 SELECT setval('surveys_id_survey_seq', COALESCE((SELECT MAX(id_survey) FROM surveys), 0));
 SELECT setval('surveys_versions_id_survey_version_seq', COALESCE((SELECT MAX(id_survey_version) FROM surveys_versions), 0));
 SELECT setval('indiv_survey_scores_id_indiv_survey_seq', COALESCE((SELECT MAX(id_indiv_survey) FROM indiv_survey_scores), 0));
-SELECT setval('response_answers_id_response_seq', COALESCE((SELECT MAX(id_response) FROM response_answers), 0));
+SELECT setval('response_answers_id_response_seq', GREATEST(COALESCE((SELECT MAX(id_response) FROM response_answers), 0), 1));
 SELECT setval('questions_id_question_seq', COALESCE((SELECT MAX(id_question) FROM questions), 0));
 SELECT setval('events_id_event_seq', COALESCE((SELECT MAX(id_event) FROM events), 0));
 SELECT setval('interventions_id_inter_seq', COALESCE((SELECT MAX(id_inter) FROM interventions), 0));

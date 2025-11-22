@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Device } from '../../entities/device.entity';
+import { Employee } from '../../entities/employee.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 
@@ -21,12 +22,15 @@ export class DevicesService {
   }
 
   findAll() {
-    return this.deviceRepo.find({ relations: ['location'] });
+    return this.deviceRepo.find({
+      where: { isDeleted: false },
+      relations: ['location'],
+    });
   }
 
   async findOne(id: number) {
     const device = await this.deviceRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['location'],
     });
     if (!device) throw new NotFoundException('Device no encontrado');
@@ -41,9 +45,13 @@ export class DevicesService {
     return this.deviceRepo.save(device);
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
-    await this.deviceRepo.delete(id);
+  async remove(id: number, deletedBy?: number) {
+    const device = await this.findOne(id);
+    device.isDeleted = true;
+    if (deletedBy) {
+      device.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.deviceRepo.save(device);
     return { message: 'Device eliminado' };
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnterpriseLocation } from '../../entities/enterprise-location.entity';
+import { Employee } from '../../entities/employee.entity';
 import { CreateEnterpriseLocationDto } from './dto/create-enterprise-location.dto';
 import { UpdateEnterpriseLocationDto } from './dto/update-enterprise-location.dto';
 
@@ -22,12 +23,15 @@ export class EnterpriseLocationsService {
   }
 
   findAll() {
-    return this.locationRepo.find({ relations: ['enterprise', 'address', 'devices'] });
+    return this.locationRepo.find({
+      where: { isDeleted: false },
+      relations: ['enterprise', 'address', 'devices'],
+    });
   }
 
   async findOne(id: number) {
     const location = await this.locationRepo.findOne({
-      where: { id },
+      where: { id, isDeleted: false },
       relations: ['enterprise', 'address', 'devices'],
     });
     if (!location) throw new NotFoundException('EnterpriseLocation no encontrada');
@@ -43,9 +47,13 @@ export class EnterpriseLocationsService {
     return this.locationRepo.save(location);
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
-    await this.locationRepo.delete(id);
+  async remove(id: number, deletedBy?: number) {
+    const location = await this.findOne(id);
+    location.isDeleted = true;
+    if (deletedBy) {
+      location.deletedBy = { id: deletedBy } as Employee;
+    }
+    await this.locationRepo.save(location);
     return { message: 'EnterpriseLocation eliminada' };
   }
 }

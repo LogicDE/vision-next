@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request, Query, Logger } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -9,6 +9,7 @@ import { Roles } from '../../../auth/roles.decorator';
 @Controller('events')
 @UseGuards(JwtRedisGuard, RolesGuard)
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
   constructor(private readonly service: EventsService) {}
 
   @Post()
@@ -21,6 +22,21 @@ export class EventsController {
   @Roles('Admin', 'Manager')
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get('me')
+  @Roles('Admin', 'Manager', 'Employee')
+  getAssigned(
+    @Request() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    const employeeId = req.user?.sub;
+    this.logger.debug(`Employee ${employeeId} requested events page=${page} limit=${limit}`);
+    if (!employeeId) {
+      throw new BadRequestException('Empleado no identificado');
+    }
+    return this.service.getAssignedForEmployee(employeeId, Number(page), Number(limit));
   }
 
   @Get(':id')
@@ -37,7 +53,7 @@ export class EventsController {
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: number, @Request() req: any) {
+    return this.service.remove(+id, req.user?.sub);
   }
 }
