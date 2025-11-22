@@ -24,6 +24,8 @@ import com.example.vision_next2.ui.screens.*
 import com.example.vision_next2.ui.theme.VisionNextTheme
 import com.example.vision_next2.ui.viewmodel.AuthViewModel
 import com.example.vision_next2.ui.viewmodel.AuthViewModelFactory
+import com.example.vision_next2.notifications.EventPollingWorker
+import com.example.vision_next2.notifications.EventNotificationManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +41,9 @@ class MainActivity : ComponentActivity() {
         val (initialSimulatorConfig, initialSimulatorActive) = simulatorStorage.loadConfig()
         WearableSimulator.updateConfig(initialSimulatorConfig)
         WearableSimulator.setActiveFlag(initialSimulatorActive)
+        
+        // Inicializar canal de notificaciones
+        EventNotificationManager.initializeNotificationChannel(this)
 
         setContent {
             VisionNextTheme {
@@ -61,6 +66,8 @@ class MainActivity : ComponentActivity() {
                                 val accessToken = tokenStorage.getAccessToken()
                                 val refreshToken = tokenStorage.getRefreshToken()
                                 WearableSimulator.onUserLoggedIn(user?.id, accessToken, refreshToken)
+                                // Iniciar polling de eventos cuando el usuario inicia sesión
+                                EventPollingWorker.startPeriodicPolling(this@MainActivity)
                             },
                             onConfigureWearable = {
                                 showWearableConfig = true
@@ -75,6 +82,8 @@ class MainActivity : ComponentActivity() {
                             isLoggedIn = false
                             currentUserEmail = null
                             WearableSimulator.onUserLoggedOut()
+                            // Detener polling de eventos cuando el usuario cierra sesión
+                            EventPollingWorker.stopPeriodicPolling(this@MainActivity)
                         }
                     )
                 }

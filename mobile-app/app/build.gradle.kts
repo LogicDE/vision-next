@@ -66,6 +66,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation("androidx.security:security-crypto:1.1.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
+    // WorkManager para servicios en segundo plano (polling de eventos)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
