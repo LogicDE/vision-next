@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useRef, KeyboardEvent } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +53,7 @@ import {
   EyeOff,
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { fetchAPI } from '@/lib/apiClient';
 import { toast } from 'sonner';
@@ -98,6 +112,10 @@ export function UsersManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [enterprisePopoverOpen, setEnterprisePopoverOpen] = useState(false);
+  const [enterpriseSearch, setEnterpriseSearch] = useState('');
+  const [enterpriseInvalid, setEnterpriseInvalid] = useState(false);
+  const enterpriseInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: '',
     lastName: '',
@@ -126,6 +144,7 @@ export function UsersManagement() {
       setEmployees(employeesData);
       setRoles(rolesData);
       setEnterprises(enterprisesData);
+      // Managers will be filtered based on selected enterprise
       setManagers(employeesData.filter((emp: Employee) => emp.role?.name === 'Manager' || emp.role?.name === 'Admin'));
     } catch (error: any) {
       toast.error(error.message || 'Error al cargar datos');
@@ -184,7 +203,74 @@ export function UsersManagement() {
       idManager: null,
       status: 'active',
     });
+    setEnterprisePopoverOpen(false);
+    setEnterpriseSearch('');
+    setEnterpriseInvalid(false);
   };
+
+  // Filter managers by selected enterprise
+  const filteredManagers = useMemo(() => {
+    if (!formData.idEnterprise) {
+      return [];
+    }
+    return managers.filter((manager) => manager.enterprise?.id === formData.idEnterprise);
+  }, [managers, formData.idEnterprise]);
+
+  // Filter enterprises for combobox
+  const filteredEnterpriseOptions = useMemo(() => {
+    const term = enterpriseSearch.trim().toLowerCase();
+    if (!term) return enterprises;
+    return enterprises.filter((enterprise) => enterprise.name.toLowerCase().includes(term));
+  }, [enterprises, enterpriseSearch]);
+
+  const selectedEnterpriseLabel = formData.idEnterprise
+    ? enterprises.find((e) => e.id === formData.idEnterprise)?.name || 'Seleccionar empresa'
+    : 'Seleccionar empresa';
+
+  const handleEnterpriseSelect = (id: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      idEnterprise: id,
+      idManager: null, // Reset manager when enterprise changes
+    }));
+    setEnterprisePopoverOpen(false);
+    setEnterpriseSearch('');
+    setEnterpriseInvalid(false);
+  };
+
+  const handleEnterpriseTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (enterprisePopoverOpen) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      setEnterprisePopoverOpen(true);
+      event.preventDefault();
+      return;
+    }
+    if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      setEnterprisePopoverOpen(true);
+      setEnterpriseSearch(event.key);
+      setEnterpriseInvalid(false);
+      event.preventDefault();
+    }
+  };
+
+  const handleEnterpriseInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (filteredEnterpriseOptions.length === 0) {
+        setEnterpriseInvalid(true);
+      } else {
+        handleEnterpriseSelect(filteredEnterpriseOptions[0].id);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (enterprisePopoverOpen && enterpriseInputRef.current) {
+      requestAnimationFrame(() => {
+        enterpriseInputRef.current?.focus();
+      });
+    }
+  }, [enterprisePopoverOpen]);
 
   const handleSubmit = async () => {
     if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.username.trim()) {
@@ -680,21 +766,52 @@ export function UsersManagement() {
               <Label htmlFor="enterprise" className="text-gray-300">
                 Empresa *
               </Label>
-              <Select
-                value={formData.idEnterprise?.toString() || ''}
-                onValueChange={(value) => setFormData({ ...formData, idEnterprise: parseInt(value) })}
-              >
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Seleccionar empresa" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10">
-                  {enterprises.map((enterprise) => (
-                    <SelectItem key={enterprise.id} value={enterprise.id.toString()}>
-                      {enterprise.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={enterprisePopoverOpen} onOpenChange={setEnterprisePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={enterprisePopoverOpen}
+                    disabled={enterprises.length === 0}
+                    className={`w-full justify-between bg-slate-800/50 text-white ${
+                      enterpriseInvalid ? 'border-red-500/60' : 'border-white/10'
+                    }`}
+                    onKeyDown={handleEnterpriseTriggerKeyDown}
+                  >
+                    <span className="truncate">
+                      {enterprises.length ? selectedEnterpriseLabel : 'No hay empresas disponibles'}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-70" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 bg-slate-900 text-white border border-white/10" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Buscar empresa..."
+                      value={enterpriseSearch}
+                      onValueChange={(value) => setEnterpriseSearch(value)}
+                      onKeyDown={handleEnterpriseInputKeyDown}
+                      className="text-slate-900 dark:text-white placeholder:text-gray-500"
+                      ref={enterpriseInputRef}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Sin resultados</CommandEmpty>
+                      <CommandGroup>
+                        {filteredEnterpriseOptions.map((enterprise) => (
+                          <CommandItem
+                            key={enterprise.id}
+                            value={enterprise.name}
+                            onSelect={() => handleEnterpriseSelect(enterprise.id)}
+                          >
+                            {enterprise.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {enterpriseInvalid && <p className="text-xs text-red-400">Selecciona una empresa válida</p>}
             </div>
 
             <div className="space-y-2">
@@ -725,19 +842,23 @@ export function UsersManagement() {
               <Select
                 value={formData.idManager?.toString() || 'none'}
                 onValueChange={(value) => setFormData({ ...formData, idManager: value === 'none' ? null : parseInt(value) })}
+                disabled={!formData.idEnterprise}
               >
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white">
-                  <SelectValue placeholder="Sin manager" />
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                  <SelectValue placeholder={formData.idEnterprise ? "Sin manager" : "Selecciona una empresa primero"} />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10">
                   <SelectItem value="none">Sin manager</SelectItem>
-                  {managers.map((manager) => (
+                  {filteredManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id.toString()}>
                       {manager.firstName} {manager.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {!formData.idEnterprise && (
+                <p className="text-xs text-amber-400">Selecciona una empresa primero para elegir un manager</p>
+              )}
             </div>
 
             <div className="space-y-2">

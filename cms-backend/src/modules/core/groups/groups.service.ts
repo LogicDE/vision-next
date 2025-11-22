@@ -36,7 +36,6 @@ export class GroupsService {
         'members.employee',
         'snapshots',
         'surveys',
-        'questions',
       ],
     });
   }
@@ -51,7 +50,6 @@ export class GroupsService {
         'members.employee',
         'snapshots',
         'surveys',
-        'questions',
       ],
     });
     if (!group) throw new NotFoundException('Group no encontrado');

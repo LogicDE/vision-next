@@ -1,12 +1,19 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { QuestionI18n } from './question-i18n.entity';
-import { SurveyVersionQuestion } from './survey-version-question.entity';
+import { Group } from './group.entity';
+import { SurveyVersion } from './survey-version.entity';
 import { Employee } from './employee.entity';
 
-@Entity('questions')
-export class Question {
-  @PrimaryGeneratedColumn({ name: 'id_question' })
+@Entity('surveys')
+export class Survey {
+  @PrimaryGeneratedColumn({ name: 'id_survey' })
   id!: number;
+
+  @ManyToOne(() => Group, (g) => g.surveys, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_group' })
+  group!: Group;
+
+  @Column({ name: 'name', length: 150 })
+  name!: string;
 
   @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
   createdAt!: Date;
@@ -22,9 +29,7 @@ export class Question {
   @JoinColumn({ name: 'deleted_by' })
   deletedBy?: Employee;
 
-  @OneToMany(() => QuestionI18n, (qi18n) => qi18n.question)
-  i18nTexts!: QuestionI18n[];
-
-  @OneToMany(() => SurveyVersionQuestion, (svq) => svq.question)
-  surveyVersionQuestions!: SurveyVersionQuestion[];
+  @OneToMany(() => SurveyVersion, (sv) => sv.survey)
+  versions!: SurveyVersion[];
 }
+

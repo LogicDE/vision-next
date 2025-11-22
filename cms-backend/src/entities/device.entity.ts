@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { EnterpriseLocation } from './enterprise-location.entity';
+import { Employee } from './employee.entity';
 
 @Entity('devices')
 export class Device {
@@ -19,6 +20,17 @@ export class Device {
   @Column({ name: 'status', length: 20, default: 'active' })
   status!: string; // 'active' | 'inactive' | 'removed'
 
-  @Column({ name: 'registered_at', type: 'timestamptz', default: () => 'NOW()' })
-  registeredAt!: Date;
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy?: Employee;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @ManyToOne(() => Employee, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deleted_by' })
+  deletedBy?: Employee;
 }

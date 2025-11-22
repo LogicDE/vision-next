@@ -2,7 +2,7 @@ import { IsNumber, IsOptional, IsDateString } from 'class-validator';
 
 export class CreateIndivSurveyScoreDto {
   @IsNumber()
-  surveyId!: number;
+  surveyVersionId!: number;
 
   @IsNumber()
   employeeId!: number;

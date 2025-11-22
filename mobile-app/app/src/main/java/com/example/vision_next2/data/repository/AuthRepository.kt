@@ -3,6 +3,7 @@ package com.example.vision_next2.data.repository
 import com.example.vision_next2.data.network.auth.AuthApi
 import com.example.vision_next2.data.network.auth.LoginRequest
 import com.example.vision_next2.data.network.auth.LoginResponse
+import com.example.vision_next2.data.network.auth.ProfileResponse
 import com.example.vision_next2.data.local.TokenStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,4 +44,17 @@ class AuthRepository(
         // ejemplo: authApiForLogout?.logout()  // si definiste logout en AuthApi (no obligatorio)
         tokenStorage.clear()
     }
+
+    suspend fun fetchProfile(): Result<ProfileResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                Result.success(authApi.profile())
+            } catch (e: HttpException) {
+                Result.failure(Exception("Perfil no disponible: ${e.code()}"))
+            } catch (e: IOException) {
+                Result.failure(Exception("Error de red: ${e.message}"))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards, Request } from '@nestjs/common';
 import { GroupSurveyScoresService } from './group-survey-scores.service';
 import { CreateGroupSurveyScoreDto } from './dto/create-group-survey-score.dto';
 import { UpdateGroupSurveyScoreDto } from './dto/update-group-survey-score.dto';
@@ -37,7 +37,7 @@ export class GroupSurveyScoresController {
 
   @Delete(':id')
   @Roles('Admin', 'Manager')
-  remove(@Param('id') id: number) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: number, @Request() req: any) {
+    return this.service.remove(+id, req.user?.sub);
   }
 }

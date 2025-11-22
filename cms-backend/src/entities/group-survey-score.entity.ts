@@ -1,6 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Group } from './group.entity';
-import { IndivSurveyScore } from './indiv-survey-score.entity';
 
 @Entity('group_survey_scores')
 export class GroupSurveyScore {
@@ -23,6 +22,4 @@ name!: string;
   @Column({ name: 'group_score', type: 'integer' })
   groupScore!: number;
 
-  @OneToMany(() => IndivSurveyScore, (iss) => iss.survey)
-  individualScores!: IndivSurveyScore[];
 }

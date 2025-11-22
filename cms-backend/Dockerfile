@@ -3,10 +3,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-
 COPY package*.json ./
 
 RUN npm ci --legacy-peer-deps
+
+# Explicitly install @influxdata/influxdb-client to ensure it's available
+RUN npm install @influxdata/influxdb-client@^1.35.0 --legacy-peer-deps
 
 COPY . .
 

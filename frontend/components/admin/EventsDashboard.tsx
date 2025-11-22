@@ -100,6 +100,8 @@ export function EventsDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [expandedEnterprise, setExpandedEnterprise] = useState<number | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
+  const [eventPage, setEventPage] = useState<Map<number, number>>(new Map());
+  const EVENTS_PER_PAGE = 10;
   const [enterprisePopoverOpen, setEnterprisePopoverOpen] = useState(false);
   const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState('');
@@ -602,7 +604,7 @@ export function EventsDashboard() {
 
   useEffect(() => {
     setFormData((prev) => {
-      let nextEnterpriseId = prev.enterpriseId ?? enterpriseOptions[0]?.id ?? null;
+      let nextEnterpriseId: number | null = prev.enterpriseId ?? enterpriseOptions[0]?.id ?? null;
       if (enterpriseOptions.length === 0) {
         nextEnterpriseId = null;
       }
@@ -809,57 +811,105 @@ export function EventsDashboard() {
                                       <div className="text-sm text-gray-400">
                                         Este grupo aún no tiene eventos registrados.
                                       </div>
-                                    ) : (
-                                      events.map((event) => (
-                                        <div
-                                          key={event.id}
-                                          className="border border-white/5 rounded-lg p-4 bg-slate-950/60 flex flex-col md:flex-row md:items-center gap-4"
-                                        >
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <h4 className="font-semibold text-white text-lg truncate">
-                                                {event.titleMessage}
-                                              </h4>
-                                              <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
-                                                ID: {event.id}
-                                              </Badge>
-                                            </div>
-                                            <p className="text-sm text-gray-300 line-clamp-2">
-                                              {event.bodyMessage}
-                                            </p>
-                                            <div className="flex flex-wrap items-center gap-2 mt-3">
-                                              <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs">
-                                                Coordinador: {event.coordinatorName || 'Sin definir'}
-                                              </Badge>
-                                              <Badge className="bg-teal-500/20 text-teal-200 border-teal-500/30 text-xs">
-                                                Inicio: {formatDateTime(event.startAt)}
-                                              </Badge>
-                                              <Badge className="bg-teal-500/20 text-teal-200 border-teal-500/30 text-xs">
-                                                Fin: {formatDateTime(event.endAt)}
-                                              </Badge>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2 md:self-start">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleOpenDialog(event)}
-                                              className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-white/10"
+                                    ) : (() => {
+                                      const currentEventPage = eventPage.get(group.id) || 1;
+                                      const eventStart = (currentEventPage - 1) * EVENTS_PER_PAGE;
+                                      const eventEnd = eventStart + EVENTS_PER_PAGE;
+                                      const paginatedEvents = events.slice(eventStart, eventEnd);
+                                      const totalEventPages = Math.ceil(events.length / EVENTS_PER_PAGE);
+                                      
+                                      return (
+                                        <>
+                                          {paginatedEvents.map((event) => (
+                                            <div
+                                              key={event.id}
+                                              className="border border-white/5 rounded-lg p-4 bg-slate-950/60 flex flex-col md:flex-row md:items-center gap-4"
                                             >
-                                              <Edit className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDeleteClick(event)}
-                                              className="hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-white/10"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))
-                                    )}
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <h4 className="font-semibold text-white text-lg truncate">
+                                                    {event.titleMessage}
+                                                  </h4>
+                                                  <Badge variant="outline" className="text-xs border-white/20 text-gray-400">
+                                                    ID: {event.id}
+                                                  </Badge>
+                                                </div>
+                                                <p className="text-sm text-gray-300 line-clamp-2">
+                                                  {event.bodyMessage}
+                                                </p>
+                                                <div className="flex flex-wrap items-center gap-2 mt-3">
+                                                  <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs">
+                                                    Coordinador: {event.coordinatorName || 'Sin definir'}
+                                                  </Badge>
+                                                  <Badge className="bg-teal-500/20 text-teal-200 border-teal-500/30 text-xs">
+                                                    Inicio: {formatDateTime(event.startAt)}
+                                                  </Badge>
+                                                  <Badge className="bg-teal-500/20 text-teal-200 border-teal-500/30 text-xs">
+                                                    Fin: {formatDateTime(event.endAt)}
+                                                  </Badge>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 md:self-start">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => handleOpenDialog(event)}
+                                                  className="hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-white/10"
+                                                >
+                                                  <Edit className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => handleDeleteClick(event)}
+                                                  className="hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-white/10"
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                          {events.length > EVENTS_PER_PAGE && (
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                                              <p className="text-xs text-gray-400">
+                                                Mostrando {eventStart + 1}-{Math.min(eventEnd, events.length)} de {events.length} eventos
+                                              </p>
+                                              <div className="flex items-center gap-2">
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => setEventPage(prev => {
+                                                    const newMap = new Map(prev);
+                                                    newMap.set(group.id, Math.max(1, currentEventPage - 1));
+                                                    return newMap;
+                                                  })}
+                                                  disabled={currentEventPage === 1}
+                                                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700 text-xs h-7"
+                                                >
+                                                  <ChevronLeft className="w-3 h-3" />
+                                                </Button>
+                                                <span className="text-xs text-gray-300">
+                                                  {currentEventPage} / {totalEventPages}
+                                                </span>
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => setEventPage(prev => {
+                                                    const newMap = new Map(prev);
+                                                    newMap.set(group.id, Math.min(totalEventPages, currentEventPage + 1));
+                                                    return newMap;
+                                                  })}
+                                                  disabled={currentEventPage === totalEventPages}
+                                                  className="border-white/10 bg-slate-800 text-white hover:bg-slate-700 text-xs h-7"
+                                                >
+                                                  <ChevronRight className="w-3 h-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </div>

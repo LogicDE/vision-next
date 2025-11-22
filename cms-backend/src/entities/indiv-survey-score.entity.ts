@@ -1,15 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { GroupSurveyScore } from './group-survey-score.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { SurveyVersion } from './survey-version.entity';
 import { Employee } from './employee.entity';
+import { ResponseAnswer } from './response-answer.entity';
 
 @Entity('indiv_survey_scores')
 export class IndivSurveyScore {
-  @PrimaryGeneratedColumn({ name: 'id_response' })
+  @PrimaryGeneratedColumn({ name: 'id_indiv_survey' })
   id!: number;
 
-  @ManyToOne(() => GroupSurveyScore, (gss) => gss.individualScores, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'id_survey' })
-  survey!: GroupSurveyScore;
+  @ManyToOne(() => SurveyVersion, (sv) => sv.individualScores, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'id_survey_version' })
+  surveyVersion!: SurveyVersion;
 
   @ManyToOne(() => Employee, (e) => e.surveyScores, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'id_employee' })
@@ -20,4 +21,7 @@ export class IndivSurveyScore {
 
   @Column({ name: 'indiv_score', type: 'integer', nullable: true })
   indivScore?: number;
+
+  @OneToMany(() => ResponseAnswer, (ra) => ra.indivScore)
+  responseAnswers!: ResponseAnswer[];
 }

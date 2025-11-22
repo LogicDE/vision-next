@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InfluxDB } from '@influxdata/influxdb-client';
+// Lazy import for InfluxDB to avoid module resolution issues
+let InfluxDB: any;
+try {
+  InfluxDB = require('@influxdata/influxdb-client').InfluxDB;
+} catch (error) {
+  // Module not available, will be handled gracefully
+  InfluxDB = null;
+}
 import { MetricsService } from '../metrics/metrics.service';
 import { BurnoutAIClient } from './clients/burnout-ai.client';
 
@@ -53,30 +60,47 @@ interface Intervention {
 @Injectable()
 export class PredictionService {
   private readonly logger = new Logger(PredictionService.name);
-  private influxDB: InfluxDB;
-  private org: string;
-  private bucket: string;
+  private influxDB: any;
+  private org: string = '';
+  private bucket: string = '';
 
   constructor(
     private readonly configService: ConfigService,
     private readonly metricsService: MetricsService,
     private readonly burnoutAIClient: BurnoutAIClient,
   ) {
+    if (!InfluxDB) {
+      this.logger.warn('@influxdata/influxdb-client no está disponible. Funcionalidades de InfluxDB deshabilitadas.');
+      this.influxDB = null;
+      return;
+    }
+
     const url = this.configService.get<string>('INFLUX_URL') || 'http://localhost:8086';
     const token = this.configService.get<string>('INFLUX_TOKEN');
     this.org = this.configService.get<string>('INFLUX_ORG') || 'ecosalud';
     this.bucket = this.configService.get<string>('INFLUX_BUCKET') || 'biometria';
 
     if (!token) {
-      this.logger.error('INFLUX_TOKEN no está configurado');
-      throw new Error('INFLUX_TOKEN es requerido');
+      this.logger.warn('INFLUX_TOKEN no está configurado. Funcionalidades de InfluxDB deshabilitadas.');
+      this.influxDB = null;
+      return;
     }
 
-    this.influxDB = new InfluxDB({ url, token });
-    this.logger.log('Cliente InfluxDB inicializado correctamente');
+    try {
+      this.influxDB = new InfluxDB({ url, token });
+      this.logger.log('Cliente InfluxDB inicializado correctamente');
+    } catch (error) {
+      this.logger.error('Error al inicializar InfluxDB:', error);
+      this.influxDB = null;
+    }
   }
 
   async getRecentBiometricData(userId: string, hours: number = 24) {
+    if (!this.influxDB) {
+      this.logger.warn('InfluxDB no está disponible');
+      return [];
+    }
+
     const queryApi = this.influxDB.getQueryApi(this.org);
 
     const fluxQuery = `

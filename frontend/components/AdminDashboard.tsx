@@ -43,6 +43,8 @@ import { DailyGroupMetrics } from '@/components/admin/DailyGroupMetrics';
 import { EventsDashboard } from '@/components/admin/EventsDashboard';
 import { RolesManagement } from '@/components/admin/RolesManagement';
 import HealthReport from '@/components/admin/HealthReport';
+import { SurveyVersionsManagement } from '@/components/admin/SurveyVersionsManagement';
+import { QuestionsManagement } from '@/components/admin/QuestionsManagement';
 
 // Tabs configuration - Organized by category
 const TABS_CONFIG = [
@@ -61,6 +63,16 @@ const TABS_CONFIG = [
       { value: 'roles', label: 'Roles', icon: Shield, component: RolesManagement, color: 'cyan' },
       { value: 'enterprises', label: 'Empresas', icon: Building2, component: EnterprisesManagement, color: 'green' },
       { value: 'groups', label: 'Grupos', icon: Activity, component: GroupsManagement, color: 'orange' },
+      { value: 'events', label: 'Eventos', icon: BarChart3, component: EventsDashboard, color: 'yellow' },
+      { value: 'surveys', label: 'Encuestas', icon: FileText, component: SurveysDashboard, color: 'fuchsia' },
+      { value: 'interventions', label: 'Intervenciones', icon: Bell, component: InterventionsManagement, color: 'teal' },
+    ]
+  },
+  {
+    category: 'Evaluación del bienestar',
+    tabs: [
+      { value: 'survey-versions', label: 'Ver. Encuestas', icon: FileText, component: SurveyVersionsManagement, color: 'fuchsia' },
+      { value: 'questions', label: 'Preguntas', icon: FileText, component: QuestionsManagement, color: 'cyan' },
     ]
   },
   {
@@ -68,14 +80,6 @@ const TABS_CONFIG = [
     tabs: [
       { value: 'daily-emp', label: 'M. Empleados', icon: User, component: DailyEmployeeMetrics, color: 'blue' },
       { value: 'daily-group', label: 'M. Grupos', icon: Users, component: DailyGroupMetrics, color: 'rose' },
-      { value: 'events', label: 'Eventos', icon: BarChart3, component: EventsDashboard, color: 'yellow' },
-    ]
-  },
-  {
-    category: 'Análisis',
-    tabs: [
-      { value: 'surveys', label: 'Encuestas', icon: FileText, component: SurveysDashboard, color: 'fuchsia' },
-      { value: 'interventions', label: 'Intervenciones', icon: Bell, component: InterventionsManagement, color: 'teal' },
     ]
   },
   {

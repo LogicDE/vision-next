@@ -31,6 +31,7 @@ import { NeighborhoodsModule } from './modules/geodata/neighborhoods/neighborhoo
 import { PostalCodesModule } from './modules/geodata/postal-codes/postal-codes.module';
 import { QuestionI18nModule } from './modules/surveys/question-i18n/question-i18n.module';
 import { QuestionsModule } from './modules/surveys/questions/questions.module';
+import { SurveyVersionsModule } from './modules/core/survey-versions/survey-versions.module';
 import { RolePermissionsModule } from './modules/surveys/role-permissions/role-permissions.module';
 import { CacheModule } from './modules/infrastructure/cache/cache.module';
 import { FiltersModule } from './modules/infrastructure/filters/filters.module';
@@ -78,6 +79,7 @@ import { XmlResponseInterceptor } from './common/interceptors/xml-response.inter
     PostalCodesModule,
     QuestionI18nModule,
     QuestionsModule,
+    SurveyVersionsModule,
     RolePermissionsModule,
     EmployeesModule,
     RolesModule,
