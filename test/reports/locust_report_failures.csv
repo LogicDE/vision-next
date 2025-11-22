@@ -1,4 +1,4 @@
 Method,Name,Error,Occurrences
-GET,/employees,HTTPError('401 Client Error: Unauthorized for url: /employees'),4305
-GET,/metrics/daily,HTTPError('404 Client Error: Not Found for url: /metrics/daily'),28495
-GET,/employees,HTTPError('403 Client Error: Forbidden for url: /employees'),6592
+GET,/employees,HTTPError('401 Client Error: Unauthorized for url: /employees'),4196
+GET,/metrics/daily,HTTPError('404 Client Error: Not Found for url: /metrics/daily'),28675
+GET,/employees,HTTPError('403 Client Error: Forbidden for url: /employees'),7571
