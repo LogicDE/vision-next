@@ -257,37 +257,68 @@ CREATE TABLE IF NOT EXISTS daily_employee_metrics (
 CREATE INDEX IF NOT EXISTS idx_dem_snapshot_metric ON daily_employee_metrics(id_snapshot, metric_name);
 
 -- =========================================================
--- SURVEYS
+-- SURVEYS (NEW STRUCTURE)
 -- =========================================================
-CREATE TABLE IF NOT EXISTS group_survey_scores (
-  id_survey   SERIAL PRIMARY KEY,
-  id_group    INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
-  name        VARCHAR(150) NOT NULL,
-  start_at    TIMESTAMPTZ,
-  end_at      TIMESTAMPTZ,
-  group_score INTEGER
+CREATE TABLE IF NOT EXISTS surveys (
+  id_survey SERIAL PRIMARY KEY,
+  id_group INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
+  name VARCHAR(150) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_gss_group_time ON group_survey_scores(id_group, start_at, end_at);
+CREATE INDEX IF NOT EXISTS idx_surveys_group ON surveys(id_group);
+
+CREATE TABLE IF NOT EXISTS surveys_versions (
+  id_survey_version SERIAL PRIMARY KEY,
+  id_survey INTEGER NOT NULL REFERENCES surveys(id_survey) ON DELETE CASCADE,
+  version_num INTEGER NOT NULL,
+  created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  group_score INTEGER,
+  active BOOLEAN NOT NULL DEFAULT true,
+  start_at TIMESTAMPTZ,
+  end_at TIMESTAMPTZ,
+  UNIQUE (id_survey, version_num)
+);
+CREATE INDEX IF NOT EXISTS idx_surveys_versions_survey ON surveys_versions(id_survey);
+CREATE INDEX IF NOT EXISTS idx_surveys_versions_active ON surveys_versions(active);
+CREATE INDEX IF NOT EXISTS idx_surveys_versions_time ON surveys_versions(start_at, end_at);
+
+CREATE TABLE IF NOT EXISTS survey_versions_questions (
+  id_survey_question SERIAL PRIMARY KEY,
+  id_survey_version INTEGER NOT NULL REFERENCES surveys_versions(id_survey_version) ON DELETE CASCADE,
+  id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
+  UNIQUE (id_survey_version, id_question)
+);
+CREATE INDEX IF NOT EXISTS idx_svq_survey_version ON survey_versions_questions(id_survey_version);
+CREATE INDEX IF NOT EXISTS idx_svq_question ON survey_versions_questions(id_question);
 
 CREATE TABLE IF NOT EXISTS indiv_survey_scores (
-  id_response SERIAL PRIMARY KEY,
-  id_survey   INTEGER NOT NULL REFERENCES group_survey_scores(id_survey) ON DELETE CASCADE,
-  id_employee INTEGER NOT NULL REFERENCES employees(id_employee)         ON DELETE CASCADE,
+  id_indiv_survey SERIAL PRIMARY KEY,
+  id_survey_version INTEGER NOT NULL REFERENCES surveys_versions(id_survey_version) ON DELETE CASCADE,
+  id_employee INTEGER NOT NULL REFERENCES employees(id_employee) ON DELETE CASCADE,
   submitted_at TIMESTAMPTZ,
-  indiv_score  INTEGER,
-  UNIQUE (id_survey, id_employee)
+  indiv_score INTEGER,
+  UNIQUE (id_survey_version, id_employee)
 );
 CREATE INDEX IF NOT EXISTS idx_iss_employee ON indiv_survey_scores(id_employee);
+CREATE INDEX IF NOT EXISTS idx_iss_survey_version ON indiv_survey_scores(id_survey_version);
+
+CREATE TABLE IF NOT EXISTS response_answers (
+  id_response SERIAL PRIMARY KEY,
+  id_indiv_score INTEGER NOT NULL REFERENCES indiv_survey_scores(id_indiv_survey) ON DELETE CASCADE,
+  id_survey_question INTEGER NOT NULL REFERENCES survey_versions_questions(id_survey_question) ON DELETE CASCADE,
+  answer_value INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ra_indiv_score ON response_answers(id_indiv_score);
+CREATE INDEX IF NOT EXISTS idx_ra_survey_question ON response_answers(id_survey_question);
 
 -- =========================================================
 -- QUESTIONS + i18n
 -- =========================================================
 CREATE TABLE IF NOT EXISTS questions (
   id_question SERIAL PRIMARY KEY,
-  id_group    INTEGER REFERENCES groups(id_group) ON DELETE CASCADE,
-  created_at  TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_questions_group ON questions(id_group);
 
 CREATE TABLE IF NOT EXISTS question_i18n (
   id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
@@ -787,51 +818,89 @@ ON CONFLICT (id_employee, id_snapshot, metric_name, agg_type) DO UPDATE SET
 value = EXCLUDED.value;
 
 -- =========================================================
--- ENCUESTAS Y PREGUNTAS
+-- ENCUESTAS Y PREGUNTAS (NEW STRUCTURE)
 -- =========================================================
 
--- Group Survey Scores
-INSERT INTO group_survey_scores (id_survey, id_group, name, start_at, end_at, group_score) VALUES
-(1, 1, 'Pulso Semanal Equipo Alfa', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 85),
-(2, 2, 'Encuesta Estrés Área Beta', NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day', 92),
-(3, 1, 'Feedback Productividad Sprint', NOW() - INTERVAL '1 day', NOW(), 88),
-(4, 5, 'Clima Laboral Región Norte', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', 82),
-(5, 6, 'Seguimiento Bienestar Sede C', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days', 87)
+-- Surveys
+INSERT INTO surveys (id_survey, id_group, name, created_at) VALUES
+(1, 1, 'Pulso Semanal Equipo Alfa', NOW() - INTERVAL '3 days'),
+(2, 2, 'Encuesta Estrés Área Beta', NOW() - INTERVAL '2 days'),
+(3, 1, 'Feedback Productividad Sprint', NOW() - INTERVAL '1 day'),
+(4, 5, 'Clima Laboral Región Norte', NOW() - INTERVAL '4 days'),
+(5, 6, 'Seguimiento Bienestar Sede C', NOW() - INTERVAL '3 days')
 ON CONFLICT (id_survey) DO UPDATE SET
 id_group = EXCLUDED.id_group,
 name = EXCLUDED.name,
-start_at = EXCLUDED.start_at,
-end_at = EXCLUDED.end_at,
-group_score = EXCLUDED.group_score;
+created_at = EXCLUDED.created_at;
 
--- Individual Survey Scores
-INSERT INTO indiv_survey_scores (id_response, id_survey, id_employee, submitted_at, indiv_score) VALUES
-(1, 1, 3, NOW() - INTERVAL '2 days 2 hours', 82),
-(2, 1, 4, NOW() - INTERVAL '2 days 1 hour', 88),
-(3, 2, 5, NOW() - INTERVAL '1 day 3 hours', 90),
-(4, 2, 6, NOW() - INTERVAL '1 day 2 hours', 94),
-(5, 4, 8, NOW() - INTERVAL '3 days 2 hours', 80),
-(6, 4, 9, NOW() - INTERVAL '3 days 1 hour', 84)
-ON CONFLICT (id_response) DO UPDATE SET
-id_survey = EXCLUDED.id_survey,
-id_employee = EXCLUDED.id_employee,
+-- Survey Versions
+INSERT INTO surveys_versions (id_survey, version_num, created_by, created_at, group_score, active, start_at, end_at) VALUES
+(1, 1, NULL, NOW() - INTERVAL '3 days', 85, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days'),
+(2, 1, NULL, NOW() - INTERVAL '2 days', 92, true, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
+(3, 1, NULL, NOW() - INTERVAL '1 day', 88, true, NOW() - INTERVAL '1 day', NOW()),
+(4, 1, NULL, NOW() - INTERVAL '4 days', 82, true, NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days'),
+(5, 1, NULL, NOW() - INTERVAL '3 days', 87, true, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days')
+ON CONFLICT (id_survey, version_num) DO UPDATE SET
+created_by = EXCLUDED.created_by,
+created_at = EXCLUDED.created_at,
+group_score = EXCLUDED.group_score,
+active = EXCLUDED.active,
+start_at = EXCLUDED.start_at,
+end_at = EXCLUDED.end_at;
+
+-- Survey Versions Questions
+INSERT INTO survey_versions_questions (id_survey_version, id_question)
+SELECT sv.id_survey_version, q.id_question
+FROM surveys_versions sv
+CROSS JOIN (
+  VALUES 
+    (1, 1), (1, 2), (1, 3),
+    (2, 4), (2, 5), (2, 6),
+    (3, 7), (3, 8),
+    (4, 9),
+    (5, 10)
+) AS survey_questions(survey_id, question_id)
+JOIN questions q ON q.id_question = survey_questions.question_id
+WHERE sv.id_survey = survey_questions.survey_id AND sv.version_num = 1
+ON CONFLICT (id_survey_version, id_question) DO NOTHING;
+
+-- Individual Survey Scores (using new structure with id_survey_version)
+-- Note: id_survey_version values are determined by the survey_versions inserts above
+INSERT INTO indiv_survey_scores (id_indiv_survey, id_survey_version, id_employee, submitted_at, indiv_score)
+SELECT 
+  row_number() OVER () as id_indiv_survey,
+  sv.id_survey_version,
+  old_scores.employee_id,
+  old_scores.submitted_at,
+  old_scores.score
+FROM surveys_versions sv
+CROSS JOIN (
+  VALUES 
+    (1, 3, NOW() - INTERVAL '2 days 2 hours', 82),
+    (1, 4, NOW() - INTERVAL '2 days 1 hour', 88),
+    (2, 5, NOW() - INTERVAL '1 day 3 hours', 90),
+    (2, 6, NOW() - INTERVAL '1 day 2 hours', 94),
+    (4, 8, NOW() - INTERVAL '3 days 2 hours', 80),
+    (4, 9, NOW() - INTERVAL '3 days 1 hour', 84)
+) AS old_scores(survey_id, employee_id, submitted_at, score)
+WHERE sv.id_survey = old_scores.survey_id AND sv.version_num = 1
+ON CONFLICT (id_survey_version, id_employee) DO UPDATE SET
 submitted_at = EXCLUDED.submitted_at,
 indiv_score = EXCLUDED.indiv_score;
 
--- Questions
-INSERT INTO questions (id_question, id_group, created_at) VALUES
-(1, NULL, NOW() - INTERVAL '10 days'),
-(2, NULL, NOW() - INTERVAL '9 days'),
-(3, NULL, NOW() - INTERVAL '8 days'),
-(4, NULL, NOW() - INTERVAL '7 days'),
-(5, NULL, NOW() - INTERVAL '6 days'),
-(6, NULL, NOW() - INTERVAL '5 days'),
-(7, NULL, NOW() - INTERVAL '4 days'),
-(8, NULL, NOW() - INTERVAL '3 days'),
-(9, NULL, NOW() - INTERVAL '2 days'),
-(10, NULL, NOW() - INTERVAL '1 day')
+-- Questions (no longer have id_group - questions are global)
+INSERT INTO questions (id_question, created_at) VALUES
+(1, NOW() - INTERVAL '10 days'),
+(2, NOW() - INTERVAL '9 days'),
+(3, NOW() - INTERVAL '8 days'),
+(4, NOW() - INTERVAL '7 days'),
+(5, NOW() - INTERVAL '6 days'),
+(6, NOW() - INTERVAL '5 days'),
+(7, NOW() - INTERVAL '4 days'),
+(8, NOW() - INTERVAL '3 days'),
+(9, NOW() - INTERVAL '2 days'),
+(10, NOW() - INTERVAL '1 day')
 ON CONFLICT (id_question) DO UPDATE SET
-id_group = EXCLUDED.id_group,
 created_at = EXCLUDED.created_at;
 
 -- Question i18n
@@ -860,31 +929,101 @@ ON CONFLICT (id_question, locale) DO UPDATE SET
 text = EXCLUDED.text;
 
 -- =========================================================
--- RELACIÓN ENTRE ENCUESTAS Y PREGUNTAS
+-- MIGRATION: Convert old survey structure to new structure
 -- =========================================================
-
-CREATE TABLE IF NOT EXISTS survey_questions (
-  id_question INTEGER NOT NULL,
-  id_survey INTEGER NOT NULL,
-  PRIMARY KEY (id_question, id_survey),
-  CONSTRAINT fk_survey_questions_question
-    FOREIGN KEY (id_question) REFERENCES questions (id_question) ON DELETE CASCADE,
-  CONSTRAINT fk_survey_questions_survey
-    FOREIGN KEY (id_survey) REFERENCES group_survey_scores (id_survey) ON DELETE CASCADE
-);
-
-INSERT INTO survey_questions (id_question, id_survey) VALUES
-(1, 1),
-(2, 1),
-(3, 1),
-(4, 2),
-(5, 2),
-(6, 2),
-(7, 3),
-(8, 3),
-(9, 4),
-(10, 5)
-ON CONFLICT (id_question, id_survey) DO NOTHING;
+DO $$
+DECLARE
+  old_survey RECORD;
+  new_survey_id INTEGER;
+  new_version_id INTEGER;
+  old_state VARCHAR(20);
+  is_active BOOLEAN;
+BEGIN
+  -- Only run migration if old table exists and new tables are empty
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'group_survey_scores')
+     AND NOT EXISTS (SELECT 1 FROM surveys LIMIT 1) THEN
+    
+    -- Migrate each old survey to new structure
+    FOR old_survey IN 
+      SELECT id_survey, id_group, name, start_at, end_at, group_score, 
+             COALESCE(state, 'active') as state
+      FROM group_survey_scores
+    LOOP
+      -- Determine active status from state
+      is_active := CASE 
+        WHEN old_survey.state = 'active' THEN true 
+        ELSE false 
+      END;
+      
+      -- Create new survey
+      INSERT INTO surveys (id_survey, id_group, name, created_at)
+      VALUES (old_survey.id_survey, old_survey.id_group, old_survey.name, NOW())
+      ON CONFLICT (id_survey) DO NOTHING
+      RETURNING id_survey INTO new_survey_id;
+      
+      -- If insert was skipped due to conflict, get existing id
+      IF new_survey_id IS NULL THEN
+        SELECT id_survey INTO new_survey_id FROM surveys WHERE id_survey = old_survey.id_survey;
+      END IF;
+      
+      -- Create version 1 for this survey
+      INSERT INTO surveys_versions (
+        id_survey, version_num, created_by, created_at, 
+        group_score, active, start_at, end_at
+      )
+      VALUES (
+        new_survey_id, 1, NULL, NOW(),
+        old_survey.group_score, is_active, 
+        old_survey.start_at, old_survey.end_at
+      )
+      ON CONFLICT (id_survey, version_num) DO NOTHING
+      RETURNING id_survey_version INTO new_version_id;
+      
+      -- If version insert was skipped, get existing version id
+      IF new_version_id IS NULL THEN
+        SELECT id_survey_version INTO new_version_id 
+        FROM surveys_versions 
+        WHERE id_survey = new_survey_id AND version_num = 1;
+      END IF;
+      
+      -- Migrate survey_questions to survey_versions_questions
+      INSERT INTO survey_versions_questions (id_survey_version, id_question)
+      SELECT new_version_id, id_question
+      FROM survey_questions
+      WHERE id_survey = old_survey.id_survey
+      ON CONFLICT (id_survey_version, id_question) DO NOTHING;
+      
+      -- Migrate indiv_survey_scores to reference new version
+      -- First, update the table structure if needed (rename id_response to id_indiv_survey)
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'indiv_survey_scores' AND column_name = 'id_response'
+      ) THEN
+        -- Rename column if it exists
+        ALTER TABLE indiv_survey_scores RENAME COLUMN id_response TO id_indiv_survey;
+      END IF;
+      
+      -- Update foreign key references
+      UPDATE indiv_survey_scores
+      SET id_survey_version = new_version_id
+      WHERE id_survey = old_survey.id_survey
+        AND id_survey_version IS NULL;
+      
+    END LOOP;
+    
+    -- Drop old foreign key constraint and column from indiv_survey_scores if they exist
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'indiv_survey_scores' AND column_name = 'id_survey'
+    ) THEN
+      -- Drop foreign key constraint first
+      ALTER TABLE indiv_survey_scores DROP CONSTRAINT IF EXISTS indiv_survey_scores_id_survey_fkey;
+      -- Drop the old column
+      ALTER TABLE indiv_survey_scores DROP COLUMN id_survey;
+    END IF;
+    
+  END IF;
+END $$;
 
 -- =========================================================
 -- EVENTOS E INTERVENCIONES
@@ -971,11 +1110,12 @@ SELECT
     TO_CHAR(gs.snapshot_at, 'DY') AS kpi_day,
     AVG(CASE WHEN dgm.metric_name = 'heart_rate' THEN dgm.value END)   AS heartrate,
     AVG(CASE WHEN dgm.metric_name = 'mental_state' THEN dgm.value END) AS mentalstate,
-    COUNT(DISTINCT gss.id_survey)                                     AS alerts,
-    AVG(gss.group_score)                                              AS satisfaction
+    COUNT(DISTINCT s.id_survey)                                       AS alerts,
+    AVG(sv.group_score)                                               AS satisfaction
 FROM daily_group_metrics dgm
 JOIN group_snapshots gs ON gs.id_snapshot = dgm.id_snapshot
-LEFT JOIN group_survey_scores gss ON gss.id_group = gs.id_group
+LEFT JOIN surveys s ON s.id_group = gs.id_group
+LEFT JOIN surveys_versions sv ON sv.id_survey = s.id_survey AND sv.active = true
 WHERE gs.snapshot_at >= CURRENT_DATE - INTERVAL '7 days'
 GROUP BY TO_CHAR(gs.snapshot_at, 'DY')
 ORDER BY MIN(gs.snapshot_at);
@@ -1003,16 +1143,162 @@ FROM daily_group_metrics WHERE metric_name = 'wellbeing';
 -- ACTUALIZACIÓN DE SECUENCIAS
 -- =========================================================
 
+-- =========================================================
+-- SOFT DELETE AND AUDIT COLUMNS MIGRATION
+-- =========================================================
+DO $$
+BEGIN
+  -- Questions table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'questions' AND column_name = 'created_by') THEN
+    ALTER TABLE questions ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'questions' AND column_name = 'is_deleted') THEN
+    ALTER TABLE questions ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'questions' AND column_name = 'deleted_by') THEN
+    ALTER TABLE questions ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_questions_is_deleted ON questions(is_deleted);
+
+  -- Surveys_versions table (already has created_at and created_by)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'surveys_versions' AND column_name = 'is_deleted') THEN
+    ALTER TABLE surveys_versions ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'surveys_versions' AND column_name = 'deleted_by') THEN
+    ALTER TABLE surveys_versions ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_surveys_versions_is_deleted ON surveys_versions(is_deleted);
+
+  -- Surveys table (already has created_at)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'created_by') THEN
+    ALTER TABLE surveys ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'is_deleted') THEN
+    ALTER TABLE surveys ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'deleted_by') THEN
+    ALTER TABLE surveys ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_surveys_is_deleted ON surveys(is_deleted);
+
+  -- Events table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'created_at') THEN
+    ALTER TABLE events ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'created_by') THEN
+    ALTER TABLE events ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'is_deleted') THEN
+    ALTER TABLE events ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'deleted_by') THEN
+    ALTER TABLE events ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_events_is_deleted ON events(is_deleted);
+
+  -- Interventions table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'interventions' AND column_name = 'created_at') THEN
+    ALTER TABLE interventions ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'interventions' AND column_name = 'created_by') THEN
+    ALTER TABLE interventions ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'interventions' AND column_name = 'is_deleted') THEN
+    ALTER TABLE interventions ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'interventions' AND column_name = 'deleted_by') THEN
+    ALTER TABLE interventions ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_interventions_is_deleted ON interventions(is_deleted);
+
+  -- Enterprises table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprises' AND column_name = 'created_at') THEN
+    ALTER TABLE enterprises ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprises' AND column_name = 'created_by') THEN
+    ALTER TABLE enterprises ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprises' AND column_name = 'is_deleted') THEN
+    ALTER TABLE enterprises ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprises' AND column_name = 'deleted_by') THEN
+    ALTER TABLE enterprises ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_enterprises_is_deleted ON enterprises(is_deleted);
+
+  -- Enterprise_locations table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprise_locations' AND column_name = 'created_at') THEN
+    ALTER TABLE enterprise_locations ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprise_locations' AND column_name = 'created_by') THEN
+    ALTER TABLE enterprise_locations ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprise_locations' AND column_name = 'is_deleted') THEN
+    ALTER TABLE enterprise_locations ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enterprise_locations' AND column_name = 'deleted_by') THEN
+    ALTER TABLE enterprise_locations ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_enterprise_locations_is_deleted ON enterprise_locations(is_deleted);
+
+  -- Devices table (rename registered_at to created_at, add other columns)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devices' AND column_name = 'registered_at') THEN
+    ALTER TABLE devices RENAME COLUMN registered_at TO created_at;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devices' AND column_name = 'created_at') THEN
+    ALTER TABLE devices ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devices' AND column_name = 'created_by') THEN
+    ALTER TABLE devices ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devices' AND column_name = 'is_deleted') THEN
+    ALTER TABLE devices ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devices' AND column_name = 'deleted_by') THEN
+    ALTER TABLE devices ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_devices_is_deleted ON devices(is_deleted);
+
+  -- Employees table (already has created_at)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'created_by') THEN
+    ALTER TABLE employees ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'is_deleted') THEN
+    ALTER TABLE employees ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'deleted_by') THEN
+    ALTER TABLE employees ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_employees_is_deleted ON employees(is_deleted);
+
+  -- Roles table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'created_at') THEN
+    ALTER TABLE roles ADD COLUMN created_at TIMESTAMPTZ DEFAULT now();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'created_by') THEN
+    ALTER TABLE roles ADD COLUMN created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'is_deleted') THEN
+    ALTER TABLE roles ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'deleted_by') THEN
+    ALTER TABLE roles ADD COLUMN deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL;
+  END IF;
+  CREATE INDEX IF NOT EXISTS idx_roles_is_deleted ON roles(is_deleted);
+END $$;
+
 -- Aseguramos que las secuencias estén actualizadas para los próximos inserts
-SELECT setval('employees_id_employee_seq', (SELECT MAX(id_employee) FROM employees));
-SELECT setval('groups_id_group_seq', (SELECT MAX(id_group) FROM groups));
-SELECT setval('group_snapshots_id_snapshot_seq', (SELECT MAX(id_snapshot) FROM group_snapshots));
-SELECT setval('group_survey_scores_id_survey_seq', (SELECT MAX(id_survey) FROM group_survey_scores));
-SELECT setval('indiv_survey_scores_id_response_seq', (SELECT MAX(id_response) FROM indiv_survey_scores));
-SELECT setval('questions_id_question_seq', (SELECT MAX(id_question) FROM questions));
-SELECT setval('events_id_event_seq', (SELECT MAX(id_event) FROM events));
-SELECT setval('interventions_id_inter_seq', (SELECT MAX(id_inter) FROM interventions));
-SELECT setval('audit_logs_id_event_log_seq', (SELECT MAX(id_event_log) FROM audit_logs));
+SELECT setval('employees_id_employee_seq', COALESCE((SELECT MAX(id_employee) FROM employees), 0) + 1, false);
+SELECT setval('groups_id_group_seq', COALESCE((SELECT MAX(id_group) FROM groups), 0));
+SELECT setval('group_snapshots_id_snapshot_seq', COALESCE((SELECT MAX(id_snapshot) FROM group_snapshots), 0));
+SELECT setval('surveys_id_survey_seq', COALESCE((SELECT MAX(id_survey) FROM surveys), 0));
+SELECT setval('surveys_versions_id_survey_version_seq', COALESCE((SELECT MAX(id_survey_version) FROM surveys_versions), 0));
+SELECT setval('indiv_survey_scores_id_indiv_survey_seq', COALESCE((SELECT MAX(id_indiv_survey) FROM indiv_survey_scores), 0));
+SELECT setval('response_answers_id_response_seq', COALESCE((SELECT MAX(id_response) FROM response_answers), 0));
+SELECT setval('questions_id_question_seq', COALESCE((SELECT MAX(id_question) FROM questions), 0));
+SELECT setval('events_id_event_seq', COALESCE((SELECT MAX(id_event) FROM events), 0));
+SELECT setval('interventions_id_inter_seq', COALESCE((SELECT MAX(id_inter) FROM interventions), 0));
+SELECT setval('audit_logs_id_event_log_seq', COALESCE((SELECT MAX(id_event_log) FROM audit_logs), 0));
 
 -- =========================================================
 -- FIN DE LA POBLACIÓN COMPLETA
@@ -1239,16 +1525,17 @@ BEGIN
   SELECT
     g.id_group,
     g.name::TEXT AS group_name,
-    COUNT(DISTINCT gss.id_survey) AS total_surveys,
-    COUNT(iss.id_response) AS total_responses,
+    COUNT(DISTINCT s.id_survey) AS total_surveys,
+    COUNT(iss.id_indiv_survey) AS total_responses,
     ROUND(
-      (COUNT(iss.id_response)::NUMERIC /
-      NULLIF(COUNT(DISTINCT gss.id_survey) * COUNT(DISTINCT ge.id_employee), 0)) * 100,
+      (COUNT(iss.id_indiv_survey)::NUMERIC /
+      NULLIF(COUNT(DISTINCT s.id_survey) * COUNT(DISTINCT ge.id_employee), 0)) * 100,
       2
     ) AS participation_rate
   FROM groups g
-  LEFT JOIN group_survey_scores gss ON g.id_group = gss.id_group
-  LEFT JOIN indiv_survey_scores iss ON gss.id_survey = iss.id_survey
+  LEFT JOIN surveys s ON s.id_group = g.id_group
+  LEFT JOIN surveys_versions sv ON sv.id_survey = s.id_survey AND sv.active = true
+  LEFT JOIN indiv_survey_scores iss ON iss.id_survey_version = sv.id_survey_version
   LEFT JOIN groups_employees ge ON g.id_group = ge.id_group
   GROUP BY g.id_group, g.name
   ORDER BY g.name;
@@ -1302,14 +1589,15 @@ BEGIN
   SELECT
     DATE(gs.snapshot_at) AS date_label,
     COUNT(DISTINCT gs.id_snapshot) AS total_snapshots,
-    COUNT(DISTINCT iss.id_response) AS total_survey_responses,
+    COUNT(DISTINCT iss.id_indiv_survey) AS total_survey_responses,
     AVG(dgm.value) FILTER (WHERE dgm.metric_name = 'wellbeing' AND dgm.agg_type = 'avg') AS avg_wellbeing,
     AVG(dgm.value) FILTER (WHERE dgm.metric_name = 'stress' AND dgm.agg_type = 'avg') AS avg_stress,
     AVG(dgm.value) FILTER (WHERE dgm.metric_name = 'mental_state' AND dgm.agg_type = 'avg') AS avg_mental_state
   FROM group_snapshots gs
   LEFT JOIN daily_group_metrics dgm ON gs.id_snapshot = dgm.id_snapshot
-  LEFT JOIN group_survey_scores gss ON gs.id_group = gss.id_group
-  LEFT JOIN indiv_survey_scores iss ON gss.id_survey = iss.id_survey
+  LEFT JOIN surveys s ON s.id_group = gs.id_group
+  LEFT JOIN surveys_versions sv ON sv.id_survey = s.id_survey AND sv.active = true
+  LEFT JOIN indiv_survey_scores iss ON iss.id_survey_version = sv.id_survey_version
   WHERE gs.snapshot_at >= NOW() - INTERVAL '14 days'
   GROUP BY DATE(gs.snapshot_at)
   ORDER BY DATE(gs.snapshot_at);
