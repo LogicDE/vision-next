@@ -2,8 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColum
 import { Employee } from './employee.entity';
 import { GroupEmployee } from './group-employee.entity';
 import { GroupSnapshot } from './group-snapshot.entity';
-import { GroupSurveyScore } from './group-survey-score.entity';
-import { Question } from './question.entity';
+import { Survey } from './survey.entity';
 import { Event } from './event.entity';
 import { Intervention } from './intervention.entity';
 
@@ -28,11 +27,9 @@ export class Group {
   @OneToMany(() => GroupSnapshot, (gs) => gs.group)
   snapshots!: GroupSnapshot[];
 
-  @OneToMany(() => GroupSurveyScore, (gss) => gss.group)
-  surveys!: GroupSurveyScore[];
+  @OneToMany(() => Survey, (s) => s.group)
+  surveys!: Survey[];
 
-  @OneToMany(() => Question, (q) => q.group)
-  questions!: Question[];
 
   @OneToMany(() => Event, (event) => event.group)
   events!: Event[];

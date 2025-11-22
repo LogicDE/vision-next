@@ -1,7 +1,3 @@
-import { IsNumber, IsOptional } from 'class-validator';
-
 export class CreateQuestionDto {
-  @IsOptional()
-  @IsNumber()
-  groupId?: number;
+  // Questions are now global (no group association needed)
 }
