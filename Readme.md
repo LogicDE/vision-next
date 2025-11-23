@@ -58,6 +58,8 @@ Python >= 3.13 (solo si trabajas microservices fuera de Docker)
 
 Clonar el repositorio:
 
+Estos son los pasos generales y principales de ejecucion ya que se priorizo el funcionamiento de git clone en cualquier entorno:
+
 git clone <tu-repo-url> vision-next
 cd vision-next
 docker-compose up -d --build
@@ -82,6 +84,10 @@ vision-next-frontend-1
 ⚠️ Notas:
 
 Los archivos .env del frontend y otros servicios no están incluidos en Docker Compose. Si los necesitas, crea un .env con las variables requeridas.
+
+Dentro del entorno de los bucket es necesario la clave del bucket la cual no esta incluida.
+
+Si hay problemas en la instalacion por favor veirfique su node_modules o las instalacione sque haya hecho del proyecto.
 
 📝 Funcionalidades Implementadas
 
@@ -170,7 +176,6 @@ Microservicio de predicción de burnout
 Integración con dashboard de predicciones (PredictionDashboard)
 
 Generación de reportes automáticos con Sugerencias IA + Ajustes Locales mediante cacheo en Redis para mejorar persistencia
-
 
 📖 Referencias
 

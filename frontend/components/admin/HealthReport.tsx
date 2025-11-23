@@ -874,7 +874,7 @@ export default function HealthReport() {
         name: 'Puntos de Datos',
         value: `${biometricAnalysis.data_points}`,
         status: biometricAnalysis.data_points > 100 ? 'excellent' : 
-               biometric_analysis.data_points > 50 ? 'good' : 'warning',
+               biometricAnalysis.data_points > 50 ? 'good' : 'warning',
         description: 'Muestras biométricas recolectadas',
       },
     ];
