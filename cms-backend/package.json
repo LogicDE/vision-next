@@ -4,11 +4,13 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
-    "build": "nest build"
+    "start:dev": "npx nest start --watch",
+    "build": "npx nest build"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.3",
+    "axios": "^1.7.0",
+    "@nestjs/cli": "^10.0.0",
     "@influxdata/influxdb-client": "^1.35.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.0.0",

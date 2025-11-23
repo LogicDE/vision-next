@@ -53,7 +53,7 @@ services:
       - "8000:8000"
     volumes:
       - ./cms-backend:/app
-      #- /app/node_modules
+      - /app/node_modules
       - ./cms-backend/service-account:/app/service-account:ro
     
     command: npm run start:dev
