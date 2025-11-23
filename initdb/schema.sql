@@ -112,16 +112,6 @@ CREATE TABLE IF NOT EXISTS enterprise_locations (
 );
 CREATE INDEX IF NOT EXISTS idx_elocs_enterprise_active ON enterprise_locations(id_enterprise, active);
 
-CREATE TABLE IF NOT EXISTS devices (
-  id_device     SERIAL PRIMARY KEY,
-  id_location   INTEGER NOT NULL REFERENCES enterprise_locations(id_location) ON DELETE CASCADE,
-  name          VARCHAR(100),
-  device_type   VARCHAR(50) NOT NULL,
-  status        VARCHAR(20) NOT NULL DEFAULT 'active',
-  registered_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_devices_location ON devices(id_location);
-
 -- =========================================================
 -- USERS / ORG
 -- =========================================================
@@ -138,7 +128,10 @@ CREATE TABLE IF NOT EXISTS employees (
   telephone    VARCHAR(15) CHECK (telephone ~ '^\d{9,15}$'),
   status       VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by   INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
+  is_deleted   BOOLEAN NOT NULL DEFAULT false,
+  deleted_by   INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS groups (
@@ -198,6 +191,22 @@ BEGIN
         END IF;
     END IF;
 END $$;
+
+-- =========================================================
+-- DEVICES
+-- =========================================================
+CREATE TABLE IF NOT EXISTS devices (
+  id_device     SERIAL PRIMARY KEY,
+  id_location   INTEGER NOT NULL REFERENCES enterprise_locations(id_location) ON DELETE CASCADE,
+  name          VARCHAR(100),
+  device_type   VARCHAR(50) NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by    INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
+  is_deleted    BOOLEAN NOT NULL DEFAULT false,
+  deleted_by    INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_devices_location ON devices(id_location);
 
 -- =========================================================
 -- AUDIT LOGS
@@ -263,7 +272,10 @@ CREATE TABLE IF NOT EXISTS surveys (
   id_survey SERIAL PRIMARY KEY,
   id_group INTEGER NOT NULL REFERENCES groups(id_group) ON DELETE CASCADE,
   name VARCHAR(150) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL,
+  is_deleted BOOLEAN NOT NULL DEFAULT false,
+  deleted_by INTEGER REFERENCES employees(id_employee) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_surveys_group ON surveys(id_group);
 
@@ -282,6 +294,21 @@ CREATE TABLE IF NOT EXISTS surveys_versions (
 CREATE INDEX IF NOT EXISTS idx_surveys_versions_survey ON surveys_versions(id_survey);
 CREATE INDEX IF NOT EXISTS idx_surveys_versions_active ON surveys_versions(active);
 CREATE INDEX IF NOT EXISTS idx_surveys_versions_time ON surveys_versions(start_at, end_at);
+
+-- =========================================================
+-- QUESTIONS + i18n
+-- =========================================================
+CREATE TABLE IF NOT EXISTS questions (
+  id_question SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS question_i18n (
+  id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
+  locale      VARCHAR(10)    NOT NULL,
+  text        VARCHAR(255)    NOT NULL,
+  PRIMARY KEY (id_question, locale)
+);
 
 CREATE TABLE IF NOT EXISTS survey_versions_questions (
   id_survey_question SERIAL PRIMARY KEY,
@@ -311,21 +338,6 @@ CREATE TABLE IF NOT EXISTS response_answers (
 );
 CREATE INDEX IF NOT EXISTS idx_ra_indiv_score ON response_answers(id_indiv_score);
 CREATE INDEX IF NOT EXISTS idx_ra_survey_question ON response_answers(id_survey_question);
-
--- =========================================================
--- QUESTIONS + i18n
--- =========================================================
-CREATE TABLE IF NOT EXISTS questions (
-  id_question SERIAL PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS question_i18n (
-  id_question INTEGER NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
-  locale      VARCHAR(10)    NOT NULL,
-  text        VARCHAR(255)    NOT NULL,
-  PRIMARY KEY (id_question, locale)
-);
 
 -- =========================================================
 -- EVENTS / INTERVENTIONS
@@ -793,6 +805,11 @@ telephone = EXCLUDED.telephone,
 status = EXCLUDED.status,
 created_at = EXCLUDED.created_at,
 updated_at = EXCLUDED.updated_at;
+
+-- Set default password for all non-admin employees (123456)
+UPDATE employees
+SET password_hash = '$2b$12$h0PSB1wyZNeIXVsKtG64beFhcg.l/jUB6S.vugLaQYi6tkSWWRb1W'
+WHERE id_employee <> 1;
 
 -- Groups (14 grupos total)
 INSERT INTO groups (id_group, id_manager, name, active) VALUES

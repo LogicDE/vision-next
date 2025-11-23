@@ -7,6 +7,7 @@ import { SurveyVersionQuestion } from '../../../entities/survey-version-question
 import { QuestionI18n } from '../../../entities/question-i18n.entity';
 import { CreateSurveyVersionDto } from './dto/create-survey-version.dto';
 import { Survey } from '../../../entities/survey.entity';
+import { Group } from '../../../entities/group.entity';
 
 @Injectable()
 export class SurveyVersionsService {
@@ -21,14 +22,28 @@ export class SurveyVersionsService {
     private readonly surveyVersionQuestionsRepo: Repository<SurveyVersionQuestion>,
     @InjectRepository(Survey)
     private readonly surveyRepo: Repository<Survey>,
+    @InjectRepository(Group)
+    private readonly groupRepo: Repository<Group>,
   ) {}
 
   private async getTemplateSurvey(): Promise<Survey> {
-    const template = await this.surveyRepo.findOne({
+    let template = await this.surveyRepo.findOne({
       where: { name: this.templateSurveyName },
     });
     if (!template) {
-      throw new NotFoundException('Survey template no encontrado');
+      const group = await this.groupRepo.findOne({
+        where: { isDeleted: false },
+        order: { id: 'ASC' },
+      });
+      if (!group) {
+        throw new NotFoundException('No hay grupos disponibles para crear la plantilla de encuestas');
+      }
+      template = await this.surveyRepo.save(
+        this.surveyRepo.create({
+          name: this.templateSurveyName,
+          group,
+        }),
+      );
     }
     return template;
   }

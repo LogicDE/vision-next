@@ -7,6 +7,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../redis/redis.service';
 import { JwtRedisGuard } from './jwt-redis.guard';
+import type { StringValue } from 'ms';
+
+const toExpires = (value: string | undefined, fallback: number | StringValue): number | StringValue => {
+  if (!value) return fallback;
+  const numeric = Number(value);
+  return Number.isNaN(numeric) ? (value as StringValue) : numeric;
+};
 
 @Module({
   imports: [
@@ -15,7 +22,9 @@ import { JwtRedisGuard } from './jwt-redis.guard';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h' },
+        signOptions: {
+          expiresIn: toExpires(configService.get<string>('JWT_EXPIRES_IN'), '1h'),
+        },
       }),
     }),
   ],

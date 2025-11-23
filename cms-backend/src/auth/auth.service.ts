@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
+import type { StringValue } from 'ms';
 
 export interface LoginResponse {
   access_token: string;
@@ -28,6 +29,12 @@ export class AuthService {
     private configService: ConfigService,
     private redisService: RedisService,
   ) {}
+
+  private resolveExpires(value: string | undefined, fallback: number | StringValue): number | StringValue {
+    if (!value) return fallback;
+    const numeric = Number(value);
+    return Number.isNaN(numeric) ? (value as StringValue) : numeric;
+  }
 
   async validateUser(email: string, password: string): Promise<Employee | null> {
     if (!email || !password) {
@@ -60,12 +67,12 @@ export class AuthService {
 
     const access_token = this.jwtService.sign(payloadAccess, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '5m',
+      expiresIn: this.resolveExpires(this.configService.get<string>('JWT_EXPIRES_IN'), '5m'),
     });
 
     const refresh_token = this.jwtService.sign(payloadRefresh, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d',
+      expiresIn: this.resolveExpires(this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'), '7d'),
     });
 
     // Guardar en Redis
@@ -136,7 +143,7 @@ async me(userId: number) {
       { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiAccess },
       {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '5m',
+        expiresIn: this.resolveExpires(this.configService.get<string>('JWT_EXPIRES_IN'), '5m'),
       },
     );
 
@@ -145,7 +152,7 @@ async me(userId: number) {
       { sub: payload.sub, email: payload.email, role: payload.role, nombre: payload.nombre, jti: jtiRefresh },
       {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d',
+        expiresIn: this.resolveExpires(this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'), '7d'),
       },
     );
 
