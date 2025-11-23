@@ -89,6 +89,8 @@ Dentro del entorno de los bucket es necesario la clave del bucket la cual no est
 
 Si hay problemas en la instalacion por favor veirfique su node_modules o las instalacione sque haya hecho del proyecto.
 
+Para la version movil es necesario contar con Android Studio u Ajenos que le proporcionen la capacidad de ejecutar un dispositivo virtual para hacer las pruebas. Despues de Syncronizar el gradle
+
 📝 Funcionalidades Implementadas
 
 1. CRUD Completo
@@ -176,6 +178,8 @@ Microservicio de predicción de burnout
 Integración con dashboard de predicciones (PredictionDashboard)
 
 Generación de reportes automáticos con Sugerencias IA + Ajustes Locales mediante cacheo en Redis para mejorar persistencia
+
+9. Para la version movil se actualiza automaticamente con Sync
 
 📖 Referencias
 
